@@ -38,3 +38,10 @@ def load_all_subj_df(subjects_to_run, df_dir='/Volumes/server/Projects/sfp_nsd/n
 def create_empty_df(col_list=None):
     empty_df = pd.DataFrame(columns=col_list)
     return empty_df
+
+
+def save_df_to_csv(df, output_dir, output_file_name, indexing=False):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_path = os.path.join(output_dir, output_file_name)
+    df.to_csv(output_path, index=indexing)
