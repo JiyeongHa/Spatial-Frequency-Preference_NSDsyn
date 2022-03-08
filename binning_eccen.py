@@ -1,10 +1,10 @@
 import sys
-
 sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import sfp_nsd_utils as utils
 from matplotlib import pyplot as plt
 
 def _sub_number_to_string(sub_number):
@@ -63,7 +63,7 @@ def _sort_vroinames(df_vroinames):
 
     return roi_list
 def bin_subject(subj,
-                df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes2',
+                df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
                 df_file_name='stim_voxel_info_df.csv',
                 create_vroinames_col=False,
                 cols_to_select=["names", "avg_betas", "vroinames", "eccrois", "local_ori", "local_sf", "freq_lvl"],
@@ -78,6 +78,40 @@ def bin_subject(subj,
     mean_df = _summary_stat_for_each_ecc_bin(roi_df, bin_group=dv_to_group, central_tendency=central_tendency)
 
     return mean_df, selected_df
+
+def get_all_subj_df(subjects_to_run=np.arange(1, 9),
+                    central_tendency=["mean"],
+                    dv_to_group=["subj", "vroinames", "eccrois", "freq_lvl"],
+                    save_avg_df=False,
+                    df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
+                    df_file_name='stim_voxel_info_all_subj_mean_df.csv'):
+    """load each subject's dataframe and bin according to eccentricity,  """
+    all_subj_df = []
+    for sn in subjects_to_run:
+        subj = _sub_number_to_string(sn)
+        mean_df = bin_subject(subj=subj, central_tendency=central_tendency)[0]
+        mean_df['subj'] = subj
+        all_subj_df.append(mean_df)
+    all_subj_df = pd.concat(all_subj_df, ignore_index=True)
+    all_subj_df = all_subj_df.groupby(dv_to_group).mean().reset_index()
+    if ("subj" in dv_to_group) == False:
+        all_subj_df['subj'] = 'avg'
+    if save_avg_df:
+        all_subj_path = os.path.join(df_dir, df_file_name)
+        all_subj_df.to_csv(all_subj_path, index=False)
+
+    return all_subj_df
+
+def get_avgerage_all_subj_df(all_subj_df,
+                             save_avg_df=False,
+                             df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
+                             df_file_name='stim_voxel_info_all_subj_mean_df.csv'):
+    all_subj_df = all_subj_df.groupby(["vroinames", "eccrois", "freq_lvl"]).mean().reset_index()
+    all_subj_df['subj'] = 'avg'
+    if save_avg_df:
+        all_subj_path = os.path.join(df_dir, df_file_name)
+        all_subj_df.to_csv(all_subj_path, index=False)
+    return all_subj_df
 def scatterplot_2D(mean_df,
             subj,
             labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
@@ -116,38 +150,14 @@ def scatterplot_2D(mean_df,
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
-        save_dir = os.path.join(save_dir + y_axis_rename + '_afo_' + x_axis_rename)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        save_path = os.path.join(save_dir, subj + save_file_name)
+        fig_dir = os.path.join(save_dir + y_axis_rename + '_afo_' + x_axis_rename)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, subj + save_file_name)
         plt.savefig(save_path)
     plt.show()
 
     return grid
-def get_all_subj_df(subjects_to_run=np.arange(1, 9),
-                    central_tendency=["mean"],
-                    dv_to_group=["subj", "vroinames", "eccrois", "freq_lvl"],
-                    save_avg_df=False,
-                    base_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/',
-                    df_dir='derivatives/subj_dataframes2',
-                    df_file_name='stim_voxel_info_all_subj_mean_df.csv'):
-    """load each subject's dataframe and bin according to eccentricity,  """
-    all_subj_df = []
-    for sn in subjects_to_run:
-        subj = _sub_number_to_string(sn)
-        mean_df = bin_subject(subj=subj, central_tendency=central_tendency)[0]
-        mean_df['subj'] = subj
-        all_subj_df.append(mean_df)
-    all_subj_df = pd.concat(all_subj_df, ignore_index=True)
-    all_subj_df = all_subj_df.groupby(dv_to_group).mean().reset_index()
-    if ("subj" in dv_to_group) == False:
-        all_subj_df['subj'] = 'avg'
-
-    if save_avg_df:
-        all_subj_path = os.path.join(base_dir, df_dir, df_file_name)
-        all_subj_df.to_csv(all_subj_path, index=False)
-
-    return all_subj_df
 def barplot_2D(mean_df,
                vroi_list=["V1"],
                ecc_list=None,
@@ -158,7 +168,8 @@ def barplot_2D(mean_df,
                y_axis_rename="Beta values",
                col_to_subplot='eccrois',
                legend_out=True,
-               x_log_scale=False,
+               err='sd',
+               capsize=.2,
                save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                save_file_name='.png',
                save_fig=False):
@@ -191,7 +202,7 @@ def barplot_2D(mean_df,
                              col_wrap=n_of_subplots_in_row,
                              legend_out=legend_out,
                              sharey=True)
-        grid.map(sns.barplot, x_axis_col, y_axis_col, order = freq_levels)
+        grid.map(sns.barplot, x_axis_col, y_axis_col, order=freq_levels, ci=err, capsize=capsize)
         grid.set_axis_labels(x_axis_rename, y_axis_rename)
         for ecc, ax in grid.axes_dict.items():
             ax.set_title(f"{ecc_labels[int(ecc-1)]}")
@@ -201,10 +212,10 @@ def barplot_2D(mean_df,
         if save_fig:
             if not save_dir:
                 raise Exception("Output directory is not defined!")
-            save_dir = os.path.join(save_dir, y_axis_rename + '_afo_' + x_axis_rename)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            save_path = os.path.join(save_dir, cur_roi + save_file_name)
+            fig_dir = os.path.join(save_dir, y_axis_rename.replace(" ", "-") + '_afo_' + x_axis_rename.replace(" ", "-"))
+            if not os.path.exists(fig_dir):
+                os.makedirs(fig_dir)
+            save_path = os.path.join(fig_dir, cur_roi + save_file_name)
             plt.savefig(save_path)
         plt.show()
 
@@ -219,6 +230,8 @@ def lineplot_2D(mean_df,
             col_to_subplot='vroinames',
             hue_to_label="eccrois",
             n_of_subplots_in_row=4,
+            estimator='mean',
+            marker='o',
             legend_out=True,
             x_log_scale=True,
             save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
@@ -234,7 +247,7 @@ def lineplot_2D(mean_df,
                          legend_out=legend_out,
                          xlim=[10 ** -1, 10 ** 2],
                          sharex=True, sharey=True)
-    grid.map(sns.lineplot, x_axis_col, y_axis_col, marker='o', ci='sd', err_style='bars')
+    grid.map(sns.lineplot, x_axis_col, y_axis_col, marker=marker)
     grid.set_axis_labels(x_axis_rename, y_axis_rename)
     grid.fig.legend(title='Eccentricity', bbox_to_anchor=(1, 1), labels=labels)
     for roi, ax in grid.axes_dict.items():
@@ -247,10 +260,10 @@ def lineplot_2D(mean_df,
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
-        save_dir = os.path.join(save_dir + y_axis_rename + '_afo_' + x_axis_rename)
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        save_path = os.path.join(save_dir, subj + save_file_name)
+        fig_dir = os.path.join(save_dir + y_axis_rename + '_afo_' + x_axis_rename)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, subj + save_file_name)
         plt.savefig(save_path)
     plt.show()
 

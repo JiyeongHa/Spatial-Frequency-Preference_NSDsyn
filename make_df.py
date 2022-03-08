@@ -9,9 +9,8 @@ import itertools
 import pandas as pd
 from scipy.io import loadmat
 from matplotlib import pyplot as plt
-sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
-#import sfp
 
+sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 
 def cart2pol(xramp, yramp):
     R = np.sqrt(xramp ** 2 + yramp ** 2)
@@ -54,6 +53,8 @@ def _masking(freesurfer_dir, subj, visroi_range, eccroi_range, mask_type):
             mask[hemi] = visroi_mask & eccroi_mask
 
     return mask
+
+
 def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply_mask=True):
     """ Output format will be mgzs[hemi-property]. """
 
@@ -61,7 +62,7 @@ def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply
     mgzs = {}
     for hemi, prf_properties in itertools.product(['lh', 'rh'], prf_label_names):
         prf_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + prf_properties + '.mgz')
-        #load pRF labels
+        # load pRF labels
         tmp_prf = nib.load(prf_path).get_fdata().squeeze()
         if (apply_mask):
             if not mask:
@@ -73,6 +74,8 @@ def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply
         mgzs[k] = tmp_prf
 
     return mgzs
+
+
 def _load_stim_info(stim_description_dir, stim_description_file='nsdsynthetic_sf_stim_description.csv'):
     """stimulus description file will be loaded as a dataframe."""
 
@@ -80,6 +83,8 @@ def _load_stim_info(stim_description_dir, stim_description_file='nsdsynthetic_sf
     stim_description_path = os.path.join(stim_description_dir, stim_description_file)
     stim_df = pd.read_csv(stim_description_path)
     return stim_df
+
+
 def __get_beta_folder_name(beta_version):
     # load GLMdenoise file
     # f.keys() -> shows betas
@@ -89,32 +94,36 @@ def __get_beta_folder_name(beta_version):
     }
 
     return switcher.get(beta_version, "Not available beta type")
+
+
 def __load_exp_design_mat(design_mat_dir, design_mat_file):
     mat_file = os.path.join(design_mat_dir, design_mat_file)
     mat_file = loadmat(mat_file)
     trial_orders = mat_file['masterordering'].reshape(-1)
 
     return trial_orders
+
+
 def _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df):
     trial_orders = __load_exp_design_mat(design_mat_dir, design_mat_file)
     spiral_index = stim_df[['image_idx']].copy()
     spiral_index['fixation_task'] = np.nan
     spiral_index['memory_task'] = np.nan
     for x_trial in np.arange(0, trial_orders.shape[0]):
-       task_number = np.ceil(x_trial+1/93) % 2 # 1 is fixation task, 0 is memory task
-       if task_number == 1:
-           task_name = "fixation_task"
-       elif task_number == 0:
-           task_name = "memory_task"
+        task_number = np.ceil(x_trial + 1 / 93) % 2  # 1 is fixation task, 0 is memory task
+        if task_number == 1:
+            task_name = "fixation_task"
+        elif task_number == 0:
+            task_name = "memory_task"
         # if it's the first trial and if it's not a picture repeated
-       if x_trial == 0 or trial_orders[x_trial] != trial_orders[x_trial-1]:
-           # if a spiral image was presented at that trial
-           if np.isin(trial_orders[x_trial], spiral_index['image_idx']):
-               # add that trial number (for extracting beta) to that image index
-               cur_loc = np.where(trial_orders[x_trial] == spiral_index['image_idx'])
-               if len(cur_loc) != 1:
-                   raise Exception(f'cur_loc length is more than 1!\n')
-               spiral_index.loc[cur_loc[0], task_name] = x_trial
+        if x_trial == 0 or trial_orders[x_trial] != trial_orders[x_trial - 1]:
+            # if a spiral image was presented at that trial
+            if np.isin(trial_orders[x_trial], spiral_index['image_idx']):
+                # add that trial number (for extracting beta) to that image index
+                cur_loc = np.where(trial_orders[x_trial] == spiral_index['image_idx'])
+                if len(cur_loc) != 1:
+                    raise Exception(f'cur_loc length is more than 1!\n')
+                spiral_index.loc[cur_loc[0], task_name] = x_trial
     spiral_index["fixation_task"] = spiral_index["fixation_task"].astype(int)
     spiral_index["memory_task"] = spiral_index["memory_task"].astype(int)
     stim_df = stim_df.set_index('image_idx')
@@ -122,6 +131,8 @@ def _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df
     stim_df = stim_df.join(spiral_index).reset_index()
 
     return stim_df
+
+
 def __average_two_task_betas(betas, hemi):
     """ put in a beta dict and average them voxel-wise """
 
@@ -130,7 +141,10 @@ def __average_two_task_betas(betas, hemi):
     avg_betas = (betas[f"{hemi}-fixation_task_betas"] + betas[f"{hemi}-memory_task_betas"]) / 2
 
     return avg_betas
-def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", beta_average=True, mask=None, apply_mask=True):
+
+
+def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", beta_average=True, mask=None,
+                apply_mask=True):
     """Check the directory carefully. There are three different types of beta in NSD synthetic dataset: b1, b2, or b3.
     b2 (folder: betas_fithrf) is results of GLM in which the HRF is estimated for each voxel.
     b3 (folder: betas_fithrf_GLMdenoise_RR) is the result from GLM ridge regression,
@@ -151,7 +165,7 @@ def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", be
             if not mask:
                 raise Exception("Mask is not defined!")
             # mask betas
-            #betas[k] = tmp_betas[:, mask[hemi]].T
+            # betas[k] = tmp_betas[:, mask[hemi]].T
             tmp_betas = tmp_betas[:, mask[hemi]]
         # extract only sf-related trials
         if task_from == 'both':
@@ -162,7 +176,7 @@ def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", be
             task_betas = np.empty([sf_stim_df.shape[0], tmp_betas.shape[1]])
             for x_img_idx in np.arange(0, sf_stim_df.shape[0]):
                 task_betas[x_img_idx] = tmp_betas[sf_stim_df[task_name][x_img_idx], :]
-            task_betas = np.float32(task_betas)/300
+            task_betas = np.float32(task_betas) / 300
             k = "%s-%s" % (hemi, task_name + '_betas')
             betas[k] = task_betas.T
         if task_from == 'both' and beta_average:
@@ -170,18 +184,10 @@ def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", be
             betas[avg_k] = __average_two_task_betas(betas, hemi)
 
     # add beta values to mgzs
-    #mgzs.update(betas)
+    # mgzs.update(betas)
     return betas
-def label_Vareas (row):
-    result = np.remainder(row.visualrois, 7)
-    if result == 1 or result == 2:
-        return 'V1'
-    elif result == 3 or result == 4:
-        return 'V2'
-    elif result == 5 or result == 6:
-        return 'V3'
-    elif result == 0:
-        return 'V4v'
+
+
 # put mgzs into a dataframe
 def _melt_2D_beta_mgzs_into_df(beta_mgzs):
     """mgz[hemi-betas] has a shape of (voxel_num, 112). each of element out of 112 represents the spatial frequency images.
@@ -196,14 +202,17 @@ def _melt_2D_beta_mgzs_into_df(beta_mgzs):
         df[hemi] = pd.DataFrame(columns=['voxel'])
         hemi_beta_mgzs_keys = [v for v in beta_mgzs.keys() if hemi in v]
         for mgz_key in hemi_beta_mgzs_keys:
-            #mgz_key = '%s-%s' % (hemi, 'betas')
+            # mgz_key = '%s-%s' % (hemi, 'betas')
             tmp_df = pd.DataFrame(beta_mgzs[mgz_key])
             tmp_df = pd.melt(tmp_df.reset_index(), id_vars='index')
-            tmp_df = tmp_df.rename(columns={'index': 'voxel', 'variable': 'stim_idx', 'value': mgz_key.replace(hemi+"-", "")})
+            tmp_df = tmp_df.rename(
+                columns={'index': 'voxel', 'variable': 'stim_idx', 'value': mgz_key.replace(hemi + "-", "")})
             df[hemi] = df[hemi].merge(tmp_df, how='outer')
         df[hemi]['hemi'] = hemi
     return df
-def __label_Vareas (row):
+
+
+def __label_Vareas(row):
     result = np.remainder(row.visualrois, 7)
     if result == 1 or result == 2:
         return 'V1'
@@ -213,6 +222,8 @@ def __label_Vareas (row):
         return 'V3'
     elif result == 0:
         return 'V4v'
+
+
 def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
     """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
      since it does not include melting df part."""
@@ -221,7 +232,7 @@ def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
     for hemi, prf_full_name in itertools.product(['lh', 'rh'], prf_label_names):
         prf_name = prf_full_name.replace("prf", "").replace("-", "")
         mgz_key = "%s-%s" % (hemi, prf_name)
-        test_df = pd.DataFrame(prf_mgzs[mgz_key]) # organized in a voxel order
+        test_df = pd.DataFrame(prf_mgzs[mgz_key])  # organized in a voxel order
         # To combine test_df to the existing df, we have to set a common column, which is 'voxel'
         test_df = test_df.reset_index().rename(columns={'index': 'voxel', 0: prf_name})
         if prf_name == 'visualrois':
@@ -229,16 +240,18 @@ def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
         df[hemi] = df[hemi].merge(test_df, on='voxel')
 
     return df
-def _concat_lh_rh_df(df):
 
+
+def _concat_lh_rh_df(df):
     # concat df['lh'] and df['rh']
     df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
-    #df = pd.concat(df).reset_index(0, drop=True)
+    # df = pd.concat(df).reset_index(0, drop=True)
     df = pd.concat(df).reset_index().drop(columns=['level_0', 'level_1'])
 
     return df
-def _add_stim_info_to_df(df, stim_description_df):
 
+
+def _add_stim_info_to_df(df, stim_description_df):
     # add stim information to the df
     # dataframes are merged based on index
     # Therefore, we first set df's index to stim_idx (same idx as stim_df)
@@ -247,6 +260,8 @@ def _add_stim_info_to_df(df, stim_description_df):
     df = df.join(stim_description_df)
     df = df.reset_index().rename(columns={'index': 'stim_idx'})
     return df
+
+
 def _calculate_local_orientation(df):
     # calculate distance
     ang = np.arctan2(df.w_a, df.w_r)
@@ -255,6 +270,8 @@ def _calculate_local_orientation(df):
     df['local_ori'] = np.remainder(df['local_ori'], np.pi)
 
     return df
+
+
 def _calculate_local_sf(df):
     # calculate local frequency
     df['local_sf'] = np.sqrt((df.w_r ** 2 + df.w_a ** 2))  # this should be divided by R
@@ -289,7 +306,7 @@ def sub_main(sn,
     stim_df = _load_stim_info(stim_description_dir=stim_description_dir, stim_description_file=stim_description_file)
     stim_df = _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df=stim_df)
     beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from,
-                       beta_average=beta_average, sf_stim_df=stim_df, mask=mask)
+                            beta_average=beta_average, sf_stim_df=stim_df, mask=mask)
     df = _melt_2D_beta_mgzs_into_df(beta_mgzs=beta_mgzs)
     df = _add_prf_columns_to_df(prf_mgzs=mgzs, df=df, prf_label_names=prf_label_list)
     df = _concat_lh_rh_df(df=df)
@@ -310,9 +327,8 @@ def sub_main(sn,
 
 
 def main(sn_list,
-         df_save_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes2',
+         df_save_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
          save_df=True):
-
     print(f'*** subject list: {sn_list} ***')
     if save_df:
         print(f'save mode: on')
@@ -325,5 +341,3 @@ def main(sn_list,
 
 if __name__ == '__main__':
     main(sn_list)
-
-
