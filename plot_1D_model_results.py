@@ -1,0 +1,105 @@
+import sys
+sys.path.append('../../')
+import os
+import seaborn as sns
+from matplotlib import pyplot as plt
+import sfp_nsd_utils as utils
+import
+
+def _merge_fitting_output_df_to_subj_df(fitting_df, subj_df, merge_on=["subj","vroinames", "eccrois"]):
+    merged_df = subj_df.merge(fitting_df, on=merge_on)
+    return merged_df
+def __get_y_pdf(row):
+    y_pdf = np_log_norm_pdf(row['local_sf'], row['amp'], row['mode'], row['sigma'])
+    return y_pdf
+
+
+def _merge_pdf_values(fitting_df, subj_df=None, merge_on_cols=["subj", "vroinames", "eccrois"], merge_output_df=True):
+    if merge_output_df:
+        merge_df = _merge_fitting_output_df_to_subj_df(fitting_df, subj_df, merge_on=merge_on_cols)
+    else:
+        merge_df = fitting_df
+    merge_df['y_lg_pdf'] = merge_df.apply(__get_y_pdf, axis=1)
+    return merge_df
+
+
+def beta_vs_sf_scatterplot(subj, merged_df, to_subplot="vroinames", n_sp_low=2,
+                           legend_out=True, to_label="eccrois",
+                           dp_to_x_axis='local_sf', dp_to_y_axis='avg_betas', plot_pdf=True,
+                           ln_y_axis="y_lg_pdf", x_axis_label="Spatial Frequency", y_axis_label="Beta",
+                           legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+                           save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                           save_file_name='.png'):
+    sn = utils.sub_number_to_string(subj)
+
+    cur_df = merged_df.query('subj == @sn')
+    col_order = utils.sort_a_df_column(cur_df[to_subplot])
+    grid = sns.FacetGrid(cur_df,
+                         col=to_subplot,
+                         col_order=col_order,
+                         hue=to_label,
+                         palette=sns.color_palette("husl"),
+                         col_wrap=n_sp_low,
+                         legend_out=legend_out,
+                         xlim=[10 ** -1, 10 ** 2],
+                         sharex=True, sharey=True)
+    g = grid.map(sns.scatterplot, dp_to_x_axis, dp_to_y_axis)
+    if plot_pdf:
+        grid.map(sns.lineplot, dp_to_x_axis, ln_y_axis, linewidth=2)
+    grid.set_axis_labels(x_axis_label, y_axis_label)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
+    # Put the legend out of the figure
+    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+    plt.xscale('log')
+    grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{sn}', fontsize=18, fontweight="bold")
+    grid.tight_layout()
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
+        plt.savefig(save_path)
+    plt.show()
+
+    return grid
+
+
+def plot_beta_all_subj(subj_to_run, merged_df, to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
+                       dp_to_x_axis='local_sf', dp_to_y_axis='avg_betas', plot_pdf=True,
+                       ln_y_axis="y_lg_pdf", x_axis_label="Spatial Frequency", y_axis_label="Beta",
+                       legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+                       save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                       save_file_name='.png'):
+    for sn in subj_to_run:
+        grid = beta_vs_sf_scatterplot(subj=sn, merged_df=merged_df, to_subplot=to_subplot, n_sp_low=n_sp_low,
+                                      legend_out=legend_out, to_label=to_label, dp_to_x_axis=dp_to_x_axis,
+                                      dp_to_y_axis=dp_to_y_axis, plot_pdf=plot_pdf, ln_y_axis=ln_y_axis,
+                                      x_axis_label=x_axis_label, y_axis_label=y_axis_label, legend_title=legend_title,
+                                      labels=labels, save_fig=save_fig, save_dir=save_dir,
+                                      save_file_name=save_file_name)
+    return grid
+
+
+def merge_and_plot(subj_to_run, fitting_df, subj_df, merge_on_cols=["subj", "vroinames", "eccrois"],
+                   to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
+                   dp_to_x_axis="local_sf", dp_to_y_axis='avg_betas', plot_pdf=True,
+                   ln_y_axis="y_lg_pdf", x_axis_label="Spatial Frequency", y_axis_label="Beta",
+                   legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+                   save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                   save_file_name='.png'):
+    merged_df = _merge_pdf_values(fitting_df=fitting_df, subj_df=subj_df, merge_on_cols=merge_on_cols,
+                                  merge_output_df=True)
+    grid = plot_beta_all_subj(subj_to_run=subj_to_run, merged_df=merged_df, to_subplot=to_subplot, n_sp_low=n_sp_low,
+                              legend_out=legend_out, to_label=to_label, dp_to_x_axis=dp_to_x_axis,
+                              dp_to_y_axis=dp_to_y_axis, plot_pdf=plot_pdf,
+                              ln_y_axis=ln_y_axis, x_axis_label=x_axis_label, y_axis_label=y_axis_label,
+                              legend_title=legend_title, labels=labels,
+                              save_fig=save_fig, save_dir=save_dir,
+                              save_file_name=save_file_name)
+
+    return merged_df, grid
