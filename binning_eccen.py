@@ -7,9 +7,6 @@ import seaborn as sns
 import sfp_nsd_utils as utils
 from matplotlib import pyplot as plt
 
-def _sub_number_to_string(sub_number):
-    """ Return number (1,2,3,..) to "subj0x" form """
-    return "subj%02d" % sub_number
 def label_eccband(row):
     if row.eccentricity <= 6:
         return np.floor(row.eccentricity)
@@ -62,7 +59,7 @@ def _sort_vroinames(df_vroinames):
         roi_list.sort(key=lambda x: int(x))
 
     return roi_list
-def bin_subject(subj,
+def bin_subject(sn,
                 df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
                 df_file_name='stim_voxel_info_df.csv',
                 create_vroinames_col=False,
@@ -70,14 +67,16 @@ def bin_subject(subj,
                 roi_to_bin=None,
                 dv_to_group=["eccrois", "freq_lvl"],
                 central_tendency=["mean"]):
+    subj = utils.sub_number_to_string(sn)
     df_path = os.path.join(df_dir, subj + '_' + df_file_name)
     selected_df = _load_and_copy_df(df_path=df_path,
                                     create_vroinames_col=create_vroinames_col,
                                     selected_cols=cols_to_select)
     roi_df = _get_df_for_each_ROI(selected_df, roi_list=roi_to_bin, full_roi=True)
     mean_df = _summary_stat_for_each_ecc_bin(roi_df, bin_group=dv_to_group, central_tendency=central_tendency)
+    mean_df['subj'] = subj
 
-    return mean_df, selected_df
+    return mean_df
 
 def get_all_subj_df(subjects_to_run=np.arange(1, 9),
                     central_tendency=["mean"],
@@ -88,9 +87,7 @@ def get_all_subj_df(subjects_to_run=np.arange(1, 9),
     """load each subject's dataframe and bin according to eccentricity,  """
     all_subj_df = []
     for sn in subjects_to_run:
-        subj = _sub_number_to_string(sn)
-        mean_df = bin_subject(subj=subj, central_tendency=central_tendency)[0]
-        mean_df['subj'] = subj
+        mean_df = bin_subject(sn=sn, central_tendency=central_tendency)
         all_subj_df.append(mean_df)
     all_subj_df = pd.concat(all_subj_df, ignore_index=True)
     all_subj_df = all_subj_df.groupby(dv_to_group).mean().reset_index()
