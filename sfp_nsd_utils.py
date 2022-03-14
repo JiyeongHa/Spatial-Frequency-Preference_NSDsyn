@@ -8,6 +8,12 @@ def sub_number_to_string(sub_number):
     """ Return number (1,2,3,..) to "subj0x" form """
     return "subj%02d" % sub_number
 
+def remove_subj_strings(subj_list):
+    if not isinstance(subj_list, list):
+        subj_list = subj_list.unique().tolist()
+    num_list = [int(i.replace('subj', '')) for i in subj_list]
+    return num_list
+
 def sort_a_df_column(df_vroinames):
     """ Input should be the whole column of a dataframe.
     Sort a column that contains either strings or numbers in a descending order"""
@@ -20,14 +26,16 @@ def sort_a_df_column(df_vroinames):
 
     return roi_list
 def load_df(subj, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
-                          df_name='results_1D_model.csv'):
+            df_name='results_1D_model.csv'):
     sn = sub_number_to_string(subj)
     df_path = os.path.join(df_dir, sn + '_' + df_name)
     df = pd.read_csv(df_path)
     return df
 
-def load_all_subj_df(subjects_to_run, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
-                                     df_name='results_1D_model.csv'):
+
+def load_all_subj_df(subjects_to_run,
+                     df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
+                     df_name='results_1D_model.csv'):
     all_subj_df = []
     for sn in subjects_to_run:
         tmp_df = load_df(sn, df_dir=df_dir, df_name=df_name)
