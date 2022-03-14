@@ -9,6 +9,7 @@ def sub_number_to_string(sub_number):
     return "subj%02d" % sub_number
 
 def remove_subj_strings(subj_list):
+    """ Remove 'subj' from the list and change the list type into integers """
     if not isinstance(subj_list, list):
         subj_list = subj_list.unique().tolist()
     num_list = [int(i.replace('subj', '')) for i in subj_list]
