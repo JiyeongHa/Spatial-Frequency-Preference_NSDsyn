@@ -106,7 +106,7 @@ def merge_and_plot(subj_to_run, fitting_df, subj_df, merge_on_cols=["subj", "vro
     return merged_df, grid
 
 
-def plot_parameter_dist(output_df, subj_to_run=None, to_subplot="vroinames", n_sp_low=4,
+def plot_parameter_mean(output_df, subj_to_run=None, to_subplot="vroinames", n_sp_low=4,
                            legend_out=True, to_label="eccrois",
                            dp_to_x_axis='params', dp_to_y_axis='value',
                            x_axis_label="Parameters", y_axis_label="Value",
@@ -117,7 +117,7 @@ def plot_parameter_dist(output_df, subj_to_run=None, to_subplot="vroinames", n_s
     new_output_df = pd.melt(output_df, id_vars=['subj', 'vroinames', 'eccrois'], value_vars=['amp', 'mode', 'sigma'], ignore_index=True).rename(columns={'variable': 'params'})
     col_order = utils.sort_a_df_column(new_output_df[to_subplot])
     grid = sns.FacetGrid(new_output_df,
-                         col=to_subplot,
+                         col=to_subplot, row='eccrois',
                          col_order=col_order,
                          hue=to_label,
                          palette=sns.color_palette("husl"),
@@ -128,8 +128,8 @@ def plot_parameter_dist(output_df, subj_to_run=None, to_subplot="vroinames", n_s
     lgd = grid.fig.legend(title=legend_title, bbox_to_anchor=(1.05, 0.8), loc="upper left", labels=labels, fontsize=15)
     # Put the legend out of the figure
     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
+    #for subplot_title, ax in grid.axes_dict.items():
+    #    ax.set_title(f"{subplot_title.title()}")
     grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
     n_subj = len(output_df['subj'].unique())
     grid.fig.suptitle(f'N = {n_subj}', fontsize=18, fontweight="bold")
@@ -139,7 +139,7 @@ def plot_parameter_dist(output_df, subj_to_run=None, to_subplot="vroinames", n_s
         fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
         if not os.path.exists(fig_dir):
             os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, 'all_subj')
+        save_path = os.path.join(fig_dir, 'ecc_seperately_all_subj')
         plt.savefig(save_path, bbox_extra_artists=(lgd,), bbox_inches='tight')
         plt.show()
 
