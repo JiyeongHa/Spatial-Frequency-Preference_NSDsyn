@@ -20,7 +20,8 @@ def _load_and_copy_df(df_path, create_vroinames_col, selected_cols, remove_cols=
         df['vroinames'] = df.apply(label_Vareas, axis=1)
         selected_cols.insert(1, 'vroinames')
     if remove_cols:
-        selected_cols = [i for i in list(df.keys()) if i not in selected_cols]
+        tmp_selected_cols = [i for i in list(df.keys()) if i not in selected_cols]
+        selected_cols = tmp_selected_cols
 
     # copy df with needed columns
     selected_df = df[selected_cols].copy()
