@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 def label_eccband(row):
     if row.eccentricity <= 6:
         return np.floor(row.eccentricity)
-def _load_and_copy_df(df_path, create_vroinames_col, selected_cols):
+def _load_and_copy_df(df_path, create_vroinames_col, selected_cols, remove_cols=False):
     """load a dataframe of one subject and return a copy of part of the dataframe with selected columns.
      the selected_cols has to include frequency level, beta, local orientation, and local frequency."""
     # import dataframe from make_df.py
@@ -19,6 +19,8 @@ def _load_and_copy_df(df_path, create_vroinames_col, selected_cols):
         # label visual areas regardless of dorsal and ventral streams.
         df['vroinames'] = df.apply(label_Vareas, axis=1)
         selected_cols.insert(1, 'vroinames')
+    if remove_cols:
+        selected_cols = [i for i in list(df.keys()) if i not in selected_cols]
 
     # copy df with needed columns
     selected_df = df[selected_cols].copy()
