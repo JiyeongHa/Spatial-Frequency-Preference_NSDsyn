@@ -40,6 +40,7 @@ def _get_df_for_each_ROI(selected_df, roi_list, full_roi=True):
             roi_df[cur_roi] = selected_df.groupby('vroinames').get_group(cur_roi)
 
     return roi_df
+
 def _summary_stat_for_each_ecc_bin(roi_df, bin_group, central_tendency):
     """get mean betas for each eccen values"""
 
