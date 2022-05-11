@@ -5,36 +5,62 @@ import sfp_nsd_utils as utils
 import pandas as pd
 import two_dimensional_model as model
 import plot_1D_model_results as plotting
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-
+df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
 # load subjects df.
-subj_list = np.arange(1,3)
+subj_list = np.arange(1,9)
 all_subj_df = utils.load_all_subj_df(subj_list,
-                                     df_dir='/Volumes/derivatives/subj_dataframes',
+                                     df_dir=df_dir,
                                      df_name='stim_voxel_info_df_LITE.csv')
 
 # break down phase
-dv_to_group = ['subj', 'freq_lvl', 'names_idx', 'voxel', 'hemi']
+dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi', 'vroinames']
 df = all_subj_df.groupby(dv_to_group).mean().reset_index()
+df.drop(['phase'], axis=1, inplace=True)
 
 params =pd.DataFrame({'sigma': [2.2], 'amp': [0.12], 'intercept': [0.35],
                       'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
                       'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
-df.drop(['phase', 'phase_idx'], axis=1, inplace=True)
+#normalize
+normed_betas = model.normalize(df, to_norm='avg_betas', group_by=["subj", "voxel"])
+df['norm_betas'] = normed_betas
 
-forward = Forward(params, 0, df).two_dim_prediction()
-df['pred'] = forward
+# forward
+df['pred'] = model.Forward(params, 0, df).two_dim_prediction()
+df['norm_pred'] = model.normalize(df, to_norm='pred', group_by=["subj", "voxel"])
 
 
+# plot
+dv_to_group = ['subj', 'freq_lvl', 'eccrois', 'vroinames']
+avg_df = df.groupby(dv_to_group).mean().reset_index()
 
-avg_df = df.groupby(["subj", "vroinames", "eccrois", "freq_lvl"]).mean().reset_index()
+for sn in np.arange(1,9):
+    beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
+              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
+              x_axis_label='Measured Betas', y_axis_label="Model estimation",
+              legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+              n_row=4, legend_out=True,
+              save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+              save_file_name='model_pred_full.png')
 
-for subj in subj_list:
-    beta_vs_sf_scatterplot(subj, avg_df, to_subplot="vroinames", n_sp_low=4, log_x=False,
-                                    legend_out=True, to_label="eccrois",
-                                    dp_to_x_axis='avg_betas', dp_to_y_axis='pred', plot_pdf=False,
-                                    ln_y_axis="y_lg_pdf", x_axis_label="Betas", y_axis_label="Beta Prediction",
-                                    legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
-                                    save_fig=True, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
-                                    save_file_name='.png')
 
+n_voxel_df = count_voxels(df)
+sns.barplot(x="vroinames", y="n_voxel",  ci=68, capsize=0.1, palette='hls', data=n_voxel_df)
+plt.show()
+
+grid = sns.FacetGrid(n_voxel_df,
+                     hue='vroinames',
+                     palette=sns.color_palette("hls"),
+                     sharex=True, sharey=True)
+grid.map(sns.barplot, 'vroinames', 'n_voxel', order=utils.sort_a_df_column(n_voxel_df['vroinames']), ci=68, capsize=0.1)
+grid.set_axis_labels('ROI', 'Number of Voxels')
+grid.tight_layout()
+fig_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/vroinames_vs_n_voxel'
+if not os.path.exists(fig_dir):
+    os.makedirs(fig_dir)
+save_file_name = 'n_voxels'
+save_path = os.path.join(fig_dir, f'{save_file_name}')
+plt.savefig(save_path)
+plt.show()
