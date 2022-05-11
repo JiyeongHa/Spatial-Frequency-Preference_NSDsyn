@@ -56,3 +56,10 @@ def save_df_to_csv(df, output_dir, output_file_name, indexing=False):
         os.makedirs(output_dir)
     output_path = os.path.join(output_dir, output_file_name)
     df.to_csv(output_path, index=indexing)
+
+def count_voxels(df, to_group=['subj', 'vroinames']):
+    n_voxel_df = df.groupby(to_group, as_index=False)['voxel'].nunique()
+    n_voxel_df = n_voxel_df.rename(columns={"voxel": "n_voxel"})
+    return n_voxel_df
+
+def plot_voxels(n_voxel_df, ):
