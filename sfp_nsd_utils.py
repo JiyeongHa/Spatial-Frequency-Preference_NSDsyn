@@ -26,6 +26,7 @@ def sort_a_df_column(df_vroinames):
         roi_list.sort(key=lambda x: int(x))
 
     return roi_list
+
 def load_df(subj, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
             df_name='results_1D_model.csv'):
     sn = sub_number_to_string(subj)
@@ -33,13 +34,14 @@ def load_df(subj, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-datase
     df = pd.read_csv(df_path)
     return df
 
-
-def load_all_subj_df(subjects_to_run,
+def load_all_subj_df(subj_to_run,
                      df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
                      df_name='results_1D_model.csv'):
     all_subj_df = []
-    for sn in subjects_to_run:
+    for sn in subj_to_run:
         tmp_df = load_df(sn, df_dir=df_dir, df_name=df_name)
+        if not 'subj' in tmp_df.columns:
+            tmp_df['subj'] = sub_number_to_string(sn)
         all_subj_df.append(tmp_df)
     all_subj_df = pd.concat(all_subj_df, ignore_index=True)
     return all_subj_df
