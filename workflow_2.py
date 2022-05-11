@@ -7,23 +7,13 @@ import two_dimensional_model as model
 import plot_1D_model_results as plotting
 
 
-# save the final output
-subj_list = np.arange(1,9)
-df_save_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
-for sn in subj_list:
-    subj = utils.sub_number_to_string(sn)
-    df_save_name = "%s_%s" % (subj, "stim_voxel_info_df.csv")
-    df_save_path = os.path.join(df_save_dir, df_save_name)
-    df = utils.load_df(sn, df_dir=df_save_dir, df_name=df_save_name)
-    df['subj'] = subj
-    df.to_csv(df_save_path, index=False)
-
-
+# load subjects df.
 subj_list = np.arange(1,3)
-all_subj_df = utils.load_all_subj_df(subj_list, df_dir='/Volumes/derivatives/subj_dataframes', df_name='stim_voxel_info_df.csv')
+all_subj_df = utils.load_all_subj_df(subj_list,
+                                     df_dir='/Volumes/derivatives/subj_dataframes',
+                                     df_name='stim_voxel_info_df_LITE.csv')
 
-all_subj_df.drop(['fixation_task_betas', 'memory_task_betas', 'fixation_task', 'memory_task'], axis=1, inplace=True)
-
+# break down phase
 dv_to_group = ['subj', 'freq_lvl', 'names_idx', 'voxel', 'hemi']
 df = all_subj_df.groupby(dv_to_group).mean().reset_index()
 
