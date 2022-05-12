@@ -85,7 +85,7 @@ def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
               dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
               x_axis_label='Measured Betas', y_axis_label="Model estimation",
               legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
-              n_row=4, legend_out=True,
+              n_row=4, legend_out=True, alpha=0.5, set_max=True,
               save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
               save_file_name='model_pred.png'):
     subj = utils.sub_number_to_string(sn)
@@ -99,7 +99,10 @@ def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
                          col_wrap=n_row,
                          legend_out=legend_out,
                          sharex=True, sharey=True)
-    g = grid.map(sns.scatterplot, dp_to_x_axis, dp_to_y_axis)
+    if set_max:
+        max_point = cur_df[[dp_to_x_axis, dp_to_y_axis]].max().max()
+    grid.set(xlim=(0, max_point), ylim=(0, max_point))
+    g = grid.map(sns.scatterplot, dp_to_x_axis, dp_to_y_axis, alpha=alpha)
     grid.set_axis_labels(x_axis_label, y_axis_label)
     grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
     # Put the legend out of the figure
@@ -118,3 +121,48 @@ def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
         save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
         plt.savefig(save_path)
     plt.show()
+
+def beta_2Dhist(sn, df, to_subplot="vroinames", to_label="eccrois",
+              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
+              x_axis_label='Measured Betas', y_axis_label="Model estimation",
+              legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+              n_row=4, legend_out=True, alpha=0.5, bins=30, set_max=False,
+              save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
+              save_file_name='model_pred.png'):
+    subj = utils.sub_number_to_string(sn)
+    cur_df = df.query('subj == @subj')
+    col_order = utils.sort_a_df_column(cur_df[to_subplot])
+    grid = sns.FacetGrid(cur_df,
+                         col=to_subplot,
+                         col_order=col_order,
+                         hue=to_label,
+                         palette=sns.color_palette("husl"),
+                         col_wrap=n_row,
+                         legend_out=legend_out,
+                         sharex=True, sharey=True)
+    if set_max:
+        max_point = cur_df[[dp_to_x_axis, dp_to_y_axis]].max().max()
+        grid.set(xlim=(0, max_point), ylim=(0, max_point))
+    g = grid.map(sns.histplot, dp_to_x_axis, dp_to_y_axis, bins=bins, alpha=alpha)
+    grid.set_axis_labels(x_axis_label, y_axis_label)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
+    # Put the legend out of the figure
+    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+    grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
+    grid.tight_layout()
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
+        plt.savefig(save_path)
+    plt.show()
+
+def beta_1Dhist(df):
+    pd.melt(df, id_vars=[''], value_vars=['B'],
+            var_name='myVarname', value_name='myValname')

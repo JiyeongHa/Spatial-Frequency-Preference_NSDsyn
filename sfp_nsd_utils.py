@@ -62,4 +62,4 @@ def count_voxels(df, to_group=['subj', 'vroinames']):
     n_voxel_df = n_voxel_df.rename(columns={"voxel": "n_voxel"})
     return n_voxel_df
 
-def plot_voxels(n_voxel_df, ):
+#def plot_voxels(n_voxel_df, ):
