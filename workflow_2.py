@@ -20,6 +20,9 @@ dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi', 'vroinames']
 df = all_subj_df.groupby(dv_to_group).mean().reset_index()
 df.drop(['phase'], axis=1, inplace=True)
 
+dv_to_group = all_subj_df.drop(columns=['phase', 'avg_betas', 'stim_idx']).columns.tolist()
+df_2 = all_subj_df.groupby(dv_to_group).mean().reset_index()
+
 params =pd.DataFrame({'sigma': [2.2], 'amp': [0.12], 'intercept': [0.35],
                       'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
                       'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
@@ -31,6 +34,7 @@ df['norm_betas'] = normed_betas
 df['pred'] = model.Forward(params, 0, df).two_dim_prediction()
 df['norm_pred'] = model.normalize(df, to_norm='pred', group_by=["subj", "voxel"])
 
+df[df.columns & colnames]
 
 # plot
 
@@ -90,3 +94,10 @@ plt.show()
 for sn in np.arange(1, 9):
     beta_1Dhist(sn, df, save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                 save_file_name='1Dhist_comp.png')
+
+
+
+remove_fixation_part(df)
+
+remove_negative_voxels(df)
+
