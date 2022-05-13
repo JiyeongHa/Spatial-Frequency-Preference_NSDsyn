@@ -33,25 +33,38 @@ df['norm_pred'] = model.normalize(df, to_norm='pred', group_by=["subj", "voxel"]
 
 
 # plot
-dv_to_group = ['subj', 'freq_lvl', 'eccrois', 'vroinames']
-avg_df = df.groupby(dv_to_group).mean().reset_index()
+
+dv_to_group = ['subj', 'freq_lvl', 'vroinames', 'names']
+labels=df.names.unique()
+avg_df_3 = df.groupby(dv_to_group).median().reset_index()
+my_list = ["annulus", "forward spiral", "reverse spiral", "pinwheel"]
+avg_df_3 = avg_df_3.query('names.isin(@my_list)', engine='python')
 
 for sn in np.arange(1,9):
-    model.beta_comp(sn, avg_df, to_subplot="vroinames", to_label="eccrois",
-              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
+    beta_comp(sn, avg_df_3.query('vroinames == "V1"'), to_subplot='names', to_label="names",
+              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred', set_max=False,
+              x_axis_label='Measured Betas', y_axis_label="Model estimation",
+              legend_title=None, labels=None,
+              n_row=4, legend_out=True, alpha=0.7,
+              save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+              save_file_name='model_pred_stim_class_inV1.png')
+
+for sn in np.arange(1,9):
+    beta_comp(sn, avg_df_2, to_subplot="vroinames", to_label="eccrois",
+              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred', set_max=True,
               x_axis_label='Measured Betas', y_axis_label="Model estimation",
               legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
               n_row=4, legend_out=True, alpha=0.7,
               save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-              save_file_name='model_pred.png')
+              save_file_name='model_pred_median.png')
 
 for sn in np.arange(1, 9):
     beta_2Dhist(sn, df, to_subplot="vroinames", to_label='vroinames',
               dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
               x_axis_label='Measured Betas', y_axis_label="Model estimation",
-              legend_title=None, labels=None, bins=200, set_max=True,
+              legend_title=None, labels=None, bins=200, set_max=False,
               n_row=4, legend_out=True, alpha=0.9,
-              save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+              save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
               save_file_name='model_pred_2Dhist.png')
 
 
@@ -74,27 +87,6 @@ save_path = os.path.join(fig_dir, f'{save_file_name}')
 plt.savefig(save_path)
 plt.show()
 
-subj='subj01'
-cur_df = df.query('subj == @subj')
-col_order = utils.sort_a_df_column(cur_df['vroinames'])
-grid = sns.FacetGrid(cur_df,
-                         col='vroinames',
-                         col_order=col_order,
-                         hue='vroinames',
-                         palette=sns.color_palette("husl"),
-                         col_wrap=4,
-                         legend_out=True,
-                         sharex=False, sharey=False)
-g = grid.map(sns.histplot, 'norm_betas', 'norm_pred', alpha=0.5)
-plt.show()
-
-sns.histplot(x='norm_betas', y='norm_pred', data=cur_df)
-plt.show()
-
-subj = 'subj01'
-cur_df = df.query('subj == @subj')
-
-melt_df = pd.melt(cur_df, id_vars=['subj', 'voxel', 'vroinames'], value_vars=['norm_betas', 'norm_pred'],
-        var_name='beta_type', value_name='beta_value')
-
-sns.histplot(data=melt_df, x="beta_value", hue="beta_type", stat="density")
+for sn in np.arange(1, 9):
+    beta_1Dhist(sn, df, save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                save_file_name='1Dhist_comp.png')
