@@ -7,6 +7,7 @@ import two_dimensional_model as model
 import plot_1D_model_results as plotting
 import seaborn as sns
 import matplotlib.pyplot as plt
+import variance_explained as R2
 
 df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
 # load subjects df.
@@ -96,8 +97,7 @@ for sn in np.arange(1, 9):
                 save_file_name='1Dhist_comp.png')
 
 
-
-remove_fixation_part(df)
-
-remove_negative_voxels(df)
-
+# R2
+all_subj_R2 = R2.load_R2_all_subj(np.arange(1,9))
+R2.R2_histogram(sn_list, all_subj_R2, n_bins=300, save_fig=True, xlimit=30, save_file_name='R2_xlimit_30.png')
+R2.R2_histogram(sn_list, all_subj_R2, n_bins=300, save_fig=True, xlimit=100, save_file_name='R2_xlimit_100.png')

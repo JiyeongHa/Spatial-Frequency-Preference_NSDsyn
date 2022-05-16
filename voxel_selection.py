@@ -31,8 +31,6 @@ def drop_voxels_outside_stim_range(df, dv_to_group=['freq_lvl', 'subj']):
 
 
 
-
-
 def _rgb2gray(rgb_image):
         return np.dot(rgb_image[..., :3], [0.2989, 0.5870, 0.1140])
 

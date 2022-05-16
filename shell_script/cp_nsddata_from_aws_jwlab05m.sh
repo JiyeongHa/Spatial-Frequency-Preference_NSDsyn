@@ -80,3 +80,23 @@ done
 aws s3 sync ${aws_stimuli_dir_png} ${stimuli_dir_png}/nsdsynthetic
 aws s3 sync --exclude "fsaverage_sym"  --exclude "fsaverage"  --exclude "fsaverage3"  --exclude "fsaverage4"  --exclude "fsaverage5"  --exclude "fsaverage6" ${aws_freesurfer_dir} ${freesurfer_dir}
 
+SNs=(01 02 03 04 05 06 07 08)
+
+# Repeat for each subject
+for xSN in "${SNs[@]}"
+do
+base_dir=/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/subj${xSN}/func1mm/nsdsyntheticbetas_fithrf_GLMdenoise_RR
+mkdir -p ${base_dir}
+
+aws s3 sync s3://natural-scenes-dataset/nsddata_betas/ppdata/subj${xSN}/func1mm/nsdsyntheticbetas_fithrf_GLMdenoise_RR/ ${base_dir}
+done
+
+SNs=(01 02 03 04 05 06 07)
+
+for xSN in "${SNs[@]}"
+do
+base_dir=/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/subj${xSN}/func1mm/nsdsyntheticbetas_fithrf_GLMdenoise_RR
+cd ${base_dir}
+aws s3 sync s3://natural-scenes-dataset/nsddata_betas/ppdata/subj${xSN}/func1mm/nsdsyntheticbetas_fithrf_GLMdenoise_RR/ .
+done
+
