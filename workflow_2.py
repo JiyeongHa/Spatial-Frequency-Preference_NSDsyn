@@ -8,6 +8,7 @@ import plot_1D_model_results as plotting
 import seaborn as sns
 import matplotlib.pyplot as plt
 import variance_explained as R2
+import voxel_selection as vs
 
 df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
 # load subjects df.
@@ -101,3 +102,35 @@ for sn in np.arange(1, 9):
 all_subj_R2 = R2.load_R2_all_subj(np.arange(1,9))
 R2.R2_histogram(sn_list, all_subj_R2, n_bins=300, save_fig=True, xlimit=30, save_file_name='R2_xlimit_30.png')
 R2.R2_histogram(sn_list, all_subj_R2, n_bins=300, save_fig=True, xlimit=100, save_file_name='R2_xlimit_100.png')
+
+# voxel selection
+# compare num of voxels before & after applying voxel_selection()
+n_voxel_df = vs.count_voxels(df, dv_to_group=["subj", "vroinames"], count_beta_sign=True)
+vs.plot_num_of_voxels(n_voxel_df, save_fig=True,
+                      save_file_name='n_voxels_ROI_beta_sign.png',
+                      super_title='All voxels')
+
+pos_df = vs.drop_voxels_with_mean_negative_amplitudes(df)
+n_voxel_pos_df = vs.count_voxels(pos_df, dv_to_group=["subj", "vroinames"], count_beta_sign=True)
+vs.plot_num_of_voxels(n_voxel_pos_df, save_fig=True,
+                      save_file_name='n_voxels_ROI_beta_sign_after_drop.png',
+                      super_title='Voxels with positive mean betas only')
+
+# drop voxels
+filtered_df = vs.drop_voxels_outside_stim_range(pos_df)
+n_voxel_df_0 = vs.count_voxels(df, dv_to_group=["subj", "vroinames"], count_beta_sign=False)
+n_voxel_df_1 = vs.count_voxels(pos_df, dv_to_group=["subj", "vroinames"], count_beta_sign=False)
+n_voxel_df_2 = vs.count_voxels(filtered_df, dv_to_group=["subj", "vroinames"], count_beta_sign=False)
+
+n_voxel_df_0 = n_voxel_df_0.rename(columns={'n_voxel': 'n_voxel_all'})
+n_voxel_df_1 = n_voxel_df_1.rename(columns={'n_voxel': 'n_voxel_positive_only'})
+n_voxel_df_2 = n_voxel_df_2.rename(columns={'n_voxel': 'n_voxel_positive_and_stim_range'})
+new_n_voxel_df = n_voxel_df_0.merge(n_voxel_df_1, on=['subj', 'vroinames'])
+new_n_voxel_df = new_n_voxel_df.merge(n_voxel_df_2, on=['subj', 'vroinames'])
+
+new_n_voxel_df = pd.melt(new_n_voxel_df, id_vars=['subj', 'vroinames'], value_vars=['n_voxel_all', 'n_voxel_positive_only', 'n_voxel_positive_and_stim_range'],
+        var_name='voxel_selection', value_name='n_voxel')
+vs.plot_num_of_voxels(new_n_voxel_df,
+                      to_hue='voxel_selection', legend_title='Voxel selection method',
+                      super_title='Changes in the number of voxels', save_fig=True,
+                      save_file_name='change_in_n_voxel.png')

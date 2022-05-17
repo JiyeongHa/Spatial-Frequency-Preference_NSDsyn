@@ -3,7 +3,62 @@ import os
 import numpy as np
 import h5py
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import sfp_nsd_utils as utils
 from math import atan2, degrees
+
+
+def count_voxels(tmp, dv_to_group=["subj", "vroinames"], count_beta_sign=True):
+    """count the number of voxels for each group specified in the dv_to_group variable.
+     count_beta_sign arg will let you count voxels depending on the sign of mean avg betas
+     across 28 conditions."""
+
+
+    if count_beta_sign is True:
+        tmp = tmp.groupby(dv_to_group + ["voxel"])['avg_betas'].mean().reset_index()
+        tmp['beta_sign'] = np.sign(tmp['avg_betas'])
+        tmp['beta_sign'] = tmp['beta_sign'].map({-1.0: "negative", 1.0: "positive"})
+        dv_to_group += ["beta_sign"]
+
+    n_voxel_df = tmp.groupby(dv_to_group, as_index=False)['voxel'].nunique()
+    n_voxel_df = n_voxel_df.rename(columns={"voxel": "n_voxel"})
+    return n_voxel_df
+
+
+def plot_num_of_voxels(n_voxel_df, graph_type='bar',
+                       to_hue='beta_sign', legend_title='Mean beta sign',
+                       x_axis='vroinames', y_axis='n_voxel',
+                       x_axis_label='Number of Voxels', y_axis_label='ROI',
+                       save_fig=False, save_file_name='n_voxels_ROI_beta_sign.png',
+                       save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                       super_title=None):
+
+    grid = sns.catplot(data=n_voxel_df,
+                       x=x_axis, y=y_axis,
+                       hue=to_hue,
+                       kind=graph_type,
+                       ci=68, capsize=0.1,
+                       order=utils.sort_a_df_column(n_voxel_df[x_axis]),
+                       )
+    grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=15)
+    legend = grid._legend
+    legend.set_title(legend_title)
+    if super_title is not None:
+        grid.fig.suptitle(f'{super_title}', fontsize=18, fontweight="bold")
+    grid.fig.subplots_adjust(top=0.9, right=0.7)
+    grid.tight_layout()
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{save_file_name}')
+        plt.savefig(save_path)
+    plt.show()
+    return grid
+
 
 
 def drop_voxels_with_mean_negative_amplitudes(df):
@@ -16,32 +71,35 @@ def drop_voxels_with_mean_negative_amplitudes(df):
     df = df.query('voxel in @voxels')
     return df
 
+
 def pix_to_deg(size_in_pix=100, screen_height=39.29, n_pixel_height=1080, visual_distance=176.5):
     """1920x1080 pixels, 69.84x39.29cm, 176.5 cm distance"""
-    theta = degrees(atan2(0.5*screen_height, visual_distance))
-    deg_per_pix = theta / (0.5*n_pixel_height)
+    theta = degrees(atan2(0.5 * screen_height, visual_distance))
+    deg_per_pix = theta / (0.5 * n_pixel_height)
 
     return deg_per_pix * size_in_pix
 
+
 def drop_voxels_outside_stim_range(df, dv_to_group=['freq_lvl', 'subj']):
-    inner_radi = pix_to_deg(np.asarray([1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733])) # in pixels
-    outer_radi = pix_to_deg(714/2)
+    inner_radi = pix_to_deg(np.asarray([1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]))  # in pixels
+    outer_radi = pix_to_deg(714 / 2)
     df = df.query('@inner_radi[-1] < eccentricity < @outer_radi')
     return df
 
 
-
 def _rgb2gray(rgb_image):
-        return np.dot(rgb_image[..., :3], [0.2989, 0.5870, 0.1140])
+    return np.dot(rgb_image[..., :3], [0.2989, 0.5870, 0.1140])
+
 
 def _get_distance(size=(714, 1360)):
     """Calculate distance from origin and save them as a matrix.
     This function is equivalent to mkR() in SF. """
 
-    origin = ((size[0]+1)/2, (size[1]+1)/2)
-    x, y = np.meshgrid(np.arange(1, size[1]+1)-origin[1],
-                       np.arange(1, size[0]+1)-origin[0])
+    origin = ((size[0] + 1) / 2, (size[1] + 1) / 2)
+    x, y = np.meshgrid(np.arange(1, size[1] + 1) - origin[1],
+                       np.arange(1, size[0] + 1) - origin[0])
     return np.sqrt(x ** 2 + y ** 2)
+
 
 # first function: min & max eccentricity of stimulus
 def _find_ecc_range_of_stim(image='nsdsynthetic_stimuli.hdf5',
@@ -51,25 +109,27 @@ def _find_ecc_range_of_stim(image='nsdsynthetic_stimuli.hdf5',
     """find min and max eccentricity of each stimulus where stimuli were not presented"""
     image_path = os.path.join(image_dir, image)
     f = h5py.File(image_path, 'r').get('imgBrick')
-    f = f[image_idx[0]-1:image_idx[1],:,:,:]
+    f = f[image_idx[0] - 1:image_idx[1], :, :, :]
     f = _rgb2gray(f)
     f = np.round(f, 3)
     R = _get_distance(f.shape[1:3])
     img_min_max = np.empty((f.shape[0], 2))
     for k in np.arange(0, f.shape[0]):
-        x, y = np.where(f[k,:,:] != mid_val)
+        x, y = np.where(f[k, :, :] != mid_val)
         img_min_max[k, :] = [R[x, y].min(), R[x, y].max()]
 
     return img_min_max
 
+
 def _find_min_and_max(img_min_max):
     """ find minimum val of max eccentricity & max val of minimum ecc"""
-    spiral_radii=[1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]
+    spiral_radii = [1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]
 
-    stim_info_df = make_df._load_stim_info(stim_description_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives')
+    stim_info_df = make_df._load_stim_info(
+        stim_description_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives')
     img_df = pd.DataFrame(img_min_max).rename(columns={0: 'min_stim_ecc_R', 1: 'max_stim_ecc_R'})
     img_df = img_df.reset_index()
     img_df = stim_info_df.reset_index().merge(img_df)
-    outer_boundary = img_min_max[:,1].min()
-    inner_boundary = img_min_max[:,0]
+    outer_boundary = img_min_max[:, 1].min()
+    inner_boundary = img_min_max[:, 0]
     return inner_boundary, outer_boundary
