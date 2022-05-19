@@ -20,10 +20,13 @@ def sort_a_df_column(df_vroinames):
     Sort a column that contains either strings or numbers in a descending order"""
 
     roi_list = df_vroinames.unique().tolist()
-    if all(isinstance(item, str) for item in roi_list):
+    if df_vroinames.name == 'vroinames':
         roi_list.sort(key=lambda x: int(x[1]))
-    if all(isinstance(item, float) for item in roi_list):
-        roi_list.sort(key=lambda x: int(x))
+    elif df_vroinames.name != 'vroinames':
+        if all(isinstance(item, str) for item in roi_list):
+            roi_list.sort()
+        elif all(isinstance(item, float) for item in roi_list):
+            roi_list.sort(key=lambda x: int(x))
 
     return roi_list
 
