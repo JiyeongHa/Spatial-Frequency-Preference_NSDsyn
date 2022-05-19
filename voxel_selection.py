@@ -28,8 +28,9 @@ def count_voxels(tmp, dv_to_group=["subj", "vroinames"], count_beta_sign=True):
 
 def plot_num_of_voxels(n_voxel_df, graph_type='bar',
                        to_hue='beta_sign', legend_title='Mean beta sign',
+                       new_legend=None,
                        x_axis='vroinames', y_axis='n_voxel',
-                       x_axis_label='Number of Voxels', y_axis_label='ROI',
+                       x_axis_label='ROI', y_axis_label='Number of Voxels',
                        save_fig=False, save_file_name='n_voxels_ROI_beta_sign.png',
                        save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                        super_title=None):
@@ -40,10 +41,14 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
                        kind=graph_type,
                        ci=68, capsize=0.1,
                        order=utils.sort_a_df_column(n_voxel_df[x_axis]),
+                       hue_order=utils.sort_a_df_column(n_voxel_df[to_hue])
                        )
     grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=15)
     legend = grid._legend
     legend.set_title(legend_title)
+    if new_legend is not None:
+        for t, l in zip(legend.texts, new_legend):
+            t.set_text(l)
     if super_title is not None:
         grid.fig.suptitle(f'{super_title}', fontsize=18, fontweight="bold")
     grid.fig.subplots_adjust(top=0.9, right=0.7)
@@ -66,10 +71,11 @@ def drop_voxels_with_mean_negative_amplitudes(df):
         """
     dv_to_group = ["subj", "voxel"]
     tmp = df.groupby(dv_to_group)['avg_betas'].mean().reset_index()
-    tmp.drop(tmp[tmp.avg_betas < 0].index, inplace=True)
-    voxels = tmp.voxel.unique()
-    df = df.query('voxel in @voxels')
-    return df
+    to_drop = tmp[tmp.avg_betas < 0].rename(columns={'avg_betas': 'negative_betas'})
+    new_df = df.merge(to_drop, on=["subj", "voxel"], how='left', indicator=True)
+    new_df = new_df[new_df._merge == "left_only"].drop(columns=['negative_betas', '_merge'])
+
+    return new_df
 
 
 def pix_to_deg(size_in_pix=100, screen_height=39.29, n_pixel_height=1080, visual_distance=176.5):
