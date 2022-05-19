@@ -2,7 +2,7 @@ import sys
 import os
 import numpy as np
 import pandas as pd
-
+import random
 
 def sub_number_to_string(sub_number):
     """ Return number (1,2,3,..) to "subj0x" form """
@@ -61,5 +61,14 @@ def count_voxels(df, to_group=['subj', 'vroinames']):
     n_voxel_df = df.groupby(to_group, as_index=False)['voxel'].nunique()
     n_voxel_df = n_voxel_df.rename(columns={"voxel": "n_voxel"})
     return n_voxel_df
+
+def check_28cond(df, print_msg=True):
+    rand_subj = sub_number_to_string(random.randint(1, 9))
+    rand_voxel = np.random.choice(df.query('subj == @rand_subj').voxel.unique())
+    new_df = df.query('subj == @rand_subj & voxel == @rand_voxel')
+    if print_msg:
+        print(f'Voxel no.{rand_voxel} for {rand_subj} has {new_df.shape[0]} conditions.')
+
+    return new_df.shape[0]
 
 #def plot_voxels(n_voxel_df, ):
