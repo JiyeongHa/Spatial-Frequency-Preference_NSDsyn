@@ -245,7 +245,7 @@ def count_nan_in_torch_vector(x):
 
 # SF model class
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, subj_df):
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.sigma = _cast_as_param(np.random.random(1))
         self.slope = _cast_as_param(np.random.random(1))
@@ -258,6 +258,12 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.A_2 = _cast_as_param(np.random.random(1))
         self.A_3 = 0
         self.A_4 = 0
+
+        self.subj_df = subj_df.copy()
+        self.theta_l = _cast_as_tensor(self.subj_df['local_ori'])
+        self.theta_v = _cast_as_tensor(self.subj_df['angle'])
+        self.r_v = _cast_as_tensor(self.subj_df['eccentricity'])  # voxel eccentricity (in degrees)
+        self.w_l = _cast_as_tensor(self.subj_df['local_sf'])  # in cycles per degree
 
     def get_Av(self, theta_l, theta_v):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
@@ -282,11 +288,9 @@ class SpatialFrequencyModel(torch.nn.Module):
         return Pv
 
     def forward(self, theta_l, theta_v, r_v, w_l):
-        """
-                        In the forward function we accept a Variable of input data and we must
-                        return a Variable of output data. Return predicted BOLD response
-                        in eccentricity (formula no. 5 in Broderick et al. (2022))
-                        """
+        """ In the forward function we accept a Variable of input data and we must
+        return a Variable of output data. Return predicted BOLD response
+        in eccentricity (formula no. 5 in Broderick et al. (2022)) """
         w_l = _cast_as_tensor(w_l)
 
         Av = self.get_Av(theta_l, theta_v)
@@ -303,13 +307,13 @@ def fit_model(model, dataset, learning_rate=1e-3, max_epoch=1000):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
 
-    my_parameters = model.parameters()
+    my_parameters = [p for p in model.parameters() if p.requires_grad]
 
     optimizer = torch.adam.optimizer(my_parameters, lr=learning_rate)
     loss_history = []
     model_history = []
     for t in range(max_epoch):
-        # predictions should be come out here
+        # predictions should be put in here
         loss = loss_fn(predictions, target)  # loss should be returned here
         # output needs to be put in there
         loss_history[t].append(loss.item())
@@ -319,3 +323,4 @@ def fit_model(model, dataset, learning_rate=1e-3, max_epoch=1000):
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
         model.eval()
+    return loss_history, model_history

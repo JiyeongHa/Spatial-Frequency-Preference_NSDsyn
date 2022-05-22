@@ -149,3 +149,11 @@ for i in pbar:
     #pbar.set_postfix(loss=losses[-1], params=param_vals[-1])
 # turn this list of 1d tensors into one 2d tensor
 param_vals = torch.stack(param_vals)
+
+
+#
+subj = "subj01"
+subj_df = filtered_df.query('subj == "subj"')
+test_model = model.SpatialFrequencyModel()
+test_model.forward()
+
