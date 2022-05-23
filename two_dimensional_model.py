@@ -243,9 +243,22 @@ def count_nan_in_torch_vector(x):
     return torch.nonzero(torch.isnan(torch.log2(x).view(-1)))
 
 
+class SpatialFrequencyDataset:
+    def __init__(self, df):
+        self.tmp =df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_betas']]
+
+    def df_to_numpy(self):
+        return self.tmp.to_numpy()
+
+    def df_to_tensor(self):
+        tmp = self.df_to_numpy()
+        return torch.tensor(tmp)
+
+
 # SF model class
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, subj_df):
+    def __init__(self, subj_tensor):
+        """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.sigma = _cast_as_param(np.random.random(1))
         self.slope = _cast_as_param(np.random.random(1))
@@ -258,49 +271,72 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.A_2 = _cast_as_param(np.random.random(1))
         self.A_3 = 0
         self.A_4 = 0
+        self.subj_tensor = subj_tensor
+        self.voxel = self.subj_tensor[:,0]
+        self.theta_l = self.subj_tensor[:,1]
+        self.theta_v = self.subj_tensor[:,2]
+        self.r_v = self.subj_tensor[:,3]
+        self.w_l = self.subj_tensor[:,4]
+        self.target = self.subj_tensor[:,5]
+        # self.theta_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_ori'])
+        # self.theta_v = _cast_as_tensor(self.subj_df.iloc[0:]['angle'])
+        # self.r_v = _cast_as_tensor(self.subj_df.iloc[0:]['eccentricity'])  # voxel eccentricity (in degrees)
+        # self.w_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_sf'])  # in cycles per degree
 
-        self.subj_df = subj_df.copy()
-        self.theta_l = _cast_as_tensor(self.subj_df['local_ori'])
-        self.theta_v = _cast_as_tensor(self.subj_df['angle'])
-        self.r_v = _cast_as_tensor(self.subj_df['eccentricity'])  # voxel eccentricity (in degrees)
-        self.w_l = _cast_as_tensor(self.subj_df['local_sf'])  # in cycles per degree
-
-    def get_Av(self, theta_l, theta_v):
+    def get_Av(self):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
-        theta_l = _cast_as_tensor(theta_l)
-        theta_v = _cast_as_tensor(theta_v)
-        Av = 1 + self.A_1 * torch.cos(2 * theta_l) + \
-             self.A_2 * torch.cos(4 * theta_l) + \
-             self.A_3 * torch.cos(2 * (theta_l - theta_v)) + \
-             self.A_4 * torch.cos(4 * (theta_l - theta_v))
+        # theta_l = _cast_as_tensor(theta_l)
+        # theta_v = _cast_as_tensor(theta_v)
+        Av = 1 + self.A_1 * torch.cos(2 * self.theta_l) + \
+             self.A_2 * torch.cos(4 * self.theta_l) + \
+             self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) + \
+             self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v))
         return Av
 
-    def get_Pv(self, theta_l, theta_v, r_v):
+    def get_Pv(self):
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
-        theta_l = _cast_as_tensor(theta_l)
-        theta_v = _cast_as_tensor(theta_v)
-        r_v = _cast_as_tensor(r_v)
-        ecc_dependency = self.slope * r_v + self.intercept
-        Pv = ecc_dependency * (1 + self.A_1 * torch.cos(2 * theta_l) +
-                               self.A_2 * torch.cos(4 * theta_l) +
-                               self.A_3 * torch.cos(2 * (theta_l - theta_v)) +
-                               self.A_4 * torch.cos(4 * (theta_l - theta_v)))
+        # theta_l = _cast_as_tensor(theta_l)
+        # theta_v = _cast_as_tensor(theta_v)
+        # r_v = _cast_as_tensor(r_v)
+        ecc_dependency = self.slope * self.r_v + self.intercept
+        Pv = ecc_dependency * (1 + self.A_1 * torch.cos(2 * self.theta_l) +
+                               self.A_2 * torch.cos(4 * self.theta_l) +
+                               self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) +
+                               self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v)))
         return Pv
 
-    def forward(self, theta_l, theta_v, r_v, w_l):
+    def forward(self):
         """ In the forward function we accept a Variable of input data and we must
         return a Variable of output data. Return predicted BOLD response
         in eccentricity (formula no. 5 in Broderick et al. (2022)) """
-        w_l = _cast_as_tensor(w_l)
+        # w_l = _cast_as_tensor(w_l)
 
-        Av = self.get_Av(theta_l, theta_v)
-        Pv = self.get_Pv(theta_l, theta_v, r_v)
-        pred = Av * torch.exp(-(torch.log2(w_l) + torch.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
+        Av = self.get_Av()
+        Pv = self.get_Pv()
+        pred = Av * torch.exp(-(torch.log2(self.w_l) + torch.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
         return pred
+
+    def get_pred_into_tensor_df(self, pred):
+        update_tensor = torch.cat((self.subj_tensor, pred.reshape((-1, 1))), 1)
+        return update_tensor
+
+    def normalize(self, update_tensor):
+        tmp = update_tensor
+        for idx in tmp[:, 0].unique():
+            voxel_idx = tmp[:, 0] == idx
+            tmp[voxel_idx, 5] = tmp[voxel_idx, 5] / torch.linalg.norm(tmp[voxel_idx, 5])
+            tmp[voxel_idx, 6] = tmp[voxel_idx, 6] / torch.linalg.norm(tmp[voxel_idx, 6])
+        return tmp
+
+
+
+
+        #return self.subj_df
+
 
 
 def loss_fn(predictions, target):
-    return loss
+    pass
 
 
 def fit_model(model, dataset, learning_rate=1e-3, max_epoch=1000):

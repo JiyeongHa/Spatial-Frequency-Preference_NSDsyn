@@ -150,10 +150,36 @@ for i in pbar:
 # turn this list of 1d tensors into one 2d tensor
 param_vals = torch.stack(param_vals)
 
-
 #
 subj = "subj01"
-subj_df = filtered_df.query('subj == "subj"')
-test_model = model.SpatialFrequencyModel()
-test_model.forward()
+subj_df = filtered_df.query('subj == @subj')
 
+ww = subj_df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_betas']].copy()
+www = subj_df[['eccentricity', 'voxel', 'local_ori', 'angle', 'local_sf', 'avg_betas']].copy()
+ww_np = ww.groupby('voxel').apply(np.asarray).values
+
+
+# dataset
+subj_data = model.SpatialFrequencyDataset(subj_df)
+subj_tensor = subj_data.df_to_tensor()
+subj_numpy = subj_data.df_to_numpy()
+
+torch.linalg.norm(subj_tensor[:,1])
+np.linalg.norm(subj_numpy[:,1])
+
+def normalize(df, to_norm, group_by=["voxel"]):
+    """calculate L2 norm for each voxel """
+
+    if all(df.groupby(group_by).size() == 28) is False:
+        raise Exception('There are more than 28 conditions for one voxel!\n')
+    l2_norm = df.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
+
+    return l2_norm
+
+
+test_model_2 = model.SpatialFrequencyModel(subj_tensor)
+pred = test_model_2.forward()
+update_tensor = test_model_2.get_pred_into_tensor_df(pred)
+update_tensor2 = test_model_2.normalize(update_tensor)
+
+idx = subj_tensor[:,0] == 0
