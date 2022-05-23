@@ -320,23 +320,21 @@ class SpatialFrequencyModel(torch.nn.Module):
         update_tensor = torch.cat((self.subj_tensor, pred.reshape((-1, 1))), 1)
         return update_tensor
 
-    def normalize(self, update_tensor):
-        tmp = update_tensor
-        for idx in tmp[:, 0].unique():
-            voxel_idx = tmp[:, 0] == idx
-            tmp[voxel_idx, 5] = tmp[voxel_idx, 5] / torch.linalg.norm(tmp[voxel_idx, 5])
-            tmp[voxel_idx, 6] = tmp[voxel_idx, 6] / torch.linalg.norm(tmp[voxel_idx, 6])
-        return tmp
+def normalize(update_tensor):
+    tmp = update_tensor
+    for idx in tmp[:, 0].unique():
+        voxel_idx = tmp[:, 0] == idx
+        tmp[voxel_idx, 5] = tmp[voxel_idx, 5] / torch.linalg.norm(tmp[voxel_idx, 5])
+        tmp[voxel_idx, 6] = tmp[voxel_idx, 6] / torch.linalg.norm(tmp[voxel_idx, 6])
+    norm_measured = tmp[:,5]
+    norm_pred = tmp[:,6]
+    return norm_pred, norm_measured
 
+def loss_fn(prediction, target):
+    norm_pred, norm_measured = normalize(voxel_vec, prediction, target)
 
-
-
-        #return self.subj_df
-
-
-
-def loss_fn(predictions, target):
-    pass
+    loss = torch.sum((norm_pred-norm_measured)**2)
+    return loss
 
 
 def fit_model(model, dataset, learning_rate=1e-3, max_epoch=1000):

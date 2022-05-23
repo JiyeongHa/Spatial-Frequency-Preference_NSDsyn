@@ -181,5 +181,8 @@ test_model_2 = model.SpatialFrequencyModel(subj_tensor)
 pred = test_model_2.forward()
 update_tensor = test_model_2.get_pred_into_tensor_df(pred)
 update_tensor2 = test_model_2.normalize(update_tensor)
+norm_measured = update_tensor2[:,5]
+norm_pred = update_tensor2[:,6]
 
+torch.sum((norm_pred-norm_measured)**2)
 idx = subj_tensor[:,0] == 0
