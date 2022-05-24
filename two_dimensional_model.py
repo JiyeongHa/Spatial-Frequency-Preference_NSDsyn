@@ -17,6 +17,7 @@ from scipy import stats
 from torch.utils import data as torchdata
 from hessian import hessian
 import binning_eccen as binning
+from timeit import default_timer as timer
 
 
 def break_down_phase(df):
@@ -73,14 +74,20 @@ class Forward():
         return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
 
 
-def normalize(df, to_norm, group_by=["voxel"]):
-    """calculate L2 norm for each voxel """
+def normalize(voxel_info, to_norm, group_by=["voxel"]):
+    """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
-    if all(df.groupby(group_by).size() == 28) is False:
-        raise Exception('There are more than 28 conditions for one voxel!\n')
-    l2_norm = df.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
+    if type(voxel_info) == pd.DataFrame:
+        if all(df.groupby(group_by).size() == 28) is False:
+            raise Exception('There are more than 28 conditions for one voxel!\n')
+        normed = df.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
 
-    return l2_norm
+    elif type(voxel_info) == torch.Tensor:
+        normed = torch.empty(to_norm.shape, dtype=torch.float64)
+        for idx in voxel_info.unique():
+            voxel_idx = voxel_info == idx
+            normed[voxel_idx] = to_norm[voxel_idx] / torch.linalg.norm(to_norm[voxel_idx])
+    return normed
 
 
 def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
@@ -246,16 +253,18 @@ def count_nan_in_torch_vector(x):
 class SpatialFrequencyDataset:
     def __init__(self, df):
         self.tmp =df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_betas']]
+        self.my_tensor = torch.tensor(self.tmp.to_numpy())
+        self.voxel_info = self.my_tensor[:,0]
+        self.target = self.my_tensor[:,5]
 
     def df_to_numpy(self):
         return self.tmp.to_numpy()
 
     def df_to_tensor(self):
         tmp = self.df_to_numpy()
-        return torch.tensor(tmp)
+        self.my_tensor = torch.tensor(tmp)
+        return self.my_tensor
 
-
-# SF model class
 class SpatialFrequencyModel(torch.nn.Module):
     def __init__(self, subj_tensor):
         """ The input subj_df should be across-phase averaged prior to this class."""
@@ -320,41 +329,45 @@ class SpatialFrequencyModel(torch.nn.Module):
         update_tensor = torch.cat((self.subj_tensor, pred.reshape((-1, 1))), 1)
         return update_tensor
 
-def normalize(update_tensor):
-    tmp = update_tensor
-    for idx in tmp[:, 0].unique():
-        voxel_idx = tmp[:, 0] == idx
-        tmp[voxel_idx, 5] = tmp[voxel_idx, 5] / torch.linalg.norm(tmp[voxel_idx, 5])
-        tmp[voxel_idx, 6] = tmp[voxel_idx, 6] / torch.linalg.norm(tmp[voxel_idx, 6])
-    norm_measured = tmp[:,5]
-    norm_pred = tmp[:,6]
-    return norm_pred, norm_measured
 
-def loss_fn(prediction, target):
-    norm_pred, norm_measured = normalize(voxel_vec, prediction, target)
-
-    loss = torch.sum((norm_pred-norm_measured)**2)
+def loss_fn(voxel_info, prediction, target):
+    """"""
+    norm_pred = normalize(voxel_info=voxel_info, to_norm=prediction)
+    norm_measured = normalize(voxel_info=voxel_info, to_norm=target)
+    n = voxel_info.shape[0]
+    loss = (1/n)*torch.sum((norm_pred-norm_measured)**2)
     return loss
 
 
 def fit_model(model, dataset, learning_rate=1e-3, max_epoch=1000):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
-
+    #[sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
     my_parameters = [p for p in model.parameters() if p.requires_grad]
 
-    optimizer = torch.adam.optimizer(my_parameters, lr=learning_rate)
+    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate)
     loss_history = []
     model_history = []
+    start = timer()
+
     for t in range(max_epoch):
-        # predictions should be put in here
-        loss = loss_fn(predictions, target)  # loss should be returned here
-        # output needs to be put in there
-        loss_history[t].append(loss.item())
-        model_history[t].append()  # more than one item here
+
+        pred = model.forward() # predictions should be put in here
+        loss = loss_fn(dataset.voxel_info, prediction=pred, target=dataset.target)  # loss should be returned here
+        model_values = [p.detach().numpy().item() for p in model.parameters()]  # output needs to be put in there
+        loss_history.append(loss.item())
+        model_history.append(model_values)  # more than one item here
+        if (t+1) % 100 == 1:
+            print(f'**epoch no.{t} loss: {loss.item()}')
 
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
         model.eval()
-    return loss_history, model_history
+    end = timer()
+    elapsed_time = end-start
+    print(f'**epoch no.{max_epoch}: Finished! final model params...\n{model_values}')
+    print(f'Elapsed time: {np.round(end - start, 2)} sec')
+
+    return loss_history, model_history, elapsed_time
+

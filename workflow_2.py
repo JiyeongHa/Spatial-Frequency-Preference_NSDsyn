@@ -158,31 +158,49 @@ ww = subj_df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_be
 www = subj_df[['eccentricity', 'voxel', 'local_ori', 'angle', 'local_sf', 'avg_betas']].copy()
 ww_np = ww.groupby('voxel').apply(np.asarray).values
 
-
 # dataset
 subj_data = model.SpatialFrequencyDataset(subj_df)
-subj_tensor = subj_data.df_to_tensor()
-subj_numpy = subj_data.df_to_numpy()
+# model
+my_model = model.SpatialFrequencyModel(subj_data.my_tensor)
 
-torch.linalg.norm(subj_tensor[:,1])
-np.linalg.norm(subj_numpy[:,1])
+# fitting
+#model.fit_model(model=my_model, dataset=subj_data, learning_rate=1e-3, max_epoch=1000)
+#
+# my_parameters = [p for p in my_model.parameters() if p.requires_grad]
+#
+# optimizer = torch.optim.Adam(my_parameters, lr=learning_rate)
+# loss_history = []
+# model_history = []
+# for t in range(10):
+#     pred = my_model.forward()  # predictions should be put in here
+#     loss = model.loss_fn(subj_data.voxel_info, prediction=pred, target=subj_data.target)  # loss should be returned here
+#     model_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]# output needs to be put in there
+#     loss_history.append(loss.item())
+#     model_history.append(model_values)  # more than one item here
+#     print(f'loss at {t}: {loss.item()}')
+#     print(f'param values at {t}: {model_values}')
+#
+#     optimizer.zero_grad()  # clear previous gradients
+#     loss.backward()  # compute gradients of all variables wrt loss
+#     optimizer.step()  # perform updates using calculated gradients
+#     my_model.eval()
+param_cols = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 
-def normalize(df, to_norm, group_by=["voxel"]):
-    """calculate L2 norm for each voxel """
-
-    if all(df.groupby(group_by).size() == 28) is False:
-        raise Exception('There are more than 28 conditions for one voxel!\n')
-    l2_norm = df.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
-
-    return l2_norm
-
-
-test_model_2 = model.SpatialFrequencyModel(subj_tensor)
-pred = test_model_2.forward()
-update_tensor = test_model_2.get_pred_into_tensor_df(pred)
-update_tensor2 = test_model_2.normalize(update_tensor)
-norm_measured = update_tensor2[:,5]
-norm_pred = update_tensor2[:,6]
-
-torch.sum((norm_pred-norm_measured)**2)
-idx = subj_tensor[:,0] == 0
+filtered_V1_df = filtered_df.query('vroinames == "V1"')
+loss_history_df = {}
+model_history_df = {}
+time_subj = []
+for subj in filtered_V1_df['subj'].unique():
+    subj_df = filtered_V1_df.query('subj == @subj')
+    print(f'##### {subj} #####\n')
+    # dataset
+    subj_data = model.SpatialFrequencyDataset(subj_df)
+    # model
+    my_model = model.SpatialFrequencyModel(subj_data.my_tensor)
+    loss_history, model_history, elapsed_time = model.fit_model(my_model, subj_data)
+    time_subj.append(elapsed_time)
+    loss_history_df[subj] = pd.DataFrame(loss_history, columns=['Loss'])
+    loss_history_df[subj]['subj'] = subj
+    model_history_df[subj] = pd.DataFrame(model_history, columns=param_cols)
+    model_history_df[subj]['subj'] = subj
+    print(f'##### {subj} has finished! #####\n')
