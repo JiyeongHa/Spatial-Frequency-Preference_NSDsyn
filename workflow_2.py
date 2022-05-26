@@ -11,9 +11,9 @@ import voxel_selection as vs
 import two_dimensional_model as model
 import torch
 
-df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
+df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
 # load subjects df.
-subj_list = np.arange(1,9)
+subj_list = np.arange(1, 9)
 all_subj_df = utils.load_all_subj_df(subj_list,
                                      df_dir=df_dir,
                                      df_name='stim_voxel_info_df_LITE.csv')
@@ -26,10 +26,10 @@ df.drop(['phase'], axis=1, inplace=True)
 dv_to_group = all_subj_df.drop(columns=['phase', 'avg_betas', 'stim_idx']).columns.tolist()
 df = all_subj_df.groupby(dv_to_group).mean().reset_index()
 
-params =pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
-                      'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
-                      'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
-#normalize
+params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
+                       'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
+                       'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
+# normalize
 normed_betas = model.normalize(filtered_df, to_norm='avg_betas', group_by=["subj", "voxel"])
 filtered_df['norm_betas'] = normed_betas
 
@@ -42,12 +42,12 @@ df[df.columns & colnames]
 # plot
 
 dv_to_group = ['subj', 'freq_lvl', 'vroinames', "eccrois"]
-labels=filtered_df.names.unique()
+labels = filtered_df.names.unique()
 avg_df_3 = filtered_df.groupby(dv_to_group).median().reset_index()
 my_list = ["annulus", "forward spiral", "reverse spiral", "pinwheel"]
 avg_df_3 = avg_df_3.query('names.isin(@my_list)', engine='python')
 
-for sn in np.arange(1,9):
+for sn in np.arange(1, 9):
     beta_comp(sn, avg_df_3.query('vroinames == "V1"'), to_subplot='names', to_label="names",
               dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred', set_max=False,
               x_axis_label='Measured Betas', y_axis_label="Model estimation",
@@ -56,32 +56,30 @@ for sn in np.arange(1,9):
               save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
               save_file_name='model_pred_stim_class_inV1.png')
 
-for sn in np.arange(1,9):
+for sn in np.arange(1, 9):
     model.beta_comp(sn, avg_df_3, to_subplot="vroinames", to_label="eccrois",
-              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred', set_max=True,
-              x_axis_label='Measured Betas', y_axis_label="Model estimation",
-              legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
-              n_row=4, legend_out=True, alpha=0.7,
-              save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-              save_file_name='model_pred_filtered_df_median.png')
+                    dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred', set_max=True,
+                    x_axis_label='Measured Betas', y_axis_label="Model estimation",
+                    legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+                    n_row=4, legend_out=True, alpha=0.7,
+                    save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                    save_file_name='model_pred_filtered_df_median.png')
 
 for sn in np.arange(1, 9):
     beta_2Dhist(sn, df, to_subplot="vroinames", to_label='vroinames',
-              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
-              x_axis_label='Measured Betas', y_axis_label="Model estimation",
-              legend_title=None, labels=None, bins=200, set_max=False,
-              n_row=4, legend_out=True, alpha=0.9,
-              save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-              save_file_name='model_pred_2Dhist.png')
-
+                dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
+                x_axis_label='Measured Betas', y_axis_label="Model estimation",
+                legend_title=None, labels=None, bins=200, set_max=False,
+                n_row=4, legend_out=True, alpha=0.9,
+                save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                save_file_name='model_pred_2Dhist.png')
 
 for sn in np.arange(1, 9):
     beta_1Dhist(sn, df, save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                 save_file_name='1Dhist_comp.png')
 
-
 # R2
-all_subj_R2 = R2.load_R2_all_subj(np.arange(1,9))
+all_subj_R2 = R2.load_R2_all_subj(np.arange(1, 9))
 R2.R2_histogram(sn_list, all_subj_R2, n_bins=300, save_fig=True, xlimit=30, save_file_name='R2_xlimit_30.png')
 R2.R2_histogram(sn_list, all_subj_R2, n_bins=300, save_fig=True, xlimit=100, save_file_name='R2_xlimit_100.png')
 
@@ -110,8 +108,9 @@ n_voxel_df_2 = n_voxel_df_2.rename(columns={'n_voxel': 'n_voxel_positive_and_sti
 new_n_voxel_df = n_voxel_df_0.merge(n_voxel_df_1, on=['subj', 'vroinames'])
 new_n_voxel_df = new_n_voxel_df.merge(n_voxel_df_2, on=['subj', 'vroinames'])
 
-new_n_voxel_df = pd.melt(new_n_voxel_df, id_vars=['subj', 'vroinames'], value_vars=['n_voxel_all', 'n_voxel_positive_mean_beta_only'],
-        var_name='voxel_selection', value_name='n_voxel')
+new_n_voxel_df = pd.melt(new_n_voxel_df, id_vars=['subj', 'vroinames'],
+                         value_vars=['n_voxel_all', 'n_voxel_positive_mean_beta_only'],
+                         var_name='voxel_selection', value_name='n_voxel')
 vs.plot_num_of_voxels(new_n_voxel_df, new_legend=['All voxels', 'Voxels with positive mean betas'],
                       to_hue='voxel_selection', legend_title=None,
                       super_title='Voxel selection', save_fig=True,
@@ -146,7 +145,7 @@ for i in pbar:
     # rather than the *object* itself (which will update on each loop) (.item() only works for scalars)
     losses.append(loss.item())
     param_vals.append(test_model.sigma.clone().detach())
-    #pbar.set_postfix(loss=losses[-1], params=param_vals[-1])
+    # pbar.set_postfix(loss=losses[-1], params=param_vals[-1])
 # turn this list of 1d tensors into one 2d tensor
 param_vals = torch.stack(param_vals)
 
@@ -164,7 +163,7 @@ subj_data = model.SpatialFrequencyDataset(subj_df)
 my_model = model.SpatialFrequencyModel(subj_data.my_tensor)
 
 # fitting
-#model.fit_model(model=my_model, dataset=subj_data, learning_rate=1e-3, max_epoch=1000)
+# model.fit_model(model=my_model, dataset=subj_data, learning_rate=1e-3, max_epoch=1000)
 #
 # my_parameters = [p for p in my_model.parameters() if p.requires_grad]
 #
@@ -190,7 +189,9 @@ filtered_V1_df = filtered_df.query('vroinames == "V1"')
 loss_history_df = {}
 model_history_df = {}
 time_subj = []
-for subj in filtered_V1_df['subj'].unique():
+subj_list = filtered_V1_df['subj'].unique()
+subj_list = ['subj02', 'subj06']
+for subj in subj_list:
     subj_df = filtered_V1_df.query('subj == @subj')
     print(f'##### {subj} #####\n')
     # dataset
@@ -199,8 +200,44 @@ for subj in filtered_V1_df['subj'].unique():
     my_model = model.SpatialFrequencyModel(subj_data.my_tensor)
     loss_history, model_history, elapsed_time = model.fit_model(my_model, subj_data)
     time_subj.append(elapsed_time)
-    loss_history_df[subj] = pd.DataFrame(loss_history, columns=['Loss'])
+    loss_history_df[subj] = pd.DataFrame(loss_history, columns=['loss'])
     loss_history_df[subj]['subj'] = subj
     model_history_df[subj] = pd.DataFrame(model_history, columns=param_cols)
     model_history_df[subj]['subj'] = subj
     print(f'##### {subj} has finished! #####\n')
+
+for subj in filtered_V1_df['subj'].unique():
+    print(f'{model_history_df[subj].iloc[999, :]}')
+
+np.mean(time_subj[-3:]) / 60
+np.std(time_subj[-3:]) / 60
+
+loss_history_df = pd.concat(loss_history_df).reset_index().drop(columns={'level_0'}).rename(
+    columns={'level_1': 'epoch'})
+model_history_df = pd.concat(model_history_df).reset_index().drop(columns={'level_0'}).rename(
+    columns={'level_1': 'epoch'})
+model.plot_loss_history(loss_history_df, save_fig=True,
+                        save_file_name='loss_change.png')
+
+val_vars = model_history_df.drop(columns=['subj', 'epoch']).columns.tolist()
+model_history_df = model_history_df.melt(id_vars=['subj', 'epoch'],
+                                         value_vars=val_vars,
+                                         var_name='param',
+                                         value_name='value')
+model_history_df['study_type'] = 'NSD synthetic'
+params['subj'] = 'broderick'
+params['study_type'] = 'Broderick et al.(2022)'
+params['epoch'] = 999
+params.drop(columns=['A_3', 'A_4'])
+broderick_params = params.melt(id_vars=['subj', 'epoch', 'study_type'],
+                               value_vars=val_vars,
+                               var_name='param',
+                               value_name='value')
+model_history_df = model_history_df.append(broderick_params, ignore_index=True)
+model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param', save_fig=True,
+                      save_file_name='final_param_v1.png')
+
+hue_order = [utils.sub_number_to_string(p) for p in np.arange(1,9)]
+model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param',
+                      to_label="subj", hue_order=None, legend_title="subjects", save_fig=True,
+                      save_file_name='final_param_v1_individual.png')

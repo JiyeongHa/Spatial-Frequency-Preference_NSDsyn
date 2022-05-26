@@ -252,10 +252,10 @@ def count_nan_in_torch_vector(x):
 
 class SpatialFrequencyDataset:
     def __init__(self, df):
-        self.tmp =df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_betas']]
+        self.tmp = df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_betas']]
         self.my_tensor = torch.tensor(self.tmp.to_numpy())
-        self.voxel_info = self.my_tensor[:,0]
-        self.target = self.my_tensor[:,5]
+        self.voxel_info = self.my_tensor[:, 0]
+        self.target = self.my_tensor[:, 5]
 
     def df_to_numpy(self):
         return self.tmp.to_numpy()
@@ -264,6 +264,7 @@ class SpatialFrequencyDataset:
         tmp = self.df_to_numpy()
         self.my_tensor = torch.tensor(tmp)
         return self.my_tensor
+
 
 class SpatialFrequencyModel(torch.nn.Module):
     def __init__(self, subj_tensor):
@@ -281,12 +282,12 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.A_3 = 0
         self.A_4 = 0
         self.subj_tensor = subj_tensor
-        self.voxel = self.subj_tensor[:,0]
-        self.theta_l = self.subj_tensor[:,1]
-        self.theta_v = self.subj_tensor[:,2]
-        self.r_v = self.subj_tensor[:,3]
-        self.w_l = self.subj_tensor[:,4]
-        self.target = self.subj_tensor[:,5]
+        self.voxel = self.subj_tensor[:, 0]
+        self.theta_l = self.subj_tensor[:, 1]
+        self.theta_v = self.subj_tensor[:, 2]
+        self.r_v = self.subj_tensor[:, 3]
+        self.w_l = self.subj_tensor[:, 4]
+        self.target = self.subj_tensor[:, 5]
         # self.theta_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_ori'])
         # self.theta_v = _cast_as_tensor(self.subj_df.iloc[0:]['angle'])
         # self.r_v = _cast_as_tensor(self.subj_df.iloc[0:]['eccentricity'])  # voxel eccentricity (in degrees)
@@ -335,39 +336,110 @@ def loss_fn(voxel_info, prediction, target):
     norm_pred = normalize(voxel_info=voxel_info, to_norm=prediction)
     norm_measured = normalize(voxel_info=voxel_info, to_norm=target)
     n = voxel_info.shape[0]
-    loss = (1/n)*torch.sum((norm_pred-norm_measured)**2)
+    loss = (1 / n) * torch.sum((norm_pred - norm_measured) ** 2)
     return loss
 
 
-def fit_model(model, dataset, learning_rate=1e-3, max_epoch=1000):
+def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, anomaly_detection=True):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
-    #[sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
+    torch.autograd.set_detect_anomaly(anomaly_detection)
+    # [sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
     my_parameters = [p for p in model.parameters() if p.requires_grad]
 
-    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate)
+    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, eps=1e-4)
     loss_history = []
     model_history = []
     start = timer()
 
     for t in range(max_epoch):
 
-        pred = model.forward() # predictions should be put in here
+        pred = model.forward()  # predictions should be put in here
         loss = loss_fn(dataset.voxel_info, prediction=pred, target=dataset.target)  # loss should be returned here
         model_values = [p.detach().numpy().item() for p in model.parameters()]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
-        if (t+1) % 100 == 1:
-            print(f'**epoch no.{t} loss: {loss.item()}')
+        if (t + 1) % 10 == 1:
+            print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
 
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
         model.eval()
     end = timer()
-    elapsed_time = end-start
+    elapsed_time = end - start
     print(f'**epoch no.{max_epoch}: Finished! final model params...\n{model_values}')
     print(f'Elapsed time: {np.round(end - start, 2)} sec')
 
     return loss_history, model_history, elapsed_time
 
+
+def melt_history_df(history_df):
+    return pd.concat(history_df).reset_index().rename(columns={'level_0': 'subj', 'level_1': 'epoch'})
+
+
+def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss",
+                      x_axis_label="Epoch", y_axis_label="Loss", to_label=None,
+                      legend_title=None, labels=None, title="Loss change over time (N = 9)",
+                      save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                      save_file_name='.png'):
+    grid = sns.FacetGrid(loss_history_df,
+                         hue=to_label,
+                         palette=sns.color_palette("husl"),
+                         legend_out=True,
+                         sharex=True, sharey=True)
+    g = grid.map(sns.lineplot, to_x_axis, to_y_axis, linewidth=2, ci=68)
+    grid.fig.set_figwidth(10)
+    grid.fig.set_figheight(6)
+    grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=15)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1),
+                    labels=labels, fontsize=15)
+    grid.fig.subplots_adjust(top=0.8, right=0.9)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{title}', fontsize=15, fontweight="bold")
+    plt.tight_layout()
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{save_file_name}')
+        plt.savefig(save_path, bbox_inches='tight')
+    plt.show()
+
+
+def plot_parameters(model_history_df, to_x_axis="param", to_y_axis="value",
+                    to_label="study_type", legend_title="Study", hue_order=None,
+                    x_axis_label="Parameter", y_axis_label="Parameter Value",
+                    title="Final parameter values (N = 9)",
+                    save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                    save_file_name='.png'):
+    sns.set(font_scale=1.3)
+    grid = sns.FacetGrid(model_history_df,
+                         palette=sns.color_palette("rocket", n_colors=model_history_df[to_label].nunique()),
+                         hue=to_label,
+                         hue_order=hue_order,
+                         legend_out=True,
+                         sharex=True, sharey=True)
+    grid.map(sns.lineplot,
+             to_x_axis, to_y_axis, lw=30, markersize=8,
+             marker='o', linestyle='', err_style='bars', ci=68)
+    grid.fig.set_figwidth(9)
+    grid.fig.set_figheight(6)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1,1), fontsize=15)
+    grid.set_axis_labels(x_axis_label, y_axis_label)
+    plt.xticks(rotation=45)
+    grid.fig.subplots_adjust(top=0.9, right=0.78)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{title}', fontweight="bold")
+    #grid.tight_layout()
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{save_file_name}')
+        plt.savefig(save_path, bbox_inches='tight')
+    plt.show()
+
+    pass
