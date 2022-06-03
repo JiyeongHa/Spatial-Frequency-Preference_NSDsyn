@@ -241,3 +241,14 @@ hue_order = [utils.sub_number_to_string(p) for p in np.arange(1,9)]
 model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param',
                       to_label="subj", hue_order=None, legend_title="subjects", save_fig=True,
                       save_file_name='final_param_v1_individual.png')
+
+#save filtered df
+df_save_path = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes/filtered_df_all_subj.csv'
+filtered_df.to_csv(df_save_path, index=False)
+
+#save model_history_df, loss_history_df
+df_save_path = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/model_results/results_2D/model_history_V1.csv'
+model_history_df.to_csv(df_save_path, index=False)
+df_save_path = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/model_results/results_2D/loss_history_V1.csv'
+loss_history_df.to_csv(df_save_path, index=False)
+
