@@ -76,11 +76,10 @@ def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply
     return mgzs
 
 
-def _load_stim_info(stim_description_dir, stim_description_file='nsdsynthetic_sf_stim_description.csv'):
+def _load_stim_info(stim_description_path):
     """stimulus description file will be loaded as a dataframe."""
 
     # stimuli information
-    stim_description_path = os.path.join(stim_description_dir, stim_description_file)
     stim_df = pd.read_csv(stim_description_path)
     return stim_df
 
@@ -285,8 +284,7 @@ def sub_main(sn,
              freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
              betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
              beta_version=3,
-             stim_description_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives',
-             stim_description_file='nsdsynthetic_sf_stim_description.csv',
+             stim_description_path='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
              design_mat_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic',
              design_mat_file='nsdsynthetic_expdesign.mat',
              task_from="both",
@@ -303,7 +301,7 @@ def sub_main(sn,
                     visroi_range=vroi_range, eccroi_range=eroi_range, mask_type=mask_type)
     mgzs = _load_prf_properties(freesurfer_dir=freesurfer_dir, subj=subj, prf_label_names=prf_label_list, mask=mask,
                                 apply_mask=True)
-    stim_df = _load_stim_info(stim_description_dir=stim_description_dir, stim_description_file=stim_description_file)
+    stim_df = _load_stim_info(stim_description_path=stim_description_path)
     stim_df = _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df=stim_df)
     beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from,
                             beta_average=beta_average, sf_stim_df=stim_df, mask=mask)
