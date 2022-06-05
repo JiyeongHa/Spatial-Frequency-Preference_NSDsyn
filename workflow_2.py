@@ -10,6 +10,7 @@ import variance_explained as R2
 import voxel_selection as vs
 import two_dimensional_model as model
 import torch
+import simulation as sim
 
 df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
 # load subjects df.
@@ -252,3 +253,21 @@ model_history_df.to_csv(df_save_path, index=False)
 df_save_path = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/model_results/results_2D/loss_history_V1.csv'
 loss_history_df.to_csv(df_save_path, index=False)
 
+# model recovery
+
+syn_df = sim.generate_synthesized_data()
+params_new = pd.concat([params]*2, ignore_index=True)
+params_new.iloc[1, 3:9] = 0
+syn_model = model.Forward(params_new, 0, syn_df)
+syn_df['avg_betas'] = syn_model.two_dim_prediction()
+
+syn_loss_history_df = {}
+syn_model_history_df = {}
+syn_time_subj = []
+syn_SFdataset = model.SpatialFrequencyDataset(syn_df)
+# model
+syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor)
+syn_loss_history, syn_model_history, syn_elapsed_time = model.fit_model(syn_model, syn_SFdataset)
+syn_time_subj.append(syn_elapsed_time)
+syn_loss_history = pd.DataFrame(syn_loss_history, columns=['loss'])
+syn_model_history = pd.DataFrame(syn_model_history, columns=param_cols)
