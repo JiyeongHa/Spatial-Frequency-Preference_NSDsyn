@@ -207,11 +207,6 @@ for subj in subj_list:
     model_history_df[subj]['subj'] = subj
     print(f'##### {subj} has finished! #####\n')
 
-for subj in filtered_V1_df['subj'].unique():
-    print(f'{model_history_df[subj].iloc[999, :]}')
-
-np.mean(time_subj[-3:]) / 60
-np.std(time_subj[-3:]) / 60
 
 loss_history_df = pd.concat(loss_history_df).reset_index().drop(columns={'level_0'}).rename(
     columns={'level_1': 'epoch'})
@@ -259,15 +254,81 @@ syn_df = sim.generate_synthesized_data()
 params_new = pd.concat([params]*2, ignore_index=True)
 params_new.iloc[1, 3:9] = 0
 syn_model = model.Forward(params_new, 0, syn_df)
-syn_df['avg_betas'] = syn_model.two_dim_prediction()
+syn_df['avg_betas'] = syn_model.two_dim_prediction(full_ver=False)
+
+syn_SFdataset = model.SpatialFrequencyDataset(syn_df)
+# model
 
 syn_loss_history_df = {}
 syn_model_history_df = {}
 syn_time_subj = []
-syn_SFdataset = model.SpatialFrequencyDataset(syn_df)
-# model
-syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor)
-syn_loss_history, syn_model_history, syn_elapsed_time = model.fit_model(syn_model, syn_SFdataset)
-syn_time_subj.append(syn_elapsed_time)
-syn_loss_history = pd.DataFrame(syn_loss_history, columns=['loss'])
-syn_model_history = pd.DataFrame(syn_model_history, columns=param_cols)
+noise_sd_levels = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5]
+for i in noise_sd_levels:
+    print(f'##### Noise level: {str(i)} #####\n')
+    syn_noise_df = syn_df.copy()
+    syn_noise_df['avg_betas'] = sim.add_noise(syn_noise_df.avg_betas, noise_mean=0, noise_sd=i)
+    syn_SFdataset = model.SpatialFrequencyDataset(syn_noise_df)
+    syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=False)
+    syn_loss_history, syn_model_history, syn_elapsed_time = model.fit_model(syn_model, syn_SFdataset, learning_rate=5e-3, max_epoch=3000, anomaly_detection=False)
+    syn_time_subj.append(syn_elapsed_time)
+    syn_loss_history_df[f'noise sd = {i}'] = pd.DataFrame(syn_loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+    syn_model_history_df[f'noise sd = {i}'] = pd.DataFrame(syn_model_history, columns=param_cols[0:3])
+
+
+model.plot_loss_history(syn_loss_history, save_fig=True, save_file_name='no_noise_simulation.png',
+                        title="Loss change: 100 voxel simulation without noise")
+
+
+syn_loss_history_df = pd.concat(syn_loss_history_df).reset_index().rename(
+    columns={'level_0': 'Noise', 'level_1': 'epoch'})
+syn_model_history_df = pd.concat(syn_model_history_df).reset_index().rename(
+    columns={'level_0': 'Noise', 'level_1': 'epoch'})
+ground_truth= pd.DataFrame({'Noise': ['Ground truth'], 'epoch': [2999], 'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35]})
+syn_model_history_df = syn_model_history_df.append(ground_truth, ignore_index=True)
+val_vars = syn_model_history_df.drop(columns=['Noise', 'epoch']).columns.tolist()
+syn_model_history_df = syn_model_history_df.melt(id_vars=['Noise', 'epoch'],
+                                         value_vars=val_vars,
+                                         var_name='param',
+                                         value_name='value')
+syn_model_history_df = syn_model_history_df.append(ground_truth, ignore_index=True)
+syn_loss_history_df['Noise'].unique()
+syn_model_history_df = syn_model_history_df.replace({'noise sd = 0': '0', 'noise sd = 0.25': '0.25',
+                             'noise sd = 0.5': '0.5', 'noise sd = 0.75':'0.75',
+                             'noise sd = 1': '1', 'noise sd = 1.25':'1.25',
+                             'noise sd = 1.5': '1.5'})
+np.linspace()
+model.plot_loss_history(syn_loss_history_df[syn_loss_history_df.epoch % 2 == 0], to_label="Noise",
+                        save_fig=True, save_file_name='simulation.png',
+                        legend_title='Noise sd',
+                       title="Loss change: 100 voxel simulation", ci='sd')
+id_list = ["Ground truth", "0", "0.5", "1", "1.5"]
+id_list = ["Ground truth", "0", "0.25", "0.5", "0.75", "1", "1.25", "1.5"]
+
+syn_model_history_df_fil = syn_model_history_df.query('Noise in @id_list')
+model.plot_parameters(syn_model_history_df.query('epoch == 2999 & param == "sigma"'),
+                      to_label="Noise", hue_order=id_list, legend_title="Noise sd", rotate_ticks=False,
+                      title="Model recovery with different noise levels",
+                      save_fig=True, save_file_name="simulation_sigma.png")
+
+model.plot_parameters(syn_model_history_df.query('epoch == 2999 & param != "sigma"'),
+                      to_label="Noise", hue_order=id_list, legend_title="Noise sd", rotate_ticks=False,
+                      title="Model recovery with different noise levels",
+                      save_fig=True, save_file_name="simulation_slope_else.png")
+
+model_history_df['study_type'] = 'NSD synthetic'
+params['subj'] = 'broderick'
+params['study_type'] = 'Broderick et al.(2022)'
+params['epoch'] = 999
+params.drop(columns=['A_3', 'A_4'])
+broderick_params = params.melt(id_vars=['subj', 'epoch', 'study_type'],
+                               value_vars=val_vars,
+                               var_name='param',
+                               value_name='value')
+model_history_df = model_history_df.append(broderick_params, ignore_index=True)
+model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param', save_fig=True,
+                      save_file_name='final_param_v1.png')
+
+hue_order = [utils.sub_number_to_string(p) for p in np.arange(1,9)]
+model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param',
+                      to_label="subj", hue_order=None, legend_title="subjects", save_fig=True,
+                      save_file_name='final_param_v1_individual.png')

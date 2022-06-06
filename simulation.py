@@ -41,3 +41,6 @@ def generate_synthesized_data(n_voxels=100, stim_description_path='/Users/jh7685
     syn_df = make_df._calculate_local_sf(syn_df)
     return syn_df
 
+def add_noise(betas, noise_mean=0, noise_sd=0.05):
+    return betas + np.random.normal(noise_mean, noise_sd, len(betas))
+

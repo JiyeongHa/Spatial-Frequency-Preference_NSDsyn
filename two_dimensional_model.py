@@ -49,29 +49,36 @@ class Forward():
         self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
         self.w_l = self.subj_df['local_sf']  # in cycles per degree
 
-    def get_Av(self):
+    def get_Av(self, full_ver):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
-
-        Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
-             self.A_2 * np.cos(4 * self.theta_l) + \
-             self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) + \
-             self.A_4 * np.cos(4 * (self.theta_l - self.theta_v))
+        if full_ver is True:
+            Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
+                 self.A_2 * np.cos(4 * self.theta_l) + \
+                 self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) + \
+                 self.A_4 * np.cos(4 * (self.theta_l - self.theta_v))
+        elif full_ver is False:
+            Av = 1
         return Av
 
-    def get_Pv(self):
+    def get_Pv(self, full_ver):
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
         ecc_dependency = self.amp * self.r_v + self.intercept
-        Pv = ecc_dependency * (1 + self.A_1 * np.cos(2 * self.theta_l) +
-                               self.A_2 * np.cos(4 * self.theta_l) +
-                               self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
-                               self.A_4 * np.cos(4 * (self.theta_l - self.theta_v)))
+        if full_ver is True:
+            Pv = ecc_dependency * (1 + self.A_1 * np.cos(2 * self.theta_l) +
+                                   self.A_2 * np.cos(4 * self.theta_l) +
+                                   self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
+                                   self.A_4 * np.cos(4 * (self.theta_l - self.theta_v)))
+        elif full_ver is False:
+            Pv = ecc_dependency
         return Pv
 
-    def two_dim_prediction(self):
+    def two_dim_prediction(self, full_ver=True):
         """ Return predicted BOLD response in eccentricity (formula no. 5 in Broderick et al. (2022)) """
-        Av = self.get_Av()
-        Pv = self.get_Pv()
+        Av = self.get_Av(full_ver=full_ver)
+        Pv = self.get_Pv(full_ver=full_ver)
         return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
+
+
 
 
 def normalize(voxel_info, to_norm, group_by=["voxel"]):
@@ -267,20 +274,22 @@ class SpatialFrequencyDataset:
 
 
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, subj_tensor):
+    def __init__(self, subj_tensor, full_ver):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.sigma = _cast_as_param(np.random.random(1))
         self.slope = _cast_as_param(np.random.random(1))
         self.intercept = _cast_as_param(np.random.random(1))
-        self.p_1 = _cast_as_param(np.random.random(1))
-        self.p_2 = _cast_as_param(np.random.random(1))
-        self.p_3 = _cast_as_param(np.random.random(1))
-        self.p_4 = _cast_as_param(np.random.random(1))
-        self.A_1 = _cast_as_param(np.random.random(1))
-        self.A_2 = _cast_as_param(np.random.random(1))
-        self.A_3 = 0
-        self.A_4 = 0
+        self.full_ver = full_ver
+        if full_ver is True:
+            self.p_1 = _cast_as_param(np.random.random(1))
+            self.p_2 = _cast_as_param(np.random.random(1))
+            self.p_3 = _cast_as_param(np.random.random(1))
+            self.p_4 = _cast_as_param(np.random.random(1))
+            self.A_1 = _cast_as_param(np.random.random(1))
+            self.A_2 = _cast_as_param(np.random.random(1))
+            self.A_3 = 0
+            self.A_4 = 0
         self.subj_tensor = subj_tensor
         self.voxel = self.subj_tensor[:, 0]
         self.theta_l = self.subj_tensor[:, 1]
@@ -297,10 +306,13 @@ class SpatialFrequencyModel(torch.nn.Module):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         # theta_l = _cast_as_tensor(theta_l)
         # theta_v = _cast_as_tensor(theta_v)
-        Av = 1 + self.A_1 * torch.cos(2 * self.theta_l) + \
+        if self.full_ver is True:
+            Av = 1 + self.A_1 * torch.cos(2 * self.theta_l) + \
              self.A_2 * torch.cos(4 * self.theta_l) + \
              self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) + \
              self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v))
+        elif self.full_ver is False:
+            Av = 1
         return Av
 
     def get_Pv(self):
@@ -309,10 +321,13 @@ class SpatialFrequencyModel(torch.nn.Module):
         # theta_v = _cast_as_tensor(theta_v)
         # r_v = _cast_as_tensor(r_v)
         ecc_dependency = self.slope * self.r_v + self.intercept
-        Pv = ecc_dependency * (1 + self.A_1 * torch.cos(2 * self.theta_l) +
-                               self.A_2 * torch.cos(4 * self.theta_l) +
-                               self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) +
-                               self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v)))
+        if self.full_ver is True:
+            Pv = ecc_dependency * (1 + self.A_1 * torch.cos(2 * self.theta_l) +
+                                   self.A_2 * torch.cos(4 * self.theta_l) +
+                                   self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) +
+                                   self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v)))
+        elif self.full_ver is False:
+            Pv = ecc_dependency
         return Pv
 
     def forward(self):
@@ -339,7 +354,6 @@ def loss_fn(voxel_info, prediction, target):
     loss = (1 / n) * torch.sum((norm_pred - norm_measured) ** 2)
     return loss
 
-
 def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, anomaly_detection=True):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
@@ -356,7 +370,7 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, anomaly_detect
 
         pred = model.forward()  # predictions should be put in here
         loss = loss_fn(dataset.voxel_info, prediction=pred, target=dataset.target)  # loss should be returned here
-        model_values = [p.detach().numpy().item() for p in model.parameters()]  # output needs to be put in there
+        model_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
         if (t + 1) % 10 == 1:
@@ -382,21 +396,21 @@ def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss",
                       x_axis_label="Epoch", y_axis_label="Loss", to_label=None,
                       legend_title=None, labels=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                      save_file_name='.png'):
+                      save_file_name='.png', ci=68):
     grid = sns.FacetGrid(loss_history_df,
                          hue=to_label,
-                         palette=sns.color_palette("husl"),
+                         palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, to_x_axis, to_y_axis, linewidth=2, ci=68)
+    g = grid.map(sns.lineplot, to_x_axis, to_y_axis, linewidth=2, ci=ci)
     grid.fig.set_figwidth(10)
     grid.fig.set_figheight(6)
-    grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=15)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1),
-                    labels=labels, fontsize=15)
-    grid.fig.subplots_adjust(top=0.8, right=0.9)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{title}', fontsize=15, fontweight="bold")
-    plt.tight_layout()
+    grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=18)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), fontsize=18)
+    # grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1),
+    #                 labels=labels, fontsize=18)
+    grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
+    grid.fig.subplots_adjust(top=0.9, right=0.78)
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
@@ -413,7 +427,7 @@ def plot_parameters(model_history_df, to_x_axis="param", to_y_axis="value",
                     x_axis_label="Parameter", y_axis_label="Parameter Value",
                     title="Final parameter values (N = 9)",
                     save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                    save_file_name='.png'):
+                    save_file_name='.png', rotate_ticks=True):
     sns.set(font_scale=1.3)
     grid = sns.FacetGrid(model_history_df,
                          palette=sns.color_palette("rocket", n_colors=model_history_df[to_label].nunique()),
@@ -422,14 +436,15 @@ def plot_parameters(model_history_df, to_x_axis="param", to_y_axis="value",
                          legend_out=True,
                          sharex=True, sharey=True)
     grid.map(sns.lineplot,
-             to_x_axis, to_y_axis, lw=30, markersize=8,
+             to_x_axis, to_y_axis, lw=30, markersize=8, alpha=0.8,
              marker='o', linestyle='', err_style='bars', ci=68)
     grid.fig.set_figwidth(9)
     grid.fig.set_figheight(6)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1,1), fontsize=15)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.92), fontsize=15)
     grid.set_axis_labels(x_axis_label, y_axis_label)
-    plt.xticks(rotation=45)
-    grid.fig.subplots_adjust(top=0.9, right=0.78)  # adjust the Figure in rp
+    if rotate_ticks:
+        plt.xticks(rotation=45)
+    grid.fig.subplots_adjust(top=0.9, right=0.75)  # adjust the Figure in rp
     grid.fig.suptitle(f'{title}', fontweight="bold")
     #grid.tight_layout()
     if save_fig:
