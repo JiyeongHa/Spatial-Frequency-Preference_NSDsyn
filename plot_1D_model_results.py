@@ -11,7 +11,7 @@ def _merge_fitting_output_df_to_subj_df(fitting_df, subj_df, merge_on=["subj","v
     merged_df = subj_df.merge(fitting_df, on=merge_on)
     return merged_df
 def __get_y_pdf(row):
-    y_pdf = np_log_norm_pdf(row['local_sf'], row['amp'], row['mode'], row['sigma'])
+    y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
     return y_pdf
 
 
@@ -114,7 +114,7 @@ def plot_parameter_mean(output_df, subj_to_run=None, to_subplot="vroinames", n_s
                            save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                            save_file_name='.png'):
     #new_output_df = output_df.query('eccrois == @cur_ecc')
-    new_output_df = pd.melt(output_df, id_vars=['subj', 'vroinames', 'eccrois'], value_vars=['amp', 'mode', 'sigma'], ignore_index=True).rename(columns={'variable': 'params'})
+    new_output_df = pd.melt(output_df, id_vars=['subj', 'vroinames', 'eccrois'], value_vars=['slope', 'mode', 'sigma'], ignore_index=True).rename(columns={'variable': 'params'})
     col_order = utils.sort_a_df_column(new_output_df[to_subplot])
     grid = sns.FacetGrid(new_output_df,
                          col=to_subplot, row='eccrois',
