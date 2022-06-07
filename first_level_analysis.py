@@ -68,7 +68,7 @@ def fit_1D_model(input_df, subj=None,
         eroi_list = utils.sort_a_df_column(input_df['eccrois'])
 
     # Initialize output df
-    output_cols = ['subj', 'vroinames', 'eccrois', 'amp', 'mode', 'sigma']
+    output_cols = ['subj', 'vroinames', 'eccrois', 'slope', 'mode', 'sigma']
     output_single_df = utils.create_empty_df(output_cols)
 
     loss_cols = ["subj", "vroinames", "eccrois", "alpha", "n_epoch", "start_loss", "final_loss"]
@@ -131,7 +131,7 @@ def fit_1D_model_all_subj(input_df, subj_list=None,
         eroi_list = utils.sort_a_df_column(input_df['eccrois'])
 
     # Initialize output df
-    output_cols = ['subj', 'vroinames', 'eccrois', 'amp', 'mode', 'sigma']
+    output_cols = ['subj', 'vroinames', 'eccrois', 'slope', 'mode', 'sigma']
     output_df = utils.create_empty_df(output_cols)
 
     loss_cols = ["subj", "vroinames", "eccrois", "alpha", "n_epoch", "start_loss", "final_loss"]

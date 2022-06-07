@@ -332,3 +332,26 @@ hue_order = [utils.sub_number_to_string(p) for p in np.arange(1,9)]
 model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param',
                       to_label="subj", hue_order=None, legend_title="subjects", save_fig=True,
                       save_file_name='final_param_v1_individual.png')
+
+
+import binning_eccen as binning
+import first_level_analysis as fitting
+
+bin_list = np.round(np.linspace(filtered_df.eccentricity.min(), filtered_df.eccentricity.max(), 6),2).tolist()
+bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
+
+filtered_b_df = binning.bin_ecc(filtered_df, bin_list, bin_labels)
+for sn in np.arange(1, 9):
+    binning.plot_bin_histogram(sn, filtered_b_df, labels=bin_labels,
+                               normalize=False, to_x_axis='norm_betas',
+                               save_fig=True, save_file_name='histogram_for_bins.png'
+                               )
+
+avg_subj_df = binning_eccen.get_all_subj_df(subjects_to_run=np.arange(1, 9),
+                                            central_tendency=["mean"],
+                                            dv_to_group=["vroinames", "eccrois", "freq_lvl"])
+output_df = fitting.pytorch_1D_model_fitting(input_df=avg_subj_df,
+                                             subj_list=None,
+                                             initial_val = [1, 1, 1],
+                                             epoch=5000, alpha=1e-3,
+                                             save_output_df=True)

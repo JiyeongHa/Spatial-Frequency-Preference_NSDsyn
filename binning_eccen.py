@@ -6,6 +6,8 @@ import pandas as pd
 import seaborn as sns
 import sfp_nsd_utils as utils
 from matplotlib import pyplot as plt
+import two_dimensional_model as model
+
 
 def label_eccband(row):
     if row.eccentricity <= 6:
@@ -55,6 +57,8 @@ def _summary_stat_for_each_ecc_bin(roi_df, bin_group, central_tendency):
     mean_df = pd.concat(mean_df).reset_index().drop(columns=['level_1']).rename(columns={"level_0": "vroinames"})
 
     return mean_df
+
+
 def _sort_vroinames(df_vroinames):
     roi_list = df_vroinames.unique().tolist()
     if all(isinstance(item, str) for item in roi_list):
@@ -269,3 +273,63 @@ def lineplot_2D(mean_df,
     plt.show()
 
     return grid
+
+def bin_ecc(df, bin_list, bin_labels=None):
+    if bin_labels is None:
+        bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
+
+    df['bins'] = pd.cut(df['eccentricity'], bins=bin_list, include_lowest=True,
+                        labels=bin_labels)
+
+    return df
+
+
+def plot_bin_histogram(sn, df, labels, to_x_axis,
+                to_subplot="vroinames", normalize=True,
+                x_axis_label='Normalized Beta', y_axis_label="Probability",
+                legend_title="Eccentricity Band", to_hue="bins",
+                n_row=4, legend_out=True, alpha=0.5, bins=30,
+                save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                save_file_name='model_pred.png'):
+    subj = utils.sub_number_to_string(sn)
+    if normalize is True:
+        df['normed'] = normalize(df, to_norm=["avg_betas"], group_by=["subj", "voxel"])
+    cur_df = df.query('subj == @subj')
+    col_order = utils.sort_a_df_column(cur_df[to_subplot])
+    grid = sns.FacetGrid(cur_df,
+                         col=to_subplot,
+                         col_order=col_order,
+                         hue=to_hue,
+                         hue_order=labels,
+                         palette=sns.color_palette("husl"),
+                         col_wrap=n_row,
+                         legend_out=legend_out)
+    g = grid.map(sns.histplot, to_x_axis, stat="probability", alpha=alpha, multiple="layer")
+    grid.set_axis_labels(x_axis_label, y_axis_label)
+    grid.fig.legend(title=legend_title, labels=labels, bbox_to_anchor=(1, 0.92), fontsize=15)
+    # Put the legend out of the figure
+    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+    grid.fig.subplots_adjust(top=0.75, right=0.8)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{subj}', fontweight="bold")
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
+        plt.savefig(save_path, bbox_inches='tight')
+    plt.show()
+
+#
+# def _summary_stat_for_ecc_bin(df, bin_group=["subj", "bins", "vroinames", "freq_lvl"], central_tendency):
+#     df = df.groupby(bin_group).agg(central_tendency).reset_index()
+#     # this should be fixed for cases when I want to get more than two central tendencies.
+#     # mean_df[cur_roi].columns = mean_df[cur_roi].columns.get_level_values(0)
+#
+#     # mean_df = pd.concat(mean_df).reset_index().drop(columns=['level_1']).rename(columns={"level_0": "vroinames"})
+#
+#
+#     return df
