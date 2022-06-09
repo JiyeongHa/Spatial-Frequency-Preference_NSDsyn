@@ -288,7 +288,7 @@ def plot_bin_histogram(sn, df, labels, to_x_axis,
                 to_subplot="vroinames", normalize=True,
                 x_axis_label='Normalized Beta', y_axis_label="Probability",
                 legend_title="Eccentricity Band", to_hue="bins",
-                n_row=4, legend_out=True, alpha=0.5, bins=30,
+                n_rows=4, legend_out=True, alpha=0.5, bins=30, top_m=0.9, right_m=0.7,
                 save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                 save_file_name='model_pred.png'):
     subj = utils.sub_number_to_string(sn)
@@ -302,16 +302,17 @@ def plot_bin_histogram(sn, df, labels, to_x_axis,
                          hue=to_hue,
                          hue_order=labels,
                          palette=sns.color_palette("husl"),
-                         col_wrap=n_row,
+                         col_wrap=n_rows,
                          legend_out=legend_out)
     g = grid.map(sns.histplot, to_x_axis, stat="probability", alpha=alpha, multiple="layer")
     grid.set_axis_labels(x_axis_label, y_axis_label)
     grid.fig.legend(title=legend_title, labels=labels, bbox_to_anchor=(1, 0.92), fontsize=15)
     # Put the legend out of the figure
     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
-    grid.fig.subplots_adjust(top=0.75, right=0.8)  # adjust the Figure in rp
+    if type(to_subplot) == "vroinames":
+        for subplot_title, ax in grid.axes_dict.items():
+            ax.set_title(f"{subplot_title.title()}")
+    grid.fig.subplots_adjust(top=top_m, right=right_m)  # adjust the Figure in rp
     grid.fig.suptitle(f'{subj}', fontweight="bold")
     if save_fig:
         if not save_dir:
@@ -323,13 +324,22 @@ def plot_bin_histogram(sn, df, labels, to_x_axis,
         plt.savefig(save_path, bbox_inches='tight')
     plt.show()
 
-#
-# def _summary_stat_for_ecc_bin(df, bin_group=["subj", "bins", "vroinames", "freq_lvl"], central_tendency):
-#     df = df.groupby(bin_group).agg(central_tendency).reset_index()
-#     # this should be fixed for cases when I want to get more than two central tendencies.
-#     # mean_df[cur_roi].columns = mean_df[cur_roi].columns.get_level_values(0)
-#
-#     # mean_df = pd.concat(mean_df).reset_index().drop(columns=['level_1']).rename(columns={"level_0": "vroinames"})
-#
-#
-#     return df
+
+def summary_stat_for_ecc_bin(df, to_bin=["avg_betas", "local_sf"], bin_group=["subj", "bins", "vroinames", "names", "freq_lvl"],
+                              central_tendency="mode"):
+
+    if type(to_bin) != list:
+        raise Exception("to_bin argument should be a list!")
+    selected_cols = to_bin + bin_group
+
+    if central_tendency == "mode":
+        df = df[selected_cols].groupby(bin_group).agg(lambda x: pd.Series.mode(x)[0]).reset_index()
+    else:
+        df = df[selected_cols].groupby(bin_group).agg(central_tendency).reset_index()
+    # this should be fixed for cases when I want to get more than two central tendencies.
+    # mean_df[cur_roi].columns = mean_df[cur_roi].columns.get_level_values(0)
+    # central_tendency = [(lambda x: pd.Series.mode(x)[0]) if b == "mode" else b for b in central_tendency]
+
+    # mean_df = pd.concat(mean_df).reset_index().drop(columns=['level_1']).rename(columns={"level_0": "vroinames"}
+
+    return df

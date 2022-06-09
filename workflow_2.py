@@ -342,16 +342,40 @@ bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
 
 filtered_b_df = binning.bin_ecc(filtered_df, bin_list, bin_labels)
 for sn in np.arange(1, 9):
-    binning.plot_bin_histogram(sn, filtered_b_df, labels=bin_labels,
-                               normalize=False, to_x_axis='norm_betas',
-                               save_fig=True, save_file_name='histogram_for_bins.png'
-                               )
+    binning.plot_bin_histogram(sn, filtered_b_df, labels=bin_labels, to_x_axis='local_sf', to_subplot="freq_lvl",
+                               normalize=False, x_axis_label='Local SF', save_fig=True,
+                               save_file_name='histogram_for_bins.png', n_rows=6, top_m=0.8, right_m=0.86)
 
-avg_subj_df = binning_eccen.get_all_subj_df(subjects_to_run=np.arange(1, 9),
-                                            central_tendency=["mean"],
-                                            dv_to_group=["vroinames", "eccrois", "freq_lvl"])
-output_df = fitting.pytorch_1D_model_fitting(input_df=avg_subj_df,
-                                             subj_list=None,
-                                             initial_val = [1, 1, 1],
-                                             epoch=5000, alpha=1e-3,
-                                             save_output_df=True)
+
+mode_filtered_b_df = binning.summary_stat_for_ecc_bin(filtered_b_df, to_bin=["avg_betas", "local_sf"], central_tendency="mode")
+mean_filtered_b_df = binning.summary_stat_for_ecc_bin(filtered_b_df, to_bin=["avg_betas", "local_sf"], central_tendency="mean")
+
+stim_class_list = ['annulus', 'forward spiral', 'pinwheel', 'reverse spiral']
+varea_list = mode_filtered_b_df.vroinames.unique()
+
+model_history_df = {}
+loss_history_df = {}
+for sn in np.arange(1, 9):
+
+    subj = utils.sub_number_to_string(sn)
+    m_m_df = {}
+    l_l_df = {}
+    for stim_class in stim_class_list:
+        m_df = {}
+        l_df = {}
+        for varea in varea_list:
+            m_df[varea], l_df[varea], e_time = fitting.fit_1D_model(mean_filtered_b_df, sn=sn, stim_class=stim_class,
+                                                            varea=varea, ecc_bins="bins", n_print=10000,
+                                                            initial_val=[1,1,1], epoch=50000, lr=1e-3)
+
+        m_m_df[stim_class] = pd.concat(m_df)
+        l_l_df[stim_class] = pd.concat(l_df)
+    model_history_df[subj] = pd.concat(m_m_df)
+    loss_history_df[subj] = pd.concat(l_l_df)
+
+col_replaced = {'level_0': 'subj', 'level_1': 'names', 'level_2': 'vroinames'}
+model_history_df = pd.concat(model_history_df).reset_index().drop(columns='level_3').rename(columns=col_replaced)
+loss_history_df = pd.concat(loss_history_df).reset_index().drop(columns='level_3').rename(columns=col_replaced)
+
+
+#["bins", "vroinames", "names", "freq_lvl"] 에 따라서 averaging
