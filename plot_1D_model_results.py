@@ -5,22 +5,23 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 import sfp_nsd_utils as utils
 import pandas as pd
+import numpy as np
 from first_level_analysis import np_log_norm_pdf
 
-def _merge_fitting_output_df_to_subj_df(fitting_df, subj_df, merge_on=["subj","vroinames", "eccrois"]):
-    merged_df = subj_df.merge(fitting_df, on=merge_on)
+def _merge_fitting_output_df_to_subj_df(model_df, subj_df, merge_on=["subj","vroinames", "eccrois"]):
+    merged_df = subj_df.merge(model_df, on=merge_on)
     return merged_df
-def __get_y_pdf(row):
+def _get_y_pdf(row):
     y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
     return y_pdf
 
 
-def _merge_pdf_values(fitting_df, subj_df=None, merge_on_cols=["subj", "vroinames", "eccrois"], merge_output_df=True):
+def merge_pdf_values(model_df, subj_df=None, merge_on_cols=["subj", "vroinames", "eccrois"], merge_output_df=True):
     if merge_output_df:
-        merge_df = _merge_fitting_output_df_to_subj_df(fitting_df, subj_df, merge_on=merge_on_cols)
+        merge_df = _merge_fitting_output_df_to_subj_df(model_df, subj_df, merge_on=merge_on_cols)
     else:
-        merge_df = fitting_df
-    merge_df['y_lg_pdf'] = merge_df.apply(__get_y_pdf, axis=1)
+        merge_df = model_df
+    merge_df['y_lg_pdf'] = merge_df.apply(_get_y_pdf, axis=1)
     return merge_df
 
 
@@ -39,7 +40,8 @@ def beta_vs_sf_scatterplot(subj, merged_df, to_subplot="vroinames", n_sp_low=2,
                          col=to_subplot,
                          col_order=col_order,
                          hue=to_label,
-                         palette=sns.color_palette("husl"),
+                         hue_order=labels,
+                         palette=sns.color_palette("rocket"),
                          col_wrap=n_sp_low,
                          legend_out=legend_out,
                          xlim=[10 ** -1, 10 ** 2],
@@ -48,15 +50,14 @@ def beta_vs_sf_scatterplot(subj, merged_df, to_subplot="vroinames", n_sp_low=2,
     if plot_pdf:
         grid.map(sns.lineplot, dp_to_x_axis, ln_y_axis, linewidth=2)
     grid.set_axis_labels(x_axis_label, y_axis_label)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.9), labels=labels, fontsize=15)
     # Put the legend out of the figure
     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
     plt.xscale('log')
-    grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
+    grid.fig.subplots_adjust(top=0.8, right=0.82)  # adjust the Figure in rp
     grid.fig.suptitle(f'{sn}', fontsize=18, fontweight="bold")
-    grid.tight_layout()
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
@@ -64,7 +65,7 @@ def beta_vs_sf_scatterplot(subj, merged_df, to_subplot="vroinames", n_sp_low=2,
         if not os.path.exists(fig_dir):
             os.makedirs(fig_dir)
         save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches='tight')
     plt.show()
 
     return grid
@@ -144,3 +145,44 @@ def plot_parameter_mean(output_df, subj_to_run=None, to_subplot="vroinames", n_s
         plt.show()
 
     return grid
+
+
+def plot_preferred_period(df, labels, to_subplot="vroinames", n_rows=4, to_label="names",
+                          dp_to_x_axis='eccentricity', dp_to_y_axis='mode',
+                          x_axis_label="Eccentricity", y_axis_label="Preferred period",
+                          legend_title="Stimulus class", title=None, legend=True,
+                          save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                          save_file_name='.png', ci=68, estimator=None):
+
+    df['preferred_period'] = 1 / df[dp_to_y_axis]
+    col_order = utils.sort_a_df_column(df[to_subplot])
+
+    grid = sns.FacetGrid(df,
+                         col=to_subplot,
+                         col_order=col_order,
+                         hue=to_label,
+                         col_wrap=n_rows,
+                         hue_order=labels,
+                         palette=sns.color_palette("Set1"),
+                         legend_out=True,
+                         sharex=True, sharey=False)
+    grid.map(sns.lineplot, dp_to_x_axis, 'preferred_period', estimator=estimator, ci=ci, marker='o',linestyle='', err_style='bars')
+    grid.set(xticks=[0, 1, 2, 3, 4])
+    grid.set_axis_labels(x_axis_label, y_axis_label)
+    if legend == True:
+        grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.9), labels=labels, fontsize=15)
+    # Put the legend out of the figure
+    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+    grid.fig.subplots_adjust(top=0.8, right=0.82)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{title}', fontsize=18, fontweight="bold")
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f'{save_file_name}')
+        plt.savefig(save_path, bbox_inches='tight')
+    plt.show()

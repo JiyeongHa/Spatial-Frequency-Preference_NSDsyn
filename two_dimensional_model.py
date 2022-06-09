@@ -392,25 +392,29 @@ def melt_history_df(history_df):
     return pd.concat(history_df).reset_index().rename(columns={'level_0': 'subj', 'level_1': 'epoch'})
 
 
-def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss",
-                      x_axis_label="Epoch", y_axis_label="Loss", to_label=None,
+def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_rows=4,
+                      x_axis_label="Epoch", y_axis_label="Loss", to_label=None, to_subplot=None,
                       legend_title=None, labels=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                      save_file_name='.png', ci=68):
+                      save_file_name='.png', ci=68, n_boot=100):
     grid = sns.FacetGrid(loss_history_df,
-                         hue=to_label,
+                         col=to_subplot,
+                         hue=to_label, hue_order=labels,
+                         col_wrap=n_rows,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, to_x_axis, to_y_axis, linewidth=2, ci=ci)
+    g = grid.map(sns.lineplot, to_x_axis, to_y_axis, linewidth=2, ci=ci, n_boot=n_boot)
     grid.fig.set_figwidth(10)
     grid.fig.set_figheight(6)
     grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=18)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), fontsize=18)
-    # grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1),
-    #                 labels=labels, fontsize=18)
+    grid.add_legend(bbox_to_anchor=(1, 0.75))
+    #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
-    grid.fig.subplots_adjust(top=0.9, right=0.78)
+    grid.fig.subplots_adjust(top=0.85, right=0.85)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+    plt.xscale('log')
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")

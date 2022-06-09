@@ -11,6 +11,8 @@ import voxel_selection as vs
 import two_dimensional_model as model
 import torch
 import simulation as sim
+import plot_1D_model_results as plotting
+
 
 df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
 # load subjects df.
@@ -347,8 +349,8 @@ for sn in np.arange(1, 9):
                                save_file_name='histogram_for_bins.png', n_rows=6, top_m=0.8, right_m=0.86)
 
 
-mode_filtered_b_df = binning.summary_stat_for_ecc_bin(filtered_b_df, to_bin=["avg_betas", "local_sf"], central_tendency="mode")
-mean_filtered_b_df = binning.summary_stat_for_ecc_bin(filtered_b_df, to_bin=["avg_betas", "local_sf"], central_tendency="mean")
+mode_filtered_b_df = binning.summary_stat_for_ecc_bin(filtered_b_df, to_bin=["avg_betas", "local_sf", "eccentricity"], central_tendency="mode")
+mean_filtered_b_df = binning.summary_stat_for_ecc_bin(filtered_b_df, to_bin=["avg_betas", "local_sf", "eccentricity"], central_tendency="mean")
 
 stim_class_list = ['annulus', 'forward spiral', 'pinwheel', 'reverse spiral']
 varea_list = mode_filtered_b_df.vroinames.unique()
@@ -377,5 +379,62 @@ col_replaced = {'level_0': 'subj', 'level_1': 'names', 'level_2': 'vroinames'}
 model_history_df = pd.concat(model_history_df).reset_index().drop(columns='level_3').rename(columns=col_replaced)
 loss_history_df = pd.concat(loss_history_df).reset_index().drop(columns='level_3').rename(columns=col_replaced)
 
+# ["bins", "vroinames", "names", "freq_lvl"]
+merged_df = plotting.merge_pdf_values(model_history_df.query('epoch == 49999'), subj_df=mean_filtered_b_df,
+                                      merge_on_cols=['subj', 'vroinames', 'bins', 'names'])
 
-#["bins", "vroinames", "names", "freq_lvl"] 에 따라서 averaging
+merged_df = merged_df.merge(mean_filtered_b_df[['subj', 'vroinames', 'bins', 'names', 'eccentricity']],
+                            on=['subj', 'vroinames', 'bins', 'names'])
+
+bin_middle = [np.round((a+b)/2,2) for a, b in zip(bin_list[1:], bin_list[:-1])]
+
+def label_eccen(row, bin_label, bin_list):
+   if row['bins'] == bin_label[0]:
+      return bin_list[0]
+   if row['bins'] == bin_label[1]:
+      return bin_list[1]
+   if row['bins'] == bin_label[2]:
+      return bin_list[2]
+   if row['bins'] == bin_label[3]:
+      return bin_list[3]
+   if row['bins'] == bin_label[4]:
+      return bin_list[4]
+
+merged_df['eccentricity'] = merged_df.apply(lambda row: label_eccen(row, bin_label=bin_labels, bin_list=bin_middle), axis=1)
+
+bin_list[]
+
+model.plot_loss_history(loss_history_df[loss_history_df.epoch % 100 == 0], title="Loss change during 1D model fitting (N = 9)",
+                        to_label="ecc_bins", to_subplot="names", n_rows=4, labels=bin_labels, ci=68, n_boot=100, save_fig=True, save_file_name="loss_for_1D.png")
+
+for varea in ["V2", "V3", "V4v"]:
+    plotting.plot_beta_all_subj(subj_to_run=np.arange(1,9),
+                                merged_df = merged_df.query('vroinames == @varea'),
+                                to_subplot="names", n_sp_low=4, labels=bin_labels,
+                                to_label="bins", save_fig=True, save_file_name=f'_{varea}.png')
+
+
+plotting.plot_preferred_period(merged_df, save_fig=True, save_file_name='pf_period_all_rois_median.png',
+                               labels=merged_df.names.unique(), title="Spatial Frequency Tuning (N = 9)", ci=68, estimator=np.median, legend=True)
+
+
+plotting.plot_preferred_period(merged_df.query('preferred_period < 10'), save_fig=True, save_file_name='pf_period_all_rois_median_less_than_10.png',
+                               labels=merged_df.names.unique(), title="Spatial Frequency Tuning (N = 9)", ci=68, estimator=np.median, legend=True)
+
+
+merged_df.query('vroinames == "V1" & names == "annulus" & eccentricity == ")
+df = merged_df
+df['preferred_period'] = 1 / df[dp_to_y_axis]
+col_order = utils.sort_a_df_column(df[to_subplot])
+
+w = merged_df.groupby(['names', 'vroinames', 'bins']).median()
+
+grid = sns.FacetGrid(df,
+                     hue=to_label,
+                     hue_order=labels,
+                     palette=sns.color_palette("husl"),
+                     legend_out=True,
+                     sharex=True, sharey=False)
+grid.map(sns.lineplot, dp_to_x_axis, 'preferred_period', estimator=np.mean, ci="sd", marker='o', err_style='bars')
+sns.lineplot(data=df.query('vroinames == "V1"'), x="eccentricity", y="preferred_period", hue='names', linestyle='',  ci=68)
+plt.show()

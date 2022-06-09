@@ -274,14 +274,14 @@ def lineplot_2D(mean_df,
 
     return grid
 
-def bin_ecc(df, bin_list, bin_labels=None):
+def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
     if bin_labels is None:
         bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
 
-    df['bins'] = pd.cut(df['eccentricity'], bins=bin_list, include_lowest=True,
+    bins = pd.cut(df[to_bin], bins=bin_list, include_lowest=True,
                         labels=bin_labels)
 
-    return df
+    return bins
 
 
 def plot_bin_histogram(sn, df, labels, to_x_axis,
