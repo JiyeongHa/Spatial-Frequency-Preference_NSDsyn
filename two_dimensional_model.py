@@ -81,13 +81,14 @@ class Forward():
 
 
 
-def normalize(voxel_info, to_norm, group_by=["voxel"]):
+def normalize(voxel_info, to_norm, group_by=["voxel"], for_two_dim_model=True):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
     if type(voxel_info) == pd.DataFrame:
-        if all(df.groupby(group_by).size() == 28) is False:
-            raise Exception('There are more than 28 conditions for one voxel!\n')
-        normed = df.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
+        if for_two_dim_model is True:
+            if all(voxel_info.groupby(group_by).size() == 28) is False:
+                raise Exception('There are more than 28 conditions for one voxel!\n')
+        normed = voxel_info.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
 
     elif type(voxel_info) == torch.Tensor:
         normed = torch.empty(to_norm.shape, dtype=torch.float64)
