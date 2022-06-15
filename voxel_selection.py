@@ -66,12 +66,13 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
 
 
 
-def drop_voxels_with_mean_negative_amplitudes(df):
+def drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas'):
     """drop all voxels that have an average negative amplitude across 28 conditions
         """
-    dv_to_group = ["subj", "voxel"]
-    tmp = df.groupby(dv_to_group)['avg_betas'].mean().reset_index()
-    to_drop = tmp[tmp.avg_betas < 0].rename(columns={'avg_betas': 'negative_betas'})
+    if dv_to_group is None:
+        dv_to_group = ["subj", "voxel"]
+    tmp = df.groupby(dv_to_group)[beta_col].mean().reset_index()
+    to_drop = tmp[tmp[beta_col] < 0].rename(columns={beta_col: 'negative_betas'})
     new_df = df.merge(to_drop, on=["subj", "voxel"], how='left', indicator=True)
     new_df = new_df[new_df._merge == "left_only"].drop(columns=['negative_betas', '_merge'])
 
@@ -139,3 +140,14 @@ def _find_min_and_max(img_min_max):
     outer_boundary = img_min_max[:, 1].min()
     inner_boundary = img_min_max[:, 0]
     return inner_boundary, outer_boundary
+
+def drop_voxels(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas',
+                mean_negative=True, stim_range=True):
+    """Performs voxel selection all at once"""
+    if mean_negative is True:
+        df = drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=dv_to_group, beta_col=beta_col)
+    if stim_range is True:
+        df = drop_voxels_outside_stim_range(df, dv_to_group=['freq_lvl', 'subj'])
+
+    return df
+
