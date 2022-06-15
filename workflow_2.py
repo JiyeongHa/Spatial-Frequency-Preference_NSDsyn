@@ -11,7 +11,7 @@ import voxel_selection as vs
 import two_dimensional_model as model
 import torch
 import simulation as sim
-import plot_1D_model_results as plotting
+from importlib import reload
 
 
 df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
@@ -19,7 +19,7 @@ df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/su
 subj_list = np.arange(1, 9)
 all_subj_df = utils.load_all_subj_df(subj_list,
                                      df_dir=df_dir,
-                                     df_name='stim_voxel_info_df_LITE.csv')
+                                     df_name='stim_voxel_info_df.csv')
 
 # break down phase
 dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi', 'vroinames']
@@ -402,7 +402,6 @@ def label_eccen(row, bin_label, bin_list):
 
 merged_df['eccentricity'] = merged_df.apply(lambda row: label_eccen(row, bin_label=bin_labels, bin_list=bin_middle), axis=1)
 
-bin_list[]
 
 model.plot_loss_history(loss_history_df[loss_history_df.epoch % 100 == 0], title="Loss change during 1D model fitting (N = 9)",
                         to_label="ecc_bins", to_subplot="names", n_rows=4, labels=bin_labels, ci=68, n_boot=100, save_fig=True, save_file_name="loss_for_1D.png")
@@ -422,7 +421,7 @@ plotting.plot_preferred_period(merged_df.query('preferred_period < 10'), save_fi
                                labels=merged_df.names.unique(), title="Spatial Frequency Tuning (N = 9)", ci=68, estimator=np.median, legend=True)
 
 
-merged_df.query('vroinames == "V1" & names == "annulus" & eccentricity == ")
+# merged_df.query('vroinames == "V1" & names == "annulus" & eccentricity == ")
 df = merged_df
 df['preferred_period'] = 1 / df[dp_to_y_axis]
 col_order = utils.sort_a_df_column(df[to_subplot])
@@ -438,3 +437,18 @@ grid = sns.FacetGrid(df,
 grid.map(sns.lineplot, dp_to_x_axis, 'preferred_period', estimator=np.mean, ci="sd", marker='o', err_style='bars')
 sns.lineplot(data=df.query('vroinames == "V1"'), x="eccentricity", y="preferred_period", hue='names', linestyle='',  ci=68)
 plt.show()
+
+all_subj_df = all_subj_df.drop(columns=['fixation_task', 'memory_task'])
+# measure noise
+all_subj_df = sim.melt_beta_task_type(all_subj_df)
+all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']
+
+all_subj_df = vs.drop_voxels(all_subj_df, beta_col='betas')
+all_subj_df['normed_betas'] = model.normalize(all_subj_df, to_norm='betas', group_by=['voxel', 'subj'])
+
+std_normed_df = sim.measure_sd_each_stim(all_subj_df, to_sd='normed_betas')
+std_df = sim.measure_sd_each_stim(all_subj_df, to_sd='betas')
+
+mean_noise = std_normed_df['sd_normed_betas'].mean()
+
+# 1D model simulation
