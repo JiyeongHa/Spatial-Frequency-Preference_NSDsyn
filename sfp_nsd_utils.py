@@ -74,4 +74,7 @@ def check_28cond(df, print_msg=True):
 
     return new_df.shape[0]
 
-#def plot_voxels(n_voxel_df, ):
+def complete_path(dir):
+    """returns absolute path of the directory"""
+    return os.path.abspath(dir)
+
