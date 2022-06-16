@@ -12,6 +12,8 @@ import two_dimensional_model as model
 import torch
 import simulation as sim
 from importlib import reload
+import binning_eccen as binning
+import first_level_analysis as fitting
 
 
 df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
@@ -252,7 +254,7 @@ loss_history_df.to_csv(df_save_path, index=False)
 
 # model recovery
 
-syn_df = sim.generate_synthesized_data()
+syn_df = sim.generate_synthesized_voxels()
 params_new = pd.concat([params]*2, ignore_index=True)
 params_new.iloc[1, 3:9] = 0
 syn_model = model.Forward(params_new, 0, syn_df)
@@ -334,10 +336,6 @@ hue_order = [utils.sub_number_to_string(p) for p in np.arange(1,9)]
 model.plot_parameters(model_history_df.query('epoch == 999'), to_x_axis='param',
                       to_label="subj", hue_order=None, legend_title="subjects", save_fig=True,
                       save_file_name='final_param_v1_individual.png')
-
-
-import binning_eccen as binning
-import first_level_analysis as fitting
 
 bin_list = np.round(np.linspace(filtered_df.eccentricity.min(), filtered_df.eccentricity.max(), 6),2).tolist()
 bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
@@ -452,3 +450,101 @@ std_df = sim.measure_sd_each_stim(all_subj_df, to_sd='betas')
 mean_noise = std_normed_df['sd_normed_betas'].mean()
 
 # 1D model simulation
+
+syn_df = sim.generate_synthesized_voxels(
+    stim_description_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv')
+bin_list = np.round(np.logspace(np.log2(0.5), np.log2(4.2), num=6, base=2),2)
+
+bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
+
+syn_df['bins'] = binning.bin_ecc(syn_df, bin_list=bin_list, to_bin='eccentricity')
+syn_b_df = binning.summary_stat_for_ecc_bin(syn_df,
+                                            to_bin=["local_sf", "eccentricity"],
+                                            bin_group=["bins", "names", "freq_lvl"],
+                                            central_tendency="mean")
+
+params_df = pd.DataFrame({'bins': syn_b_df['bins'].unique(),
+                          'amp': [1, 1, 1, 1],
+                          'mode': ['']})
+
+
+syn_b_df['betas'] = fitting.np_log_norm_pdf(syn_df['local_sf'], amp=1, mode=1/(syn_df['eccentricity']*0.12 + 0.35), sigma=2.2)
+noise_sd_levels = [0, 0.5, 1, 2, 3]
+noisy_syn_b_df = syn_b_df.copy()
+
+model_history_df = {}
+loss_history_df = {}
+
+elapsed_time_list = []
+for cur_noise in noise_sd_levels:
+    model_df = {}
+    loss_df = {}
+    noisy_syn_b_df['betas'] = sim.add_noise(syn_b_df['betas'], noise_sd=mean_noise*cur_noise)
+    for stim_class in ['annulus']:
+        model_df[stim_class], loss_df[stim_class], elapsed_time = fitting.sim_fit_1D_model(cur_df=noisy_syn_b_df.query('names == @s_class'),
+                                                                   epoch=2000, lr=1e-2,
+                                                                   initial_val="random")
+
+
+        elapsed_time_list.append(elapsed_time)
+    model_history_df[cur_noise] = pd.concat(model_df)
+    loss_history_df[cur_noise] = pd.concat(loss_df)
+
+
+
+col_replaced = {'level_0': 'noise_sd', 'level_1': 'names'}
+model_history_df = pd.concat(model_history_df).reset_index().drop(columns='level_2').rename(columns=col_replaced)
+loss_history_df = pd.concat(loss_history_df).reset_index().drop(columns='level_2').rename(columns=col_replaced)
+
+
+
+stim_class_list = ['annulus', 'forward spiral', 'pinwheel', 'reverse spiral']
+varea_list = mode_filtered_b_df.vroinames.unique()
+
+model_history_df = {}
+loss_history_df = {}
+for sn in np.arange(1, 9):
+
+    subj = utils.sub_number_to_string(sn)
+    m_m_df = {}
+    l_l_df = {}
+    for stim_class in stim_class_list:
+        m_df = {}
+        l_df = {}
+        for varea in varea_list:
+            m_df[varea], l_df[varea], e_time = fitting.fit_1D_model(mean_filtered_b_df, sn=sn, stim_class=stim_class,
+                                                            varea=varea, ecc_bins="bins", n_print=10000,
+                                                            initial_val=[1,1,1], epoch=50000, lr=1e-3)
+
+        m_m_df[stim_class] = pd.concat(m_df)
+        l_l_df[stim_class] = pd.concat(l_df)
+    model_history_df[subj] = pd.concat(m_m_df)
+    loss_history_df[subj] = pd.concat(l_l_df)
+
+col_replaced = {'level_0': 'subj', 'level_1': 'names', 'level_2': 'vroinames'}
+model_history_df = pd.concat(model_history_df).reset_index().drop(columns='level_3').rename(columns=col_replaced)
+loss_history_df = pd.concat(loss_history_df).reset_index().drop(columns='level_3').rename(columns=col_replaced)
+
+
+# ["bins", "vroinames", "names", "freq_lvl"]
+merged_df = plotting.merge_pdf_values(model_history_df.query('epoch ==1999'), subj_df=syn_b_df,
+                                      merge_on_cols=['bins', 'names'])
+merged_df['eccentricity'] = np.round(merged_df['eccentricity'], 2)
+model.plot_loss_history(loss_history_df.query, title="Loss change: 1D model simulation",
+                        to_label="noise_sd", labels=noise_sd_levels, to_subplot="names", n_rows=4, ci=68, n_boot=100, save_fig=False, save_file_name="loss_for_1D.png")
+
+for varea in ["V2", "V3", "V4v"]:
+    plotting.plot_beta_all_subj(subj_to_run=np.arange(1,9),
+                                merged_df = merged_df.query('vroinames == @varea'),
+                                to_subplot="names", n_sp_low=4, labels=bin_labels,
+                                to_label="bins", save_fig=True, save_file_name=f'_{varea}.png')
+
+
+plotting.plot_preferred_period(merged_df, save_fig=False, save_file_name='pf_period_all_rois_median.png',
+                                to_subplot="names", n_rows=4, to_label="noise_sd", legend_title="Measured noise X",
+                               labels=merged_df.noise_sd.unique(), title="Spatial Frequency Tuning: simulation", ci=68, estimator=np.median, legend=True)
+
+
+plotting.plot_preferred_period(merged_df.query('preferred_period < 10'), save_fig=True, save_file_name='pf_period_all_rois_median_less_than_10.png',
+                               labels=merged_df.names.unique(), title="Spatial Frequency Tuning (N = 9)", ci=68, estimator=np.median, legend=True)
+
