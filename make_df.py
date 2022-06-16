@@ -90,7 +90,7 @@ def _load_stim_info(stim_description_path, drop_phase=False):
     return stim_df
 
 
-def __get_beta_folder_name(beta_version):
+def _get_beta_folder_name(beta_version):
     # load GLMdenoise file
     # f.keys() -> shows betas
     switcher = {
@@ -101,7 +101,7 @@ def __get_beta_folder_name(beta_version):
     return switcher.get(beta_version, "Not available beta type")
 
 
-def __load_exp_design_mat(design_mat_dir, design_mat_file):
+def _load_exp_design_mat(design_mat_dir, design_mat_file):
     mat_file = os.path.join(design_mat_dir, design_mat_file)
     mat_file = loadmat(mat_file)
     trial_orders = mat_file['masterordering'].reshape(-1)
@@ -110,7 +110,7 @@ def __load_exp_design_mat(design_mat_dir, design_mat_file):
 
 
 def _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df):
-    trial_orders = __load_exp_design_mat(design_mat_dir, design_mat_file)
+    trial_orders = _load_exp_design_mat(design_mat_dir, design_mat_file)
     spiral_index = stim_df[['image_idx']].copy()
     spiral_index['fixation_task'] = np.nan
     spiral_index['memory_task'] = np.nan
@@ -138,7 +138,7 @@ def _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df
     return stim_df
 
 
-def __average_two_task_betas(betas, hemi):
+def _average_two_task_betas(betas, hemi):
     """ put in a beta dict and average them voxel-wise """
 
     if len([v for v in betas.keys() if hemi in v]) != 2:
@@ -157,7 +157,7 @@ def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", be
     and ridge regression is used to better estimate the single-trial betas.
     task_from should be either 'fix', 'memory', or 'both'. """
 
-    beta_version_dir = __get_beta_folder_name(beta_version)
+    beta_version_dir = _get_beta_folder_name(beta_version)
     betas = {}
     for hemi in ['lh', 'rh']:
         betas_file_name = hemi + '.betas_nsdsynthetic.hdf5'
@@ -186,7 +186,7 @@ def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", be
             betas[k] = task_betas.T
         if task_from == 'both' and beta_average:
             avg_k = "%s-%s" % (hemi, 'avg' + '_betas')
-            betas[avg_k] = __average_two_task_betas(betas, hemi)
+            betas[avg_k] = _average_two_task_betas(betas, hemi)
 
     # add beta values to mgzs
     # mgzs.update(betas)
@@ -217,7 +217,7 @@ def _melt_2D_beta_mgzs_into_df(beta_mgzs):
     return df
 
 
-def __label_Vareas(row):
+def _label_Vareas(row):
     result = np.remainder(row.visualrois, 7)
     if result == 1 or result == 2:
         return 'V1'
@@ -241,7 +241,7 @@ def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
         # To combine test_df to the existing df, we have to set a common column, which is 'voxel'
         test_df = test_df.reset_index().rename(columns={'index': 'voxel', 0: prf_name})
         if prf_name == 'visualrois':
-            test_df['vroinames'] = test_df.apply(__label_Vareas, axis=1)
+            test_df['vroinames'] = test_df.apply(_label_Vareas, axis=1)
         df[hemi] = df[hemi].merge(test_df, on='voxel')
 
     return df
