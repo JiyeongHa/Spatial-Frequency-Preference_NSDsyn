@@ -76,11 +76,17 @@ def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply
     return mgzs
 
 
-def _load_stim_info(stim_description_path):
-    """stimulus description file will be loaded as a dataframe."""
+def _load_stim_info(stim_description_path, drop_phase=False):
+    """stimulus description file will be loaded as a dataframe.
+       drop_phase arg will remove phase information in the output.
+       For example, each unique combination of stim classes and frequency levels
+       (total of 28) will have one row."""
 
     # stimuli information
     stim_df = pd.read_csv(stim_description_path)
+    if drop_phase is True:
+        stim_df = stim_df.query('phase_idx == 0')
+        stim_df = stim_df.drop(columns=['phase', 'phase_idx'])
     return stim_df
 
 
