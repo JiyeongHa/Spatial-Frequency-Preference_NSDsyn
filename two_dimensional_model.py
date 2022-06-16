@@ -415,7 +415,8 @@ def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_ro
     grid.fig.subplots_adjust(top=0.85, right=0.85)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
-    plt.xscale('log')
+    plt.semilogy()
+    #plt.yscale('log')
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
