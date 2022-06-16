@@ -12,7 +12,7 @@ def _merge_fitting_output_df_to_subj_df(model_df, subj_df, merge_on=["subj","vro
     merged_df = subj_df.merge(model_df, on=merge_on)
     return merged_df
 def _get_y_pdf(row):
-    y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
+    y_pdf = np_log_norm_pdf(row['local_sf'], row['amp'], row['mode'], row['sigma'])
     return y_pdf
 
 
