@@ -1,3 +1,4 @@
+import os.path
 import sys
 import numpy as np
 import make_df as mdf
@@ -16,12 +17,17 @@ import binning_eccen as binning
 import first_level_analysis as fitting
 
 
-df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
+df_dir = '/Volumes/derivatives/subj_dataframes'
+for sn in np.arange(1,9):
+    df = utils.load_df(sn, df_dir, df_name='stim_voxel_info_df_LITE.csv')
+    df = vs.drop_voxels(df, dv_to_group=['subj', 'voxel'])
+    utils.save_df_to_csv(df, output_dir=df_dir, output_file_name=f'{utils.sub_number_to_string(sn)}_df_after_vs.csv')
+
+
 # load subjects df.
-subj_list = np.arange(1, 9)
+subj_list = np.arange(1, 3)
 all_subj_df = utils.load_all_subj_df(subj_list,
-                                     df_dir=df_dir,
-                                     df_name='stim_voxel_info_df.csv')
+                                     df_path=os.path.abspath(df_dir))
 
 # break down phase
 dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi', 'vroinames']
