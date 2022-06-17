@@ -26,8 +26,8 @@ for sn in np.arange(1,9):
 
 # load subjects df.
 subj_list = np.arange(1, 3)
-all_subj_df = utils.load_all_subj_df(subj_list,
-                                     df_path=os.path.abspath(df_dir))
+all_subj_df = utils.load_all_subj_df(np.arange(1,3),
+                                     df_dir='/Volumes/derivatives/subj_dataframes', df_name='stim_voxel_info_df.csv')
 
 # break down phase
 dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi', 'vroinames']
@@ -463,7 +463,7 @@ bin_list = np.round(np.logspace(np.log2(0.5), np.log2(4.2), num=6, base=2),2)
 
 bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
 
-syn_df['bins'] = binning.bin_ecc(syn_df, bin_list=bin_list, to_bin='eccentricity')
+syn_df['bins'] = binning.bin_ecc(syn_df, bin_list=bin_list, to_bin='eccentricity',  )
 syn_b_df = binning.summary_stat_for_ecc_bin(syn_df,
                                             to_bin=["local_sf", "eccentricity"],
                                             bin_group=["bins", "names", "freq_lvl"],
@@ -554,3 +554,18 @@ plotting.plot_preferred_period(merged_df, save_fig=False, save_file_name='pf_per
 plotting.plot_preferred_period(merged_df.query('preferred_period < 10'), save_fig=True, save_file_name='pf_period_all_rois_median_less_than_10.png',
                                labels=merged_df.names.unique(), title="Spatial Frequency Tuning (N = 9)", ci=68, estimator=np.median, legend=True)
 
+
+
+# 1D & 2D model simulation
+
+params_1d = {'amp': 1, 'slope': 0.12, 'intercept': 0.35, 'sigma': 2.2}
+bin_list = np.round(np.logspace(np.log2(0.5), np.log2(4.2), num=6, base=2),2)
+bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
+
+params_2d = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
+                       'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
+                       'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
+
+syn_df_100voxels = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data")
+syn_df_1d = syn_df_100voxels.synthesize_BOLD_1d(bin_list, bin_labels, params_1d)
+syn_df_2d = syn_df_100voxels.synthesize_BOLD_2d(params_2d)

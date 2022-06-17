@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import make_df
 import two_dimensional_model as model
+import binning_eccen as binning
+import first_level_analysis as fitting
 from itertools import combinations
 
 
@@ -17,10 +19,13 @@ class SynthesizeData():
     2. Generate synthetic voxels. Eccentricity and polar angle will be drawn from the uniform distribution.
     3. Generate BOLD predictions, with or without noise. """
 
-    def __init__(self, n_voxels=100, stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'):
+    def __init__(self, n_voxels=100, df=None, replace=True, p_dist="uniform", stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'):
         self.n_voxels = n_voxels
+        self.df = df
+        self.replace = replace,
+        self.p_dist = p_dist
         self.stim_info = self.get_stim_info_for_n_voxels(stim_info_path)
-        self.syn_df = self.generate_synthetic_voxels()
+        self.syn_voxels = self.generate_synthetic_voxels()
 
     def get_stim_info_for_n_voxels(self, stim_info_path):
         stim_info = make_df._load_stim_info(stim_info_path, drop_phase=True)
@@ -33,8 +38,10 @@ class SynthesizeData():
 
     def _sample_from_data(self):
         if self.df is None:
+            #TODO: set df_dir to the /derivatives/subj_dataframes and then complete the parent path
             df_dir = '/Volumes/derivatives/subj_dataframes'
-            tmp_df = utils.load_all_subj_df(np.arange(1, 2), df_dir=df_dir, df_name='df_LITE_after_vs.csv')
+            random_sn = np.random.randint(1, 9, size=1)
+            tmp_df = utils.load_all_subj_df(random_sn, df_dir=df_dir, df_name='df_LITE_after_vs.csv')
         else:
             tmp_df = self.df
         polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=self.replace)
@@ -42,10 +49,10 @@ class SynthesizeData():
         return polar_angles, eccentricity
 
     def generate_synthetic_voxels(self):
-        """Generate synthesized data for n voxels.
+        """Generate synthesized data for n voxels. if p_dist is set to "uniform",
         Each voxel's polar angle and eccentricity will be drawn from uniform distribution.
+        In case p_dist == "data", the probability distribution will be from the actual data.
         The polar angle is in the unit of degree and eccentricity is in the unit of visual angle."""
-        #TODO: add another distribution
         df = pd.DataFrame()
         df['voxel'] = np.arange(0, self.n_voxels)
         if self.p_dist is "uniform":
@@ -58,14 +65,32 @@ class SynthesizeData():
         syn_df = make_df._calculate_local_sf(syn_df)
         return syn_df
 
-
-    def synthesize_BOLD_1d(self, params):
+    def synthesize_BOLD_1d(self, bin_list, bin_labels, params):
         #TODO: write 1D model forward class?
-        pass
+        # binning
+        syn_df = self.syn_voxels.copy()
+        syn_df['bins'] = binning.bin_ecc(self.syn_voxels, bin_list=bin_list, to_bin='eccentricity', bin_labels=bin_labels)
+        syn_df = binning.summary_stat_for_ecc_bin(syn_df,
+                                                  to_bin=['eccentricity', 'local_sf'],
+                                                  bin_group=['bins', 'names', 'freq_lvl'],
+                                                  central_tendency="mean")
+        # forward
+        amp = params['amp']
+        slope = params['slope']
+        intercept = params['intercept']
+        sigma = params['sigma']
+        syn_df['betas'] = fitting.np_log_norm_pdf(syn_df['local_sf'],
+                                                  amp=amp,
+                                                  mode=1 / (slope * syn_df['eccentricity'] + intercept),
+                                                  sigma=sigma)
 
-    def synthesize_BOLD_2d(self, params, beta_col='betas', full_ver=True):
-        syn_model = model.Forward(params, 0, self.syn_df)
-        return syn_model.two_dim_prediction(full_ver=full_ver)
+        return syn_df
+
+    def synthesize_BOLD_2d(self, params, full_ver=True):
+        syn_df = self.syn_voxels.copy()
+        syn_model = model.Forward(params, 0, self.syn_voxels)
+        syn_df['betas'] = syn_model.two_dim_prediction(full_ver=full_ver)
+        return syn_df
 
 
 def add_noise(betas, noise_mean=0, noise_sd=0.05):
@@ -88,7 +113,3 @@ def measure_sd_each_stim(df, to_sd, dv_to_group=['names', 'voxel', 'subj', 'freq
     std_df = std_df.rename(columns={to_sd: 'sd_' + to_sd})
 
     return std_df
-
-def forward_1D(df):
-
-    return predicted_betas
