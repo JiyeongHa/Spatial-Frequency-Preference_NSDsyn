@@ -6,19 +6,10 @@ import sfp_nsd_utils as utils
 import numpy as np
 import pandas as pd
 import make_df
-from  itertools import combinations
+import two_dimensional_model as model
+from itertools import combinations
 
 
-def _get_stim_info(stim_info_path='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'):
-    """Load stim info.csv and remove phase information.
-    For each unique combination of stim classes and frequency levels, you will have one row.
-    This is mainly to get w_a and w_r for each stim type (the combinations)"""
-
-    stim_info = make_df._load_stim_info(stim_info_path)
-    stim_info = pd.DataFrame(stim_info)
-    stim_info = stim_info.query('phase_idx == 0')
-    stim_info = stim_info.drop(columns=['phase', 'phase_idx'])
-    return stim_info
 
 class SynthesizeData():
     """Synthesize data for 1D model and 2D model simulations. This class consists of three parts:
@@ -32,13 +23,23 @@ class SynthesizeData():
         self.syn_df = self.generate_synthetic_voxels()
 
     def get_stim_info_for_n_voxels(self, stim_info_path):
-        stim_info = _get_stim_info(stim_info_path)
+        stim_info = make_df._load_stim_info(stim_info_path, drop_phase=True)
         stim_info['voxel'] = 0
         tmp_df = stim_info.copy()
         for i in np.arange(1, self.n_voxels):
             tmp_df['voxel'] = i
             stim_info = pd.concat([stim_info, tmp_df], ignore_index=True)
         return stim_info
+
+    def _sample_from_data(self):
+        if self.df is None:
+            df_dir = '/Volumes/derivatives/subj_dataframes'
+            tmp_df = utils.load_all_subj_df(np.arange(1, 2), df_dir=df_dir, df_name='df_LITE_after_vs.csv')
+        else:
+            tmp_df = self.df
+        polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=self.replace)
+        eccentricity = np.random.choice(tmp_df['eccentricity'], size=(self.n_voxels,), replace = self.replace)
+        return polar_angles, eccentricity
 
     def generate_synthetic_voxels(self):
         """Generate synthesized data for n voxels.
@@ -47,13 +48,24 @@ class SynthesizeData():
         #TODO: add another distribution
         df = pd.DataFrame()
         df['voxel'] = np.arange(0, self.n_voxels)
-        df['angle'] = np.random.uniform(0, 360, size=self.n_voxels)
-        df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
+        if self.p_dist is "uniform":
+            df['angle'] = np.random.uniform(0, 360, size=self.n_voxels)
+            df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
+        elif self.p_dist is "data":
+            df['angle'], df['eccentricity'] = self._sample_from_data()
         syn_df = self.stim_info.merge(df, on='voxel')
         syn_df = make_df._calculate_local_orientation(syn_df)
         syn_df = make_df._calculate_local_sf(syn_df)
         return syn_df
 
+
+    def synthesize_BOLD_1d(self, params):
+        #TODO: write 1D model forward class?
+        pass
+
+    def synthesize_BOLD_2d(self, params, beta_col='betas', full_ver=True):
+        syn_model = model.Forward(params, 0, self.syn_df)
+        return syn_model.two_dim_prediction(full_ver=full_ver)
 
 
 def add_noise(betas, noise_mean=0, noise_sd=0.05):
@@ -76,3 +88,7 @@ def measure_sd_each_stim(df, to_sd, dv_to_group=['names', 'voxel', 'subj', 'freq
     std_df = std_df.rename(columns={to_sd: 'sd_' + to_sd})
 
     return std_df
+
+def forward_1D(df):
+
+    return predicted_betas
