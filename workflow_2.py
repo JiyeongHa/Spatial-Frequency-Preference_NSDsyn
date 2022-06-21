@@ -15,7 +15,7 @@ import simulation as sim
 from importlib import reload
 import binning_eccen as binning
 import first_level_analysis as fitting
-
+import bootstrap as bts
 
 df_dir = '/Volumes/derivatives/subj_dataframes'
 for sn in np.arange(1,9):
@@ -569,3 +569,18 @@ params_2d = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
 syn_df_100voxels = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data")
 syn_df_1d = syn_df_100voxels.synthesize_BOLD_1d(bin_list, bin_labels, params_1d)
 syn_df_2d = syn_df_100voxels.synthesize_BOLD_2d(params_2d)
+
+
+
+all_subj_df = vs.drop_voxels(all_subj_df, beta_col='avg_betas')
+all_subj_df = sim.melt_beta_task_type(all_subj_df)
+all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']
+
+all_subj_df['normed_betas'] = model.normalize(all_subj_df,
+                                              to_norm='betas',
+                                              group_by=['voxel', 'subj'])
+
+## precision weighting
+all_bt_df = {}
+all_bt_df['subj1234'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(1,5), all_subj_df)
+all_bt_df['subj5678'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(5,9), all_subj_df)
