@@ -27,7 +27,7 @@ def bootstrap_dataframe(df, n_bootstrap=100,
 
     selected_cols = to_group + [to_sample]
     all_df = pd.DataFrame(columns=selected_cols)
-    for i_v in tqdm(df.voxel.unique()[0:3]):
+    for i_v in tqdm(df.voxel.unique()):
         sample_df = df.query('voxel == @i_v')
         for i in range(n_bootstrap):
             tmp = sample_df[selected_cols].groupby(to_group).sample(n=8, replace=replace)
