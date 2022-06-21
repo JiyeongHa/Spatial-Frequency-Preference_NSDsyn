@@ -1,4 +1,3 @@
-import os.path
 import sys
 import numpy as np
 import make_df as mdf
@@ -17,17 +16,20 @@ import binning_eccen as binning
 import first_level_analysis as fitting
 import bootstrap as bts
 
-df_dir = '/Volumes/derivatives/subj_dataframes'
-for sn in np.arange(1,9):
+df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
+for sn in np.arange(2,9):
     df = utils.load_df(sn, df_dir, df_name='stim_voxel_info_df_LITE.csv')
     df = vs.drop_voxels(df, dv_to_group=['subj', 'voxel'])
-    utils.save_df_to_csv(df, output_dir=df_dir, output_file_name=f'{utils.sub_number_to_string(sn)}_df_after_vs.csv')
+    utils.save_df_to_csv(df, output_dir=df_dir, output_file_name=f'{utils.sub_number_to_string(sn)}_df_LITE_after_vs.csv')
 
 
 # load subjects df.
 subj_list = np.arange(1, 3)
-all_subj_df = utils.load_all_subj_df(np.arange(1,3),
-                                     df_dir='/Volumes/derivatives/subj_dataframes', df_name='stim_voxel_info_df.csv')
+all_subj_df = utils.load_all_subj_df(np.arange(1,9),
+                                     df_dir=df_dir, df_name='stim_voxel_info_df.csv')
+all_subj_df = vs.drop_voxels(all_subj_df, dv_to_group=['subj', 'voxel'])
+all_subj_df = sim.melt_beta_task_type(all_subj_df)
+all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']
 
 # break down phase
 dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi', 'vroinames']
@@ -48,7 +50,6 @@ filtered_df['norm_betas'] = normed_betas
 filtered_df['pred'] = model.Forward(params, 0, filtered_df).two_dim_prediction()
 filtered_df['norm_pred'] = model.normalize(filtered_df, to_norm='pred', group_by=["subj", "voxel"])
 
-df[df.columns & colnames]
 
 # plot
 
@@ -581,6 +582,7 @@ all_subj_df['normed_betas'] = model.normalize(all_subj_df,
                                               group_by=['voxel', 'subj'])
 
 ## precision weighting
+V1_all_subj_df = all_subj_df.query('vroinames == "V1"')
 all_bt_df = {}
-all_bt_df['subj1234'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(1,5), all_subj_df)
-all_bt_df['subj5678'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(5,9), all_subj_df)
+all_bt_df['subj01'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(1,2), df=V1_all_subj_df)
+all_bt_df['subj5678'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(5,9), df=all_subj_df)
