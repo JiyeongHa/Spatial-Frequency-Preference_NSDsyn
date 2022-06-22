@@ -31,7 +31,7 @@ def bootstrap_dataframe(df, n_bootstrap=100,
         sample_df = df.query('voxel == @i_v')
         for i in range(n_bootstrap):
             tmp = sample_df[selected_cols].groupby(to_group).sample(n=8, replace=replace)
-            tmp = sample_df.groupby(to_group).mean().reset_index()
+            tmp = tmp.groupby(to_group).mean().reset_index()
             tmp['bootstrap'] = i
             tmp['bootstrap'] = tmp['bootstrap'].astype(int)
             all_df = pd.concat([all_df, tmp], ignore_index=True)
