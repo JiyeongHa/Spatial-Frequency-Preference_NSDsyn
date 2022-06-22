@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 import make_df as mdf
@@ -50,6 +51,7 @@ filtered_df['norm_betas'] = normed_betas
 filtered_df['pred'] = model.Forward(params, 0, filtered_df).two_dim_prediction()
 filtered_df['norm_pred'] = model.normalize(filtered_df, to_norm='pred', group_by=["subj", "voxel"])
 
+df[df.columns & colnames]
 
 # plot
 
@@ -201,9 +203,9 @@ filtered_V1_df = filtered_df.query('vroinames == "V1"')
 loss_history_df = {}
 model_history_df = {}
 time_subj = []
-subj_list = filtered_V1_df['subj'].unique()
-subj_list = ['subj02', 'subj06']
-for subj in subj_list:
+sn_list = filtered_V1_df['subj'].unique()
+sn_list = ['subj02', 'subj06']
+for subj in sn_list:
     subj_df = filtered_V1_df.query('subj == @subj')
     print(f'##### {subj} #####\n')
     # dataset
@@ -488,11 +490,7 @@ for cur_noise in noise_sd_levels:
     loss_df = {}
     noisy_syn_b_df['betas'] = sim.add_noise(syn_b_df['betas'], noise_sd=mean_noise*cur_noise)
     for stim_class in ['annulus']:
-        model_df[stim_class], loss_df[stim_class], elapsed_time = fitting.sim_fit_1D_model(cur_df=noisy_syn_b_df.query('names == @s_class'),
-                                                                   epoch=2000, lr=1e-2,
-                                                                   initial_val="random")
-
-
+        model_df[stim_class], loss_df[stim_class], elapsed_time = fitting.sim_fit_1D_model(cur_df=noisy_syn_b_df.query('names == @s_class'))
         elapsed_time_list.append(elapsed_time)
     model_history_df[cur_noise] = pd.concat(model_df)
     loss_history_df[cur_noise] = pd.concat(loss_df)
@@ -579,10 +577,12 @@ all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']
 
 all_subj_df['normed_betas'] = model.normalize(all_subj_df,
                                               to_norm='betas',
-                                              group_by=['voxel', 'subj'])
 
+df = all_subj_df.query('subj == "subj02" & vroinames == "V1"')
+voxel_list = df.voxel.unique()
+voxel_list = np.random.choice(voxel_list, size=(10,), replace=False)
+df = df.query('voxel in @voxel_list')
 ## precision weighting
-V1_all_subj_df = all_subj_df.query('vroinames == "V1"')
 all_bt_df = {}
-all_bt_df['subj01'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(1,2), df=V1_all_subj_df)
-all_bt_df['subj5678'] = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(5,9), df=all_subj_df)
+bts_df = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(2,3), df=df, to_sample='avg_betas')
+bts_df = bts.sigma_vi(bts_df)
