@@ -583,6 +583,33 @@ voxel_list = df.voxel.unique()
 voxel_list = np.random.choice(voxel_list, size=(10,), replace=False)
 df = df.query('voxel in @voxel_list')
 ## precision weighting
-all_bt_df = {}
 bts_df = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(2,3), df=df, to_sample='avg_betas')
-bts_df = bts.sigma_vi(bts_df)
+bts_v_df = bts.sigma_v(bts_df, to_group=['voxel', 'subj'])
+# average across phases
+df = bts.merge_sigma_v_to_main_df(bts_v_df, subj_df=df, on=['voxel', 'subj'])
+
+bts_v_df = sim.change_voxel_info_in_df(bts_v_df)
+syn_df_2d = bts.merge_sigma_v_to_main_df(bts_v_df, subj_df=syn_df_2d, on=['voxel'])
+
+syn_data = model.SpatialFrequencyDataset(syn_df_2d, beta_col='betas')
+# model
+my_model = model.SpatialFrequencyModel(syn_data.my_tensor, full_ver=True)
+
+
+
+syn_loss_history_df = {}
+syn_model_history_df = {}
+syn_time_subj = []
+noise_sd_levels = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5]
+for i in noise_sd_levels:
+    print(f'##### Noise level: {str(i)} #####\n')
+    syn_noise_df = syn_df.copy()
+    syn_noise_df['avg_betas'] = sim.add_noise(syn_noise_df.avg_betas, noise_mean=0, noise_sd=i)
+    syn_SFdataset = model.SpatialFrequencyDataset(syn_noise_df)
+    syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=False)
+    syn_loss_history, syn_model_history, syn_elapsed_time = model.fit_model(syn_model, syn_SFdataset, learning_rate=5e-3, max_epoch=3000, anomaly_detection=False)
+    syn_time_subj.append(syn_elapsed_time)
+    syn_loss_history_df[f'noise sd = {i}'] = pd.DataFrame(syn_loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+    syn_model_history_df[f'noise sd = {i}'] = pd.DataFrame(syn_model_history, columns=param_cols[0:3])
+
+
