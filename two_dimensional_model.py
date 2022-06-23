@@ -349,13 +349,19 @@ class SpatialFrequencyModel(torch.nn.Module):
         return update_tensor
 
 
-def loss_fn(voxel_info, prediction, target):
+def loss_fn(voxel_info, sigma_v_info, prediction, target):
     """"""
     norm_pred = normalize(voxel_info=voxel_info, to_norm=prediction)
     norm_measured = normalize(voxel_info=voxel_info, to_norm=target)
-    n = voxel_info.shape[0]
-    loss = (1 / n) * torch.sum((norm_pred - norm_measured) ** 2)
-    return loss
+    voxel_list = voxel_info.unique()
+    loss_all_voxels = torch.empty(voxel_list.shape, dtype=torch.float64)
+    for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
+        voxel_idx = voxel_info == idx
+        n = sum(voxel_idx)
+        sigma_v = sigma_v_info[voxel_idx]
+        loss_v = (1/n) * torch.dot(sigma_v, ((norm_pred[voxel_idx] - norm_measured[voxel_idx]) ** 2))
+        loss_all_voxels[i] = torch.mean(loss_v)
+    return loss_all_voxels
 
 def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, loss_all_voxels=True, anomaly_detection=True):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
