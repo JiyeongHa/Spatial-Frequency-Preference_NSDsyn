@@ -259,11 +259,12 @@ def count_nan_in_torch_vector(x):
 
 
 class SpatialFrequencyDataset:
-    def __init__(self, df):
-        self.tmp = df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', 'avg_betas']]
+    def __init__(self, df, beta_col='avg_betas'):
+        self.tmp = df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', beta_col, 'sigma_v']]
         self.my_tensor = torch.tensor(self.tmp.to_numpy())
         self.voxel_info = self.my_tensor[:, 0]
         self.target = self.my_tensor[:, 5]
+        self.sigma_v = self.my_tensor[:, 6]
 
     def df_to_numpy(self):
         return self.tmp.to_numpy()
@@ -298,6 +299,7 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.r_v = self.subj_tensor[:, 3]
         self.w_l = self.subj_tensor[:, 4]
         self.target = self.subj_tensor[:, 5]
+        self.sigma_v = self.subj_tensor[:,6]
         # self.theta_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_ori'])
         # self.theta_v = _cast_as_tensor(self.subj_df.iloc[0:]['angle'])
         # self.r_v = _cast_as_tensor(self.subj_df.iloc[0:]['eccentricity'])  # voxel eccentricity (in degrees)
@@ -355,14 +357,15 @@ def loss_fn(voxel_info, prediction, target):
     loss = (1 / n) * torch.sum((norm_pred - norm_measured) ** 2)
     return loss
 
-def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, anomaly_detection=True):
+def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, loss_all_voxels=True, anomaly_detection=True):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
     # [sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
     my_parameters = [p for p in model.parameters() if p.requires_grad]
 
-    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, eps=1e-4)
+    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate)
+    losses_history = []
     loss_history = []
     model_history = []
     start = timer()
@@ -370,7 +373,10 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, anomaly_detect
     for t in range(max_epoch):
 
         pred = model.forward()  # predictions should be put in here
-        loss = loss_fn(dataset.voxel_info, prediction=pred, target=dataset.target)  # loss should be returned here
+        losses = loss_fn(dataset.voxel_info, dataset.sigma_v, prediction=pred, target=dataset.target)  # loss should be returned here
+        loss = torch.mean(losses)
+        if loss_all_voxels is True:
+            losses_history.append(losses.detach().numpy())
         model_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
@@ -386,7 +392,7 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, anomaly_detect
     print(f'**epoch no.{max_epoch}: Finished! final model params...\n{model_values}')
     print(f'Elapsed time: {np.round(end - start, 2)} sec')
 
-    return loss_history, model_history, elapsed_time
+    return loss_history, model_history, elapsed_time, losses_history
 
 
 def melt_history_df(history_df):
@@ -400,7 +406,7 @@ def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_ro
                       save_file_name='.png', ci=68, n_boot=100):
     grid = sns.FacetGrid(loss_history_df,
                          col=to_subplot,
-                         hue=to_label, hue_order=labels,
+                         hue=to_label,
                          col_wrap=n_rows,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
