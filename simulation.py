@@ -113,3 +113,8 @@ def measure_sd_each_stim(df, to_sd, dv_to_group=['names', 'voxel', 'subj', 'freq
     std_df = std_df.rename(columns={to_sd: 'sd_' + to_sd})
 
     return std_df
+
+def change_voxel_info_in_df(df):
+    voxel_list = df.voxel.unique()
+    df['voxel'] = df['voxel'].replace(voxel_list, range(voxel_list.shape[0]))
+    return df
