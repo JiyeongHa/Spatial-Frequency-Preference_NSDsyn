@@ -565,9 +565,19 @@ params_2d = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
                        'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
 
-syn_df_100voxels = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data")
+# measure noise
+df = model.break_down_phase(all_subj_df)
+df['normed_betas'] = model.normalize(voxel_info=df, to_norm='betas', group_by=['voxel', 'subj'])
+std_normed_df = sim.measure_sd_each_stim(df, to_sd='normed_betas', dv_to_group=['subj', 'voxel'])
+std_df = sim.measure_sd_each_stim(df, to_sd='betas', dv_to_group=['subj', 'voxel'])
+
+mean_noise = std_df['sd_betas'].mean()
+
+syn_df_100voxels = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data",
+                                      stim_info_path='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv')
 syn_df_1d = syn_df_100voxels.synthesize_BOLD_1d(bin_list, bin_labels, params_1d)
-syn_df_2d = syn_df_100voxels.synthesize_BOLD_2d(params_2d)
+syn_df_2d = syn_df_100voxels.synthesize_BOLD_2d(params)
+syn_df_2d_notfull = syn_df_100voxels.synthesize_BOLD_2d(params, full_ver=False)
 
 
 
@@ -583,33 +593,95 @@ voxel_list = df.voxel.unique()
 voxel_list = np.random.choice(voxel_list, size=(10,), replace=False)
 df = df.query('voxel in @voxel_list')
 ## precision weighting
-bts_df = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(2,3), df=df, to_sample='avg_betas')
-bts_v_df = bts.sigma_v(bts_df, to_group=['voxel', 'subj'])
-# average across phases
-df = bts.merge_sigma_v_to_main_df(bts_v_df, subj_df=df, on=['voxel', 'subj'])
+bts_df = bts.bootstrap_dataframe_all_subj(sn_list=np.arange(2,3), df=df, to_sample='betas')
+bts_v_df = bts.sigma_v(bts_df, to_sample='betas', to_group=['voxel', 'subj'])
 
 bts_v_df = sim.change_voxel_info_in_df(bts_v_df)
-syn_df_2d = bts.merge_sigma_v_to_main_df(bts_v_df, subj_df=syn_df_2d, on=['voxel'])
+syn_df_2d_notfull = bts.merge_sigma_v_to_main_df(bts_v_df, subj_df=syn_df_2d_notfull, on=['voxel'])
+syn_df_2d_notfull.sigma_v = np.ones(syn_df_2d_notfull.sigma_v.shape, dtype=np.float64)
 
-syn_data = model.SpatialFrequencyDataset(syn_df_2d, beta_col='betas')
+syn_df_2d_notfull = syn_df_2d_notfull.drop(columns=['subj'])
+syn_data_notfull = model.SpatialFrequencyDataset(syn_df_2d_notfull, beta_col='betas')
 # model
-my_model = model.SpatialFrequencyModel(syn_data.my_tensor, full_ver=True)
-
-
+my_model = model.SpatialFrequencyModel(syn_data.my_tensor, full_ver=False)
 
 syn_loss_history_df = {}
 syn_model_history_df = {}
+syn_losses_df = {}
 syn_time_subj = []
-noise_sd_levels = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5]
+noise_sd_levels = [0]
 for i in noise_sd_levels:
     print(f'##### Noise level: {str(i)} #####\n')
-    syn_noise_df = syn_df.copy()
-    syn_noise_df['avg_betas'] = sim.add_noise(syn_noise_df.avg_betas, noise_mean=0, noise_sd=i)
-    syn_SFdataset = model.SpatialFrequencyDataset(syn_noise_df)
+    syn_noise_df = syn_df_2d_notfull.copy()
+    syn_noise_df['betas'] = sim.add_noise(syn_noise_df.betas, noise_mean=0, noise_sd=i*mean_noise)
+    syn_SFdataset = model.SpatialFrequencyDataset(syn_noise_df, beta_col='betas')
     syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=False)
-    syn_loss_history, syn_model_history, syn_elapsed_time = model.fit_model(syn_model, syn_SFdataset, learning_rate=5e-3, max_epoch=3000, anomaly_detection=False)
+    syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model,
+                                                                                    syn_SFdataset,
+                                                                                    learning_rate=1e-3,
+                                                                                    max_epoch=10000,
+                                                                                    print_every=1000,
+                                                                                    loss_all_voxels=True,
+                                                                                    anomaly_detection=False)
     syn_time_subj.append(syn_elapsed_time)
-    syn_loss_history_df[f'noise sd = {i}'] = pd.DataFrame(syn_loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
-    syn_model_history_df[f'noise sd = {i}'] = pd.DataFrame(syn_model_history, columns=param_cols[0:3])
+    syn_loss_history_df[f'measured noise X {i}'] = pd.DataFrame(syn_loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+    syn_model_history_df[f'measured noise X {i}'] = pd.DataFrame(syn_model_history, columns=param_cols[0:3]).reset_index().rename(columns={'index': 'epoch'})
+    syn_losses_df[f'measured noise X {i}'] = pd.DataFrame(losses).reset_index().rename(columns={'index': 'epoch'})
 
 
+
+
+syn_loss_history_df = pd.concat(syn_loss_history_df).reset_index().drop(columns=['level_1']).rename(
+    columns={'level_0': 'Noise'})
+syn_model_history_df = pd.concat(syn_model_history_df).reset_index().drop(columns=['level_1']).rename(
+    columns={'level_0': 'Noise'})
+syn_losses_df = pd.concat(syn_losses_df).reset_index().drop(columns=['level_1']).rename(
+    columns={'level_0': 'Noise'})
+
+ground_truth= pd.DataFrame(params)
+ground_truth['Noise'] = ['ground_truth']
+ground_truth['epoch'] = [5999]
+syn_model_history_df = pd.concat((syn_model_history_df, ground_truth), axis=0, ignore_index=True)
+val_vars = syn_model_history_df.drop(columns=['Noise', 'epoch']).columns.tolist()
+syn_model_history_df = syn_model_history_df.melt(id_vars=['Noise', 'epoch'],
+                                         value_vars=val_vars,
+                                         var_name='param',
+                                         value_name='value')
+
+syn_model_history_df = syn_model_history_df.replace({'noise sd = 0': 'measured noise X 0', 'noise sd = 0.25': '0.25',
+                             'noise sd = 0.5': '0.5', 'noise sd = 0.75':'0.75',
+                             'noise sd = 1': '1', 'noise sd = 1.25':'1.25',
+                             'noise sd = 1.5': '1.5'})
+
+model.plot_loss_history(syn_loss_history_df[syn_loss_history_df.epoch % 2 == 0],
+                        to_label="Noise",
+                        save_fig=True, save_file_name='simulation_without_pw_lr_001_epoch_6000.png',
+                        legend_title='Noise sd', log_y=True,
+                       title="Loss change: 100 voxel simulation", ci=68, n_boot=100)
+
+
+id_list = ["Ground truth", "0", "0.5", "1", "1.5"]
+id_list = ["Ground truth", "0", "0.25", "0.5", "0.75", "1", "1.25", "1.5"]
+id_list = ['ground_truth', 'measured noise X 0', 'measured noise X 1',
+       'measured noise X 1.5', 'measured noise X 2']
+syn_model_history_df_fil = syn_model_history_df.query('Noise in @id_list')
+model.plot_parameters(syn_model_history_df.query('epoch ==5999 & param == "sigma"'),
+                      to_label="Noise", hue_order=id_list, legend_title="Noise sd", rotate_ticks=False,
+                      title="Model recovery: Sigma",
+                      save_fig=True, save_file_name="simulation_without_pw_lr_001_epoch_6000_sigma.png")
+
+model.plot_parameters(syn_model_history_df.query('epoch == 5999 & param in ["slope", "intercept"]'),
+                      to_label="Noise", hue_order=id_list, legend_title="Noise sd", rotate_ticks=False,
+                      title="Model recovery: Slope & intercept",
+                      save_fig=True, save_file_name="simulation_without_pw_lr_001_epoch_6000_slope.png")
+
+model.plot_parameters(syn_model_history_df.query('epoch == 5999 & param in ["p_1", "p_2", "p_3", "p_4", "A_1", "A_2"]'),
+                      to_label="Noise", hue_order=id_list, legend_title="Noise sd", rotate_ticks=False,
+                      title="Model recovery: period and amplitude",
+                      save_fig=True, save_file_name="simulation_pw_lr_001_epoch_6000_period.png")
+
+
+sns.histplot(data=bts_v_df, x="sigma_v", stat="density")
+plt.savefig('en'
+            '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/Precision_weight_vs_density/100_voxels.png', bbox_inches='tight')
+plt.show()
