@@ -21,7 +21,7 @@ from timeit import default_timer as timer
 
 
 def break_down_phase(df):
-    dv_to_group = ['subj', 'freq_lvl', 'names_idx', 'voxel', 'hemi']
+    dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi']
     df = df.groupby(dv_to_group).mean().reset_index()
 
     return df
@@ -386,7 +386,7 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, loss_all_voxel
         model_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
-        if (t + 1) % 10 == 1:
+        if (t + 1) % print_every == 1:
             print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
 
         optimizer.zero_grad()  # clear previous gradients
@@ -409,7 +409,7 @@ def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_ro
                       x_axis_label="Epoch", y_axis_label="Loss", to_label=None, to_subplot=None,
                       legend_title=None, labels=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                      save_file_name='.png', ci=68, n_boot=100):
+                      save_file_name='.png', ci=68, n_boot=100, log_y=True):
     grid = sns.FacetGrid(loss_history_df,
                          col=to_subplot,
                          hue=to_label,
@@ -427,8 +427,8 @@ def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_ro
     grid.fig.subplots_adjust(top=0.85, right=0.85)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
-    plt.semilogy()
-    #plt.yscale('log')
+    if log_y is True:
+        plt.semilogy()
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
