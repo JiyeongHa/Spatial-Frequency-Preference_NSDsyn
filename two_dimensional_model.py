@@ -395,8 +395,12 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
         model.eval()
     end = timer()
     elapsed_time = end - start
-    print(f'**epoch no.{max_epoch}: Finished! final model params...\n{model_values}')
+    params_col = [name for name, param in model.named_parameters() if param.requires_grad]
+    print(f'**epoch no.{max_epoch}: Finished! final model params...\n{dict(zip(params_col, model_values))}')
     print(f'Elapsed time: {np.round(end - start, 2)} sec')
+
+    loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+    model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
 
     return loss_history, model_history, elapsed_time, losses_history
 
