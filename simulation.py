@@ -108,13 +108,37 @@ def melt_beta_task_type(df, id_cols=None):
     df = pd.melt(df, id_vars=id_cols, value_vars=new_tasks, var_name='task', value_name='betas')
     return df
 
-
-def measure_sd_each_stim(df, to_sd, dv_to_group=['names', 'voxel', 'subj', 'freq_lvl']):
-    """Measure each voxel's sd across 8 conditions (2 tasks x 4 phases)"""
-    std_df = df.groupby(dv_to_group)[to_sd].agg(np.std, ddof=0).reset_index()
-    std_df = std_df.rename(columns={to_sd: 'sd_' + to_sd})
+def measure_sd_each_cond(df, to_sd, dv_to_group=['subj', 'voxel', 'names', 'freq_lvl']):
+    """Measure each voxel's sd across 8 trials in a condition (2 tasks x 4 phases)"""
+    df[f'normed_{to_sd}'] = model.normalize(df, to_norm=to_sd, group_by=['voxel', 'subj'],
+                                            for_two_dim_model=False)
+    std_df = df.groupby(dv_to_group)[f'normed_{to_sd}'].agg(np.std, ddof=0).reset_index()
+    std_df = std_df.rename(columns={f'normed_{to_sd}': 'sd_' + f'normed_{to_sd}'})
 
     return std_df
+
+def measure_sd_each_voxel(df, to_sd, dv_to_group=['subj', 'voxel']):
+    tmp_dv_to_group = dv_to_group + ['names', 'freq_lvl']
+    std_df = measure_sd_each_cond(df, to_sd, dv_to_group=tmp_dv_to_group)
+    std_df = std_df.groupby(dv_to_group)[f'sd_normed_{to_sd}'].mean().reset_index()
+    return std_df
+
+def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
+                      x_label="SD across 8 trials",
+                      stat="probability",
+                      l_title="Frequency level",
+                      save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_histogram.png"):
+    grid = sns.FacetGrid(std_df,
+                         hue=to_label,
+                         palette=sns.color_palette("husl"),
+                         legend_out=True,
+                         sharex=True, sharey=True)
+    grid.map(sns.histplot, to_x, stat=stat)
+    grid.set_axis_labels(x_label, stat.title())
+    grid.fig.legend(title=l_title)
+    utils.save_fig(save_fig=save_fig, save_dir=save_dir, y_label=stat.title(), x_label=x_label, f_name=f_name)
+    plt.show()
+
 
 def change_voxel_info_in_df(df):
     voxel_list = df.voxel.unique()
