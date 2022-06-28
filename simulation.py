@@ -9,6 +9,7 @@ import make_df
 import two_dimensional_model as model
 import binning_eccen as binning
 import first_level_analysis as fitting
+import matplotlib.pyplot as plt
 from itertools import combinations
 
 
@@ -36,12 +37,11 @@ class SynthesizeData():
             stim_info = pd.concat([stim_info, tmp_df], ignore_index=True)
         return stim_info
 
-    def _sample_from_data(self):
+    def _sample_pRF_from_data(self):
         if self.df is None:
             #TODO: set df_dir to the /derivatives/subj_dataframes and then complete the parent path
-            df_dir = '/Volumes/derivatives/subj_dataframes'
             random_sn = np.random.randint(1, 9, size=1)
-            tmp_df = utils.load_all_subj_df(random_sn, df_dir=df_dir, df_name='df_LITE_after_vs.csv')
+            tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='df_LITE_after_vs.csv')
         else:
             tmp_df = self.df
         polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=self.replace)
@@ -59,7 +59,7 @@ class SynthesizeData():
             df['angle'] = np.random.uniform(0, 360, size=self.n_voxels)
             df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
         elif self.p_dist is "data":
-            df['angle'], df['eccentricity'] = self._sample_from_data()
+            df['angle'], df['eccentricity'] = self._sample_pRF_from_data()
         syn_df = self.stim_info.merge(df, on='voxel')
         syn_df = make_df._calculate_local_orientation(syn_df)
         syn_df = make_df._calculate_local_sf(syn_df)

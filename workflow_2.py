@@ -17,7 +17,7 @@ import binning_eccen as binning
 import first_level_analysis as fitting
 import bootstrap as bts
 
-df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
+df_dir = '/Volumes/derivatives/subj_dataframes'
 for sn in np.arange(2,9):
     df = utils.load_df(sn, df_dir, df_name='stim_voxel_info_df_LITE.csv')
     df = vs.drop_voxels(df, dv_to_group=['subj', 'voxel'])
@@ -26,7 +26,7 @@ for sn in np.arange(2,9):
 
 # load subjects df.
 subj_list = np.arange(1, 3)
-all_subj_df = utils.load_all_subj_df(np.arange(1,9),
+all_subj_df = utils.load_all_subj_df(np.arange(1,2),
                                      df_dir=df_dir, df_name='stim_voxel_info_df.csv')
 all_subj_df = vs.drop_voxels(all_subj_df, dv_to_group=['subj', 'voxel'])
 all_subj_df = sim.melt_beta_task_type(all_subj_df)
@@ -451,10 +451,10 @@ all_subj_df = sim.melt_beta_task_type(all_subj_df)
 all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']
 
 all_subj_df = vs.drop_voxels(all_subj_df, beta_col='betas')
-all_subj_df['normed_betas'] = model.normalize(all_subj_df, to_norm='betas', group_by=['voxel', 'subj'])
+all_subj_df['normed_betas'] = model.normalize(all_subj_df, to_norm='betas', group_by=['voxel', 'subj'],)
 
-std_normed_df = sim.measure_sd_each_stim(all_subj_df, to_sd='normed_betas')
-std_df = sim.measure_sd_each_stim(all_subj_df, to_sd='betas')
+std_normed_df = sim.measure_sd_each_cond(all_subj_df, to_sd='normed_betas')
+std_df = sim.measure_sd_each_cond(all_subj_df, to_sd='betas')
 
 mean_noise = std_normed_df['sd_normed_betas'].mean()
 
@@ -568,15 +568,15 @@ params_2d = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
 # measure noise
 df = model.break_down_phase(all_subj_df)
 df['normed_betas'] = model.normalize(voxel_info=df, to_norm='betas', group_by=['voxel', 'subj'])
-std_normed_df = sim.measure_sd_each_stim(df, to_sd='normed_betas', dv_to_group=['subj', 'voxel'])
-std_df = sim.measure_sd_each_stim(df, to_sd='betas', dv_to_group=['subj', 'voxel'])
+std_normed_df = sim.measure_sd_each_cond(df, to_sd='normed_betas', dv_to_group=['subj', 'voxel'])
+std_df = sim.measure_sd_each_cond(df, to_sd='betas', dv_to_group=['subj', 'voxel'])
 
 mean_noise = std_df['sd_betas'].mean()
 
 syn_df_100voxels = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data",
-                                      stim_info_path='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv')
+                                      stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv')
 syn_df_1d = syn_df_100voxels.synthesize_BOLD_1d(bin_list, bin_labels, params_1d)
-syn_df_2d = syn_df_100voxels.synthesize_BOLD_2d(params)
+syn_df_2d = syn_df_100voxels.synthesize_BOLD_2d(params_2d)
 syn_df_2d_notfull = syn_df_100voxels.synthesize_BOLD_2d(params, full_ver=False)
 
 
@@ -685,3 +685,5 @@ sns.histplot(data=bts_v_df, x="sigma_v", stat="density")
 plt.savefig('en'
             '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/Precision_weight_vs_density/100_voxels.png', bbox_inches='tight')
 plt.show()
+
+

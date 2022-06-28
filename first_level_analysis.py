@@ -138,36 +138,85 @@ def run_1D_model(df, sn_list, stim_class_list, varea_list, ecc_bins="bins", n_pr
 
     return model_history_df, loss_history_df
 
+#
+# def fit_1D_model_all_subj(input_df, subj_list=None,
+#                           vroi_list=None, eroi_list=None, initial_val=[1, 1, 1], epoch=5000, alpha=0.025,
+#                           save_output_df=False,
+#                           output_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
+#                           output_df_name='1D_model_results.csv',
+#                           save_loss_df=False,
+#                           loss_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis/loss_track',
+#                           loss_df_name='1D_model_loss.csv'):
+#     if subj_list is None:
+#         subj_list = utils.remove_subj_strings(input_df['subj'])
+#     if vroi_list is None:
+#         vroi_list = utils.sort_a_df_column(input_df['vroinames'])
+#     if eroi_list is None:
+#         eroi_list = utils.sort_a_df_column(input_df['eccrois'])
+#
+#     # Initialize output df
+#     output_cols = ['subj', 'vroinames', 'eccrois', 'slope', 'mode', 'sigma']
+#     output_df = utils.create_empty_df(output_cols)
+#
+#     loss_cols = ["subj", "vroinames", "eccrois", "alpha", "n_epoch", "start_loss", "final_loss"]
+#     loss_df = utils.create_empty_df(col_list=loss_cols)
+#
+#     for sn in subj_list:
+#         output_single_df, loss_single_df = fit_1D_model(df=input_df, sn=sn, vroi_list=vroi_list, eroi_list=eroi_list,
+#                                                         initial_val=initial_val, epoch=epoch, lr=alpha,
+#                                                         save_output_df=save_output_df, output_df_dir=output_df_dir,
+#                                                         output_df_name=output_df_name, save_loss_df=save_loss_df,
+#                                                         loss_df_dir=loss_df_dir, loss_df_name=loss_df_name)
+#         output_df = pd.concat([output_df, output_single_df], ignore_index=True)
+#         loss_df = pd.concat([loss_df, loss_single_df], ignore_index=True)
+#
+#     return output_df, loss_df
 
-def fit_1D_model_all_subj(input_df, subj_list=None,
-                          vroi_list=None, eroi_list=None, initial_val=[1, 1, 1], epoch=5000, alpha=0.025,
-                          save_output_df=False,
-                          output_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
-                          output_df_name='1D_model_results.csv',
-                          save_loss_df=False,
-                          loss_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis/loss_track',
-                          loss_df_name='1D_model_loss.csv'):
-    if subj_list is None:
-        subj_list = utils.remove_subj_strings(input_df['subj'])
-    if vroi_list is None:
-        vroi_list = utils.sort_a_df_column(input_df['vroinames'])
-    if eroi_list is None:
-        eroi_list = utils.sort_a_df_column(input_df['eccrois'])
+def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
+                 initial_val="random", epoch=5000, lr=1e-3):
+
+    eroi_list = utils.sort_a_df_column(cur_df[ecc_bins])
 
     # Initialize output df
-    output_cols = ['subj', 'vroinames', 'eccrois', 'slope', 'mode', 'sigma']
-    output_df = utils.create_empty_df(output_cols)
+    loss_history_df = {}
+    model_history_df = {}
 
-    loss_cols = ["subj", "vroinames", "eccrois", "alpha", "n_epoch", "start_loss", "final_loss"]
-    loss_df = utils.create_empty_df(col_list=loss_cols)
+    # start fitting process
+    start = timer()
+    for cur_ecc in eroi_list:
+        tmp_df = cur_df[cur_df[ecc_bins] == cur_ecc]
+        x = _df_column_to_torch(tmp_df, "local_sf")
+        y = _df_column_to_torch(tmp_df, "betas")
+        # set initial parameters
+        amp, mode, sigma = _set_initial_params(initial_val)
+        # select an optimizer
+        optimizer = torch.optim.Adam([amp, mode, sigma], lr=lr)
+        # set a loss function - mean squared error
+        criterion = torch.nn.MSELoss()
 
-    for sn in subj_list:
-        output_single_df, loss_single_df = fit_1D_model(df=input_df, sn=sn, vroi_list=vroi_list, eroi_list=eroi_list,
-                                                        initial_val=initial_val, epoch=epoch, lr=alpha,
-                                                        save_output_df=save_output_df, output_df_dir=output_df_dir,
-                                                        output_df_name=output_df_name, save_loss_df=save_loss_df,
-                                                        loss_df_dir=loss_df_dir, loss_df_name=loss_df_name)
-        output_df = pd.concat([output_df, output_single_df], ignore_index=True)
-        loss_df = pd.concat([loss_df, loss_single_df], ignore_index=True)
+        loss_history = []
+        model_history = []
+        for t in range(epoch):
+            optimizer.zero_grad()
+            loss = criterion(torch_log_norm_pdf(x, amp, mode, sigma), y)
+            loss.backward()
+            optimizer.step()
+            loss_history.append(loss.item())
+            model_history.append([amp.item(), mode.item(), sigma.item()])
+            if (t + 1) % n_print == 0:
+                print(f'Loss at epoch {str(t + 1)}: {str(round(loss.item(), 3))}')
 
-    return output_df, loss_df
+        print(f'###Eccentricity bin {str(eroi_list.index(cur_ecc) + 1)} out of {len(eroi_list)} finished!###')
+        print(
+            f'Final parameters: slope {amp.item()}, mode {mode.item()}, sigma {sigma.item()}\n')
+        model_history_df[cur_ecc] = pd.DataFrame(model_history, columns=['amp', 'mode', 'sigma'])
+        loss_history_df[cur_ecc] = pd.DataFrame(loss_history, columns=['loss'])
+    end = timer()
+    elapsed_time = end - start
+    print(f'Elapsed time: {np.round(end - start, 2)} sec')
+    model_history_df = pd.concat(model_history_df).reset_index().rename(
+        columns={'level_0': "bins", 'level_1': "epoch"})
+    loss_history_df = pd.concat(loss_history_df).reset_index().rename(
+        columns={'level_0': "bins", 'level_1': "epoch"})
+    loss_history_df['lr'] = lr
+    return model_history_df, loss_history_df, elapsed_time
