@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import random
+import matplotlib.pyplot as plt
 
 def sub_number_to_string(sub_number):
     """ Return number (1,2,3,..) to "subj0x" form """
@@ -78,3 +79,12 @@ def complete_path(dir):
     """returns absolute path of the directory"""
     return os.path.abspath(dir)
 
+def save_fig(save_fig, save_dir, y_label, x_label, f_name):
+    if save_fig:
+        if not save_dir:
+            raise Exception("Output directory is not defined!")
+        fig_dir = os.path.join(save_dir + y_label + '_vs_' + x_label)
+        if not os.path.exists(fig_dir):
+            os.makedirs(fig_dir)
+        save_path = os.path.join(fig_dir, f_name)
+        plt.savefig(save_path, bbox_inches='tight')
