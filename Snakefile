@@ -1,78 +1,40 @@
+import os
+import sys
 import numpy as np
+import pandas as pd
+import simulation as sim
+
 configfile:
     "config.json"
-sub_list = [f"subj{str(i).zfill(2)}" for i in np.arange(1,9)]
 
-rule load_subjects_dataframes:
-    """ Load each subject's dataframes that contain beta, pRF properties for each stimulus type. """
+rule generate_synthetic_data:
     input:
-        '{sn}.txt'
+        stim_info_path = os.path.join(config['DATA_DIR'], 'nsdsynthetic_sf_stim_description.csv')
     output:
-        '{sn}_df.csv'
-    script:
-        "binning_eccen.py"
-
-rule combine_all_subject_dataframes:
-    input:
-        expand('{sn}_df.csv', sn=['subj01', 'subj05'])
-    output:
-        csv = 'all_subj_df.csv',
-        fig = 'all_subj.png',
+        os.path.join(config['SAVE_DIR'],'syn_df_test.csv')
     run:
-        import pandas as pd
-        df = []
-        for f in input:
-            tmp = pd.read_csv(f)
-            df.append(tmp)
-        df = pd.concat(df)
-        df.to_csv(output.csv)
-        fig = ...
-        fig.savefig(output.fig)
+        params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
+                               'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
+                               'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
 
-rule first_level_analysis:
-    """ Run first level analysis for each subject """
-    input:
-        "all_subj_df" # extensions
-    output:
-        "output_df"
-    script:
-        "first_level_analysis.py"
+        syn_data = sim.SynthesizeData(n_voxels=100,
+            df=None,
+            replace=True,
+            p_dist="data",
+            stim_info_path=input.stim_info_path)
+        syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=False)
+        syn_df_2d.to_csv({output})
 
-rule merge_fitting_result_to_dataframe:
-    """ Merge final parameters earned from the first level analysis to the dataframes """
+rule generate_synthetic_BOLD:
     input:
-        "all_subj_df",
-        "output_df",
+        rules.generate_synthetic_data.output
     output:
-        "merged_df"
-    script:
-        "merge_dataframes.py"
+        "/none"
+    run:
+        syn_df_2d = {input}.synthesize_BOLD_2d(params, full_ver=False)
+        syn_df_2d.to_csv({output})
 
-rule plot_1D_model_fitting_results:
-    """ Plot the first level analysis result averaged across subjects with actual data points """
-    input:
-        "merged_df",
-    output:
-        "1D_model_results.svg"
-    script:
-        "plot_1D_model_results.py"
 
-rule linear_regression_for_preferred_period:
-    """ Perform a linear regression to explain preferred period as a function of eccentricity """
-    input:
-        "merged_df"
-    output:
-        "merged_df_updated"
-    script: # I hope I can use sub-functions here # run 497 lines
-        "linear_regresson.py"
 
-rule plot_preferred_period_vs_eccentricity:
-    """ Plot preferred period for each eccentricity along with a linear fit"""
-    input:
-        "merged_df_updated"
-    output:
-        "preferred_period_results.svg"
-    script: # I hope I can use sub-functions here
-        "plot_preferred_period.py"
 
 
