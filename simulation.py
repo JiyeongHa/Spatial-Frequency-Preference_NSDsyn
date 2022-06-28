@@ -86,10 +86,12 @@ class SynthesizeData():
 
         return syn_df
 
-    def synthesize_BOLD_2d(self, params, full_ver=True):
+    def synthesize_BOLD_2d(self, params, full_ver=True, noise_m=0, noise_sd=0):
         syn_df = self.syn_voxels.copy()
         syn_model = model.Forward(params, 0, self.syn_voxels)
         syn_df['betas'] = syn_model.two_dim_prediction(full_ver=full_ver)
+        syn_df['betas'] = add_noise(syn_df['betas'], noise_mean=noise_m, noise_sd=noise_sd)
+
         return syn_df
 
 
