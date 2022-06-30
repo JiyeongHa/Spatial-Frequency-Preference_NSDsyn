@@ -7,17 +7,13 @@ import simulation as sim
 configfile:
     "config.json"
 
-LR_RATE = np.linspace(1e-4, 1e-3, 4)
+LR_RATE = np.round(np.linspace(1e-4, 1e-3, 4), 7)
 NOISE_SD = [0]
-MAX_EPOCH = [40000]
-
-
+MAX_EPOCH = [2]
 
 rule run_all_simulations:
     input:
-        expand(os.path.join(['OUTPUT_DIR'], 'simulation_results_2d',
-            'loss_history_noise-{noise_sd}_lr-{lr}_eph-{max_epochs}.csv'),
-            noise_sd=NOISE_SD, lr=LR_RATE, max_epochs=MAX_EPOCH)
+        expand(os.path.join(config['OUTPUT_DIR'], 'simulation_results_2D', 'loss_history_noise-{noise_sd}_lr-{lr}_eph-{max_epoch}.csv'), noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH)
 
 rule generate_synthetic_data:
     input:
@@ -51,10 +47,13 @@ rule run_simulation:
         syn_dataset = model.SpatialFrequencyDataset(syn_df,beta_col='betas')
         syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=False)
         syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
-            learning_rate=float(wildcards.lr), max_epoch=float(wildcards.max_epoch),
-            print_every=5000, anomaly_detection=False)
+            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=5000, anomaly_detection=False)
         utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
         utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
+
+
+
+
 
 
 
