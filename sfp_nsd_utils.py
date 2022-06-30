@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 import random
 import matplotlib.pyplot as plt
+from datetime import datetime
+from pathlib import Path
 
 def sub_number_to_string(sub_number):
     """ Return number (1,2,3,..) to "subj0x" form """
@@ -55,10 +57,9 @@ def create_empty_df(col_list=None):
     return empty_df
 
 
-def save_df_to_csv(df, output_dir, output_file_name, indexing=False):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    output_path = os.path.join(output_dir, output_file_name)
+def save_df_to_csv(df, output_path, indexing=False):
+    if not os.path.exists(output_path.parent.absolute()):
+        os.makedirs(output_path.parent.absolute())
     df.to_csv(output_path, index=indexing)
 
 def count_voxels(df, to_group=['subj', 'vroinames']):
