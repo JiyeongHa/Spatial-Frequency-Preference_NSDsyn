@@ -56,10 +56,10 @@ def create_empty_df(col_list=None):
     empty_df = pd.DataFrame(columns=col_list)
     return empty_df
 
-
 def save_df_to_csv(df, output_path, indexing=False):
-    if not os.path.exists(output_path.parent.absolute()):
-        os.makedirs(output_path.parent.absolute())
+    parent_path = Path(output_path)
+    if not os.path.exists(parent_path.parent.absolute()):
+        os.makedirs(parent_path.parent.absolute())
     df.to_csv(output_path, index=indexing)
 
 def count_voxels(df, to_group=['subj', 'vroinames']):
