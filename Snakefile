@@ -9,7 +9,7 @@ configfile:
 
 LR_RATE = np.round(np.linspace(1e-4, 1e-3, 4), 7)
 NOISE_SD = [0]
-MAX_EPOCH = [2]
+MAX_EPOCH = [35000]
 
 rule run_all_simulations:
     input:
