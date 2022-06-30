@@ -386,7 +386,7 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
         model_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
-        if (t + 1) % print_every == 0:
+        if (t + 1) % print_every == 0 or t == 0:
             print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
 
         optimizer.zero_grad()  # clear previous gradients
