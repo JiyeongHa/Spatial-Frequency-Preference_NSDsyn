@@ -7,9 +7,17 @@ import simulation as sim
 configfile:
     "config.json"
 
-LR_RATE = np.linspace(1e-4, 1e-3, 5)
+LR_RATE = np.linspace(1e-4, 1e-3, 4)
 NOISE_SD = [0]
-MAX_EPOCH = [2]
+MAX_EPOCH = [40000]
+
+
+
+rule run_all_simulations:
+    input:
+        expand(os.path.join(['OUTPUT_DIR'], 'simulation_results_2d',
+            'loss_history_noise-{noise_sd}_lr-{lr}_eph-{max_epochs}.csv'),
+            noise_sd=NOISE_SD, lr=LR_RATE, max_epochs=MAX_EPOCH)
 
 rule generate_synthetic_data:
     input:
@@ -30,29 +38,23 @@ rule generate_synthetic_data:
 rule run_simulation:
     input:
         input_path = os.path.join(config['OUTPUT_DIR'], "syn_data_2d.csv"),
-        save_dir = config['OUTPUT_DIR'],
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], 'simulation_results_2D', 'model_history_noise-{noise_sd}_lr-{lr}_eph-{max_epoch}.csv'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], 'simulation_results_2D', 'loss_history_noise-{noise_sd}_lr-{lr}_eph-{max_epoch}.csv')
     run:
-        import itertools
         import sfp_nsd_utils as utils
         import two_dimensional_model as model
         # add noise
-        for i, lr_rate, max_epoch in itertools.product(LR_RATE, NOISE_SD, MAX_EPOCH):
-            syn_df = pd.read_csv(input.input_path)
-            syn_df['betas'] = sim.add_noise(syn_df['betas'], noise_mean=0, noise_sd=i)
-            syn_df['sigma_v'] = np.ones(syn_df.shape[0],dtype=np.float64)
-            syn_dataset = model.SpatialFrequencyDataset(syn_df,beta_col='betas')
-            syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=False)
-            syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
-                learning_rate=lr_rate, max_epoch=max_epoch, print_every=5000, anomaly_detection=False)
-            str_noise_sd = str(i).replace('0.','p')
-            str_lr_rate = str(lr_rate).replace('0.','p')
-            model_f_name = f'model_history_w_noise_{str_noise_sd}_lr_{str_lr_rate}_eph_{max_epoch}.csv'
-            loss_f_name = f'loss_history_w_noise_{str_noise_sd}_lr_{str_lr_rate}_eph_{max_epoch}.csv'
-            ##
-            utils.save_df_to_csv(syn_model_history, input.save_dir, model_f_name, indexing=False)
-            utils.save_df_to_csv(syn_loss_history, input.save_dir, loss_f_name, indexing=False)
-
-
+        syn_df = pd.read_csv(input.input_path)
+        syn_df['betas'] = sim.add_noise(syn_df['betas'], noise_mean=0, noise_sd=float(wildcards.noise_sd))
+        syn_df['sigma_v'] = np.ones(syn_df.shape[0],dtype=np.float64)
+        syn_dataset = model.SpatialFrequencyDataset(syn_df,beta_col='betas')
+        syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=False)
+        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
+            learning_rate=float(wildcards.lr), max_epoch=float(wildcards.max_epoch),
+            print_every=5000, anomaly_detection=False)
+        utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
+        utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
 
 
 
