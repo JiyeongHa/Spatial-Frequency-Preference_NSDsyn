@@ -466,4 +466,54 @@ def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
     utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
     plt.show()
 
-    pass
+
+def _add_param_type_column(model_history_df, params):
+    id_cols = model_history_df.drop(columns=params).columns.tolist()
+    df = pd.melt(model_history_df, id_vars=id_cols, value_vars=params,
+                 var_name='params', value_name='value')
+    return df
+
+def _group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
+    """Create a new column in df based on params values.
+    Params and group should be 1-on-1 matched."""
+    df = _add_param_type_column(df, params)
+    conditions = []
+    for i in params:
+        tmp = df['params'] == i
+        conditions.append(tmp)
+    df['group'] = np.select(conditions, group, default='other')
+    return df
+
+
+def plot_grouped_parameters(df, params, col_group,
+                               to_x="param", to_y="value",
+                               to_label="study_type", lgd_title="Study", label_order=None,
+                               title="Final parameter values (N = 8)",
+                               save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                               f_name='.png'):
+    df = _group_params(df, params, col_group)
+    sns.set(font_scale=1.3)
+    x_label = "Parameter"
+    y_label = "Value"
+    grid = sns.FacetGrid(df,
+                         palette=sns.color_palette("rocket", n_colors=df[to_label].nunique()),
+                         hue=to_label,
+                         col='group',
+                         hue_order=label_order,
+                         legend_out=True,
+                         sharex=False, sharey=False)
+    grid.map(sns.lineplot,
+             to_x, to_y, markersize=8, alpha=0.8,
+             marker='o', linestyle='', err_style='bars', ci=68)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    grid.fig.set_figwidth(9)
+    grid.fig.set_figheight(6)
+    grid.fig.legend(title=lgd_title, labels=label_order)
+    grid.set_axis_labels(x_label, y_label)
+    grid.fig.subplots_adjust(top=0.8, right=0.75)  # adjust the Figure in rp
+    grid.fig.suptitle(f'{title}', fontweight="bold")
+    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
+    plt.show()
+
+
