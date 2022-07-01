@@ -1,22 +1,13 @@
 import os
 import sys
 import numpy as np
-import make_df as mdf
 import sfp_nsd_utils as utils
 import pandas as pd
-import plot_1D_model_results as plotting
-import seaborn as sns
-import matplotlib.pyplot as plt
-import variance_explained as R2
-import voxel_selection as vs
 import two_dimensional_model as model
-import torch
 import simulation as sim
 from importlib import reload
-import binning_eccen as binning
-import first_level_analysis as fitting
-import bootstrap as bts
 from itertools import product
+from inspect import getfullargspec
 
 params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -26,9 +17,9 @@ stim_info_path = '/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/der
 subj_df_dir='/Volumes/derivatives/subj_dataframes'
 output_dir = '/Users/auna/Desktop'
 save_dir = '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/'
-noise_sd = [0,1,2]
-max_epoch = [4]
-lr_rate = [1e-4]
+noise_sd = [0]
+max_epoch = [35000]
+lr_rate = np.round(np.linspace(1e-4, 1e-3, 4), 7)
 full_ver = False
 
 syn_data = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data",
@@ -57,16 +48,16 @@ for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
 
 model_history, loss_history = sim.load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch,
                                                                  ground_truth=params, id_val='ground_truth')
-to_label = 'lr_rate'
-for cur_epoch in max_epoch:
-    f_name = f'loss_history_eph-{cur_epoch}_label-{to_label}.png'
-    model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
-                            to_label=to_label, lgd_title='Learning rate',
-                            title="Simulation (100 voxels) without noise: Loss",
-                            save_fig=False, save_dir=save_dir, save_file_name=f_name,
+
+for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
+    f_name = f'loss_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}.png'
+    model.plot_loss_history(loss_history.query('lr_rate == @cur_lr'), to_x="epoch", to_y="loss",
+                            to_label=None, lgd_title='Learning rate',
+                            title=f'learning rate={cur_lr}, without noise',
+                            save_fig=True, save_dir=save_dir, save_file_name=f_name,
                             ci="sd", n_boot=100, log_y=True)
 
-
+to_label = 'lr_rate'
 if full_ver is True:
     param_names = params.columns.tolist()
 else:
@@ -75,8 +66,9 @@ else:
 label_order = model_history[to_label].unique().tolist()
 label_order.insert(0, label_order.pop())
 
-f_name = f'final_params_eph-{cur_epoch}_label-{to_label}_n_params-{len(param_names)}.png'
-model.plot_grouped_parameters(model_history, params=param_names, col_group=[1, 2, 2], to_x="params", to_y="value",
-                              to_label=to_label, lgd_title="Learning rate", label_order=label_order,
-                              title=f'Parameters at max epoch = {cur_epoch} (100 synthetic voxels)',
-                              save_fig=False, save_dir=save_dir, f_name=f_name)
+for cur_epoch in [20000, 25000, 30000, 35000]:
+    f_name = f'final_params_eph-{cur_epoch}_label-{to_label}_n_params-{len(param_names)}.png'
+    model.plot_grouped_parameters(model_history.query('epoch == @cur_epoch-1'), params=param_names, col_group=[1, 2, 3], to_x="params", to_y="value",
+                                  to_label=to_label, lgd_title="Learning rate", label_order=label_order,
+                                  title=f'Parameters at epoch = {cur_epoch} (100 synthetic voxels)',
+                                  save_fig=True, save_dir=save_dir, f_name=f_name)

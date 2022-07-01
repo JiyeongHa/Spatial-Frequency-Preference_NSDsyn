@@ -410,7 +410,7 @@ def melt_history_df(history_df):
 
 
 def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
-                      to_label=None,
+                      to_label=None, to_row=None,
                       lgd_title=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                       save_file_name='.png', ci=68, n_boot=100, log_y=True):
@@ -419,22 +419,23 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
                          hue=to_label,
+                         row=to_row,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
-                         sharex=True, sharey=True)
+                         sharex=True, sharey=False)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     grid.fig.set_figwidth(10)
-    grid.fig.set_figheight(6)
+    grid.fig.set_figheight(4)
     grid.set_axis_labels(x_label, y_label, fontsize=18)
-    grid.add_legend(title=lgd_title)
+    if to_label is not None:
+        grid.add_legend(title=lgd_title)
     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
     grid.fig.subplots_adjust(top=0.85, right=0.85)
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
     if log_y is True:
         plt.semilogy()
-    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
+    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=save_file_name)
+    plt.tight_layout()
     plt.show()
 
 
@@ -509,9 +510,9 @@ def plot_grouped_parameters(df, params, col_group,
         ax.set_title(f" ")
     grid.fig.set_figwidth(9)
     grid.fig.set_figheight(6)
-    grid.fig.legend(title=lgd_title, labels=label_order)
-    grid.set_axis_labels(x_label, y_label)
-    grid.fig.subplots_adjust(top=0.8, right=0.75)  # adjust the Figure in rp
+    grid.fig.legend(title=lgd_title, bbox_to_anchor=(1, 0.9), labels=label_order)
+    grid.set_axis_labels("", y_label)
+    grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
     grid.fig.suptitle(f'{title}', fontweight="bold")
     utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
     plt.show()
