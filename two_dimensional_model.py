@@ -409,23 +409,24 @@ def melt_history_df(history_df):
     return pd.concat(history_df).reset_index().rename(columns={'level_0': 'subj', 'level_1': 'epoch'})
 
 
-def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_rows=4,
-                      x_axis_label="Epoch", y_axis_label="Loss", to_label=None, to_subplot=None,
-                      legend_title=None, labels=None, title="Loss change over time (N = 9)",
+def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
+                      to_label=None,
+                      lgd_title=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                       save_file_name='.png', ci=68, n_boot=100, log_y=True):
+    sns.set(font_scale=1.3)
+    x_label = 'Epoch'
+    y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
-                         col=to_subplot,
                          hue=to_label,
-                         col_wrap=n_rows,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, to_x_axis, to_y_axis, linewidth=2, ci=ci, n_boot=n_boot)
+    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     grid.fig.set_figwidth(10)
     grid.fig.set_figheight(6)
-    grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=18)
-    grid.add_legend(bbox_to_anchor=(1, 0.75))
+    grid.set_axis_labels(x_label, y_label, fontsize=18)
+    grid.add_legend(title=lgd_title)
     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
     grid.fig.subplots_adjust(top=0.85, right=0.85)
@@ -433,50 +434,36 @@ def plot_loss_history(loss_history_df, to_x_axis="epoch", to_y_axis="loss", n_ro
         ax.set_title(f"{subplot_title.title()}")
     if log_y is True:
         plt.semilogy()
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{save_file_name}')
-        plt.savefig(save_path, bbox_inches='tight')
+    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
     plt.show()
 
 
-def plot_parameters(model_history_df, to_x_axis="param", to_y_axis="value",
+def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
                     to_label="study_type", legend_title="Study", hue_order=None,
-                    x_axis_label="Parameter", y_axis_label="Parameter Value",
+                    x_label="Parameter", y_label="Parameter Value",
                     title="Final parameter values (N = 9)",
                     save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                    save_file_name='.png', rotate_ticks=True):
+                    f_name='.png', rotate_ticks=True):
     sns.set(font_scale=1.3)
     grid = sns.FacetGrid(model_history_df,
                          palette=sns.color_palette("rocket", n_colors=model_history_df[to_label].nunique()),
                          hue=to_label,
+                         col=to_col,
                          hue_order=hue_order,
                          legend_out=True,
                          sharex=True, sharey=True)
     grid.map(sns.lineplot,
-             to_x_axis, to_y_axis, lw=30, markersize=8, alpha=0.8,
+             to_x, to_y, markersize=8, alpha=0.8,
              marker='o', linestyle='', err_style='bars', ci=68)
     grid.fig.set_figwidth(9)
     grid.fig.set_figheight(6)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.92), fontsize=15)
-    grid.set_axis_labels(x_axis_label, y_axis_label)
+    grid.fig.legend(title=legend_title)
+    grid.set_axis_labels(x_label, y_label)
     if rotate_ticks:
         plt.xticks(rotation=45)
     grid.fig.subplots_adjust(top=0.9, right=0.75)  # adjust the Figure in rp
     grid.fig.suptitle(f'{title}', fontweight="bold")
-    #grid.tight_layout()
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{save_file_name}')
-        plt.savefig(save_path, bbox_inches='tight')
+    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
     plt.show()
 
     pass
