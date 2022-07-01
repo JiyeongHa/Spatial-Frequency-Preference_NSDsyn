@@ -10,7 +10,7 @@ import two_dimensional_model as model
 import binning_eccen as binning
 import first_level_analysis as fitting
 import matplotlib.pyplot as plt
-from itertools import combinations
+from itertools import product
 
 
 
@@ -144,3 +144,48 @@ def change_voxel_info_in_df(df):
     voxel_list = df.voxel.unique()
     df['voxel'] = df['voxel'].replace(voxel_list, range(voxel_list.shape[0]))
     return df
+
+
+
+def load_history_df(output_dir, noise_sd, lr_rate, max_epoch, df_type):
+    all_history_df = pd.DataFrame()
+    for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
+        model_history_path = os.path.join(output_dir, f'{df_type}_history_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}.csv')
+        tmp = pd.read_csv(model_history_path)
+        #TODO: remove adding lr_rate and noise columns part and edit fit_model() to make columns in the first place
+        tmp['lr_rate'] = cur_lr
+        tmp['noise_sd'] = cur_noise
+        tmp['max_epoch'] = cur_epoch
+        all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
+    return all_history_df
+
+def add_ground_truth_to_df(ground_truth, df, id_val='ground_truth'):
+    """Add ground truth information to a dataframe.
+    The ground truth should be either a dict or a pd dataframe that contains each param value. """
+    if type(ground_truth) is dict:
+        ground_truth = pd.DataFrame(ground_truth)
+    unused_params = ground_truth.columns.difference(df.columns)
+    ground_truth = ground_truth.drop(columns=unused_params)
+    ground_truth['epoch'] = df.epoch.max()
+    common_param_columns = np.intersect1d(ground_truth.columns, df.columns)
+    id_cols = df.drop(columns=common_param_columns).columns.tolist()
+    ground_truth[id_cols] = id_val
+    df = pd.concat((df, ground_truth), axis=0, ignore_index=True)
+    return df
+
+
+def load_model_history_df_with_ground_truth(output_dir, noise_sd, lr_rate, max_epoch,
+                                            ground_truth, id_val='ground_truth'):
+    df = load_history_df(output_dir, noise_sd, lr_rate, max_epoch, df_type="model")
+    df = add_ground_truth_to_df(ground_truth, df, id_val=id_val)
+    return df
+
+def load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch,
+                                            ground_truth, id_val='ground_truth'):
+    model_history = load_model_history_df_with_ground_truth(output_dir, noise_sd, lr_rate, max_epoch,
+                                                            ground_truth, id_val)
+    loss_history = load_history_df(output_dir, noise_sd, lr_rate, max_epoch, df_type="loss")
+
+    return model_history, loss_history
+
+
