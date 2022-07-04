@@ -1,6 +1,9 @@
 import os
 import sys
 import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+mpl.use('macosx')
 import sfp_nsd_utils as utils
 import pandas as pd
 import two_dimensional_model as model
