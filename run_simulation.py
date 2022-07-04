@@ -22,21 +22,23 @@ output_dir = '/Users/auna/Desktop'
 save_dir = '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/'
 noise_sd = [0]
 max_epoch = [35000]
-lr_rate = np.round(np.linspace(1e-4, 1e-3, 4), 7)
+lr_rate = [0.001]
+n_voxel = 3
 full_ver = False
 
-syn_data = sim.SynthesizeData(n_voxels=100, df=None, replace=True, p_dist="data",
+
+syn_data = sim.SynthesizeData(n_voxels=n_voxel, df=None, replace=True, p_dist="data",
                               stim_info_path=stim_info_path, subj_df_dir=subj_df_dir)
 syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=full_ver)
 
 # add noise
 for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
     syn_df = syn_df_2d.copy()
-    syn_df['betas'] = sim.add_noise(syn_df['betas'], noise_mean=0, noise_sd=i)
+    syn_df['betas'] = sim.add_noise(syn_df['betas'], noise_mean=0, noise_sd=cur_noise)
     syn_df['sigma_v'] = np.ones(syn_df.shape[0], dtype=np.float64)
     syn_SFdataset = model.SpatialFrequencyDataset(syn_df, beta_col='betas')
     syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=False)
-    syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_SFdataset,
+    loss_history, model_history, elapsed_time, losses = model.fit_model(syn_model, syn_SFdataset, print_every=2000,
                                                                                     max_epoch=int(cur_epoch),
                                                                  anomaly_detection=False)
     model_f_name = f'model_history_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}.csv'
@@ -49,15 +51,15 @@ for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
 
 # load and make a figure?
 
-model_history, loss_history = sim.load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch,
+model_history, loss_history = sim.load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch, n_voxels=n_voxel,
                                                                  ground_truth=params, id_val='ground_truth')
 
 for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
     f_name = f'loss_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}.png'
-    model.plot_loss_history(loss_history.query('lr_rate == @cur_lr'), to_x="epoch", to_y="loss",
+    model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
                             to_label=None, lgd_title='Learning rate',
                             title=f'learning rate={cur_lr}, without noise',
-                            save_fig=True, save_dir=save_dir, save_file_name=f_name,
+                            save_fig=False, save_dir=save_dir, save_file_name=f_name,
                             ci="sd", n_boot=100, log_y=True)
 
 to_label = 'lr_rate'
@@ -74,4 +76,13 @@ for cur_epoch in [20000, 25000, 30000, 35000]:
     model.plot_grouped_parameters(model_history.query('epoch == @cur_epoch-1'), params=param_names, col_group=[1, 2, 3], to_x="params", to_y="value",
                                   to_label=to_label, lgd_title="Learning rate", label_order=label_order,
                                   title=f'Parameters at epoch = {cur_epoch} (100 synthetic voxels)',
-                                  save_fig=True, save_dir=save_dir, f_name=f_name)
+                                  save_fig=False, save_dir=save_dir, f_name=f_name)
+cur_noise=0
+cur_epoch=35000
+f_name = f'param_history_noise-{cur_noise}_eph-{cur_epoch}_after6999.png'
+model.plot_param_history(model_history.query('epoch > 6999 & lr_rate != 0.0001'), params=param_names, col_group=[1, 2, 3],
+                         to_x="epoch", to_y="value", to_row='params',
+                        to_label=to_label, label_order=label_order[1:], lgd_title='Learning rate',
+                        title=f'Parameter history, without noise',
+                        save_fig=False, save_dir=save_dir, save_file_name=f_name,
+                        ci="sd", n_boot=100, log_y=True)
