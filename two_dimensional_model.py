@@ -518,3 +518,39 @@ def plot_grouped_parameters(df, params, col_group,
     plt.show()
 
 
+def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
+                      to_label=None, label_order=None, to_row=None, ground_truth=True,
+                      lgd_title=None, title="Loss change over time (N = 9)",
+                      save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
+                      save_file_name='.png', ci=68, n_boot=100, log_y=True):
+    # if ground_truth is True:
+    #     ground_truth = df.query('lr_rate == "ground_truth"')
+    #     ground_truth = ground_truth([ground_truth]*(df.epoch.max()-1), index=True)
+    #     ground_truth['epoch'] = np.arange(0, df.epoch.max()+1)
+    #     df = pd.concat((df, ground_truth), axis=0, ignore_index=True)
+    df = _group_params(df, params, col_group)
+    sns.set(font_scale=1.3)
+    x_label = "Epoch"
+    y_label = "Parameter value"
+    grid = sns.FacetGrid(df,
+                         hue=to_label,
+                         hue_order=label_order,
+                         row=to_row,
+                         palette=sns.color_palette("rocket"),
+                         legend_out=True,
+                         sharex=True, sharey=False)
+    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
+    grid.fig.set_figwidth(10)
+    grid.fig.set_figheight(13)
+    grid.set_axis_labels(x_label, y_label, fontsize=18)
+    if to_label is not None:
+        grid.add_legend(title=lgd_title, labels=label_order)
+    #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
+    grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
+    grid.fig.subplots_adjust(top=0.85, right=0.85)
+    if log_y is True:
+        plt.semilogy()
+
+    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=save_file_name)
+    plt.tight_layout()
+    plt.show()
