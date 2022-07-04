@@ -147,10 +147,10 @@ def change_voxel_info_in_df(df):
 
 
 
-def load_history_df(output_dir, noise_sd, lr_rate, max_epoch, df_type):
+def load_history_df(output_dir, noise_sd, lr_rate, max_epoch, n_voxels, df_type):
     all_history_df = pd.DataFrame()
     for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
-        model_history_path = os.path.join(output_dir, f'{df_type}_history_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}.csv')
+        model_history_path = os.path.join(output_dir, f'{df_type}_history_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}_n_vox-{n_voxels}.csv')
         tmp = pd.read_csv(model_history_path)
         #TODO: remove adding lr_rate and noise columns part and edit fit_model() to make columns in the first place
         tmp['lr_rate'] = cur_lr
@@ -174,17 +174,17 @@ def add_ground_truth_to_df(ground_truth, df, id_val='ground_truth'):
     return df
 
 
-def load_model_history_df_with_ground_truth(output_dir, noise_sd, lr_rate, max_epoch,
+def load_model_history_df_with_ground_truth(output_dir, noise_sd, lr_rate, max_epoch, n_voxels,
                                             ground_truth, id_val='ground_truth'):
-    df = load_history_df(output_dir, noise_sd, lr_rate, max_epoch, df_type="model")
+    df = load_history_df(output_dir, noise_sd, lr_rate, max_epoch, n_voxels, df_type="model")
     df = add_ground_truth_to_df(ground_truth, df, id_val=id_val)
     return df
 
-def load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch,
+def load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch, n_voxels,
                                             ground_truth, id_val='ground_truth'):
-    model_history = load_model_history_df_with_ground_truth(output_dir, noise_sd, lr_rate, max_epoch,
+    model_history = load_model_history_df_with_ground_truth(output_dir, noise_sd, lr_rate, max_epoch, n_voxels,
                                                             ground_truth, id_val)
-    loss_history = load_history_df(output_dir, noise_sd, lr_rate, max_epoch, df_type="loss")
+    loss_history = load_history_df(output_dir, noise_sd, lr_rate, max_epoch, n_voxels, df_type="loss")
 
     return model_history, loss_history
 
