@@ -80,12 +80,22 @@ def complete_path(dir):
     """returns absolute path of the directory"""
     return os.path.abspath(dir)
 
-def save_fig(save_fig, save_dir, y_label, x_label, f_name):
+
+def old_save_fig(save_fig, save_dir, y_label, x_label, f_name):
     if save_fig:
         if not save_dir:
             raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_label + '_vs_' + x_label)
+        fig_dir = os.path.join(save_dir, y_label + '_vs_' + x_label)
         if not os.path.exists(fig_dir):
             os.makedirs(fig_dir)
         save_path = os.path.join(fig_dir, f_name)
+        plt.savefig(save_path, bbox_inches='tight')
+
+def save_fig(save_fig, save_path):
+    if save_fig:
+        if not save_path:
+            raise Exception("Output directory is not defined!")
+        parent_path = Path(save_path)
+        if not os.path.exists(parent_path.parent.absolute()):
+            os.makedirs(parent_path.parent.absolute())
         plt.savefig(save_path, bbox_inches='tight')

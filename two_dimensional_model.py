@@ -412,8 +412,8 @@ def melt_history_df(history_df):
 def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
                       to_label=None, to_row=None,
                       lgd_title=None, title="Loss change over time (N = 9)",
-                      save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                      save_file_name='.png', ci=68, n_boot=100, log_y=True):
+                      save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
+                       ci=68, n_boot=100, log_y=True):
     sns.set(font_scale=1.3)
     x_label = 'Epoch'
     y_label = 'Loss'
@@ -434,9 +434,7 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
     grid.fig.subplots_adjust(top=0.85, right=0.85)
     if log_y is True:
         plt.semilogy()
-    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=save_file_name)
-    plt.tight_layout()
-    plt.show()
+    utils.save_fig(save_fig, save_path)
 
 
 def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
@@ -523,11 +521,7 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
                       lgd_title=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                       save_file_name='.png', ci=68, n_boot=100, log_y=True):
-    # if ground_truth is True:
-    #     ground_truth = df.query('lr_rate == "ground_truth"')
-    #     ground_truth = ground_truth([ground_truth]*(df.epoch.max()-1), index=True)
-    #     ground_truth['epoch'] = np.arange(0, df.epoch.max()+1)
-    #     df = pd.concat((df, ground_truth), axis=0, ignore_index=True)
+
     df = _group_params(df, params, col_group)
     sns.set(font_scale=1.3)
     x_label = "Epoch"
@@ -551,6 +545,6 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
     if log_y is True:
         plt.semilogy()
 
-    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=save_file_name)
+    utils.save_fig(save_fig, save_path=save_file_name)
     plt.tight_layout()
     plt.show()

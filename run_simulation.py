@@ -59,8 +59,9 @@ for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
     model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
                             to_label=None, lgd_title='Learning rate',
                             title=f'learning rate={cur_lr}, without noise',
-                            save_fig=False, save_dir=save_dir, save_file_name=f_name,
+                            save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_Loss', f_name),
                             ci="sd", n_boot=100, log_y=True)
+    plt.show()
 
 to_label = 'lr_rate'
 if full_ver is True:
