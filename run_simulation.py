@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-mpl.use('macosx')
+#mpl.use('macosx') #plt.show(block=True)
 import sfp_nsd_utils as utils
 import pandas as pd
 import two_dimensional_model as model
@@ -55,7 +55,7 @@ model_history, loss_history = sim.load_all_model_fitting_results(output_dir, noi
                                                                  ground_truth=params, id_val='ground_truth')
 
 for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
-    f_name = f'loss_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}.png'
+    f_name = f'loss_plot_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}-n_vox-3.png'
     model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
                             to_label=None, lgd_title='Learning rate',
                             title=f'learning rate={cur_lr}, without noise',
