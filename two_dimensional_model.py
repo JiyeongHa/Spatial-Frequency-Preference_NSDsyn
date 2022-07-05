@@ -534,6 +534,9 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
                          legend_out=True,
                          sharex=True, sharey=False)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
+    for x_param, ax in g.axes_dict.items():
+        g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
+        ax.axhline(g_value, ls="--", c="red",label="Ground truth")
     grid.fig.set_figwidth(10)
     grid.fig.set_figheight(13)
     grid.set_axis_labels(x_label, y_label, fontsize=18)
