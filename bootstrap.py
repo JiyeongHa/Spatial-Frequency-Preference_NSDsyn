@@ -63,9 +63,9 @@ def sigma_vi(bts_df, to_sample='avg_betas', to_group=['voxel', 'names', 'freq_lv
     bts_vi_df = bts_vi_df.reset_index().rename(columns={to_sample: 'sigma_vi'})
     return bts_vi_df
 
-def sigma_v(bts_df, to_sample='avg_betas', to_group=['voxel', 'subj']):
+def sigma_v(bts_df, to_sd='avg_betas', to_group=['voxel', 'subj']):
     selected_cols = to_group + ['names', 'freq_lvl']
-    bts_vi_df = sigma_vi(bts_df, to_sample=to_sample, to_group=selected_cols)
+    bts_vi_df = sigma_vi(bts_df, to_sd=to_sd, to_group=selected_cols)
     bts_v_df = bts_vi_df.groupby(to_group)['sigma_vi'].mean().reset_index()
     bts_v_df = bts_v_df.rename(columns={'sigma_vi': 'sigma_v'})
     return bts_v_df

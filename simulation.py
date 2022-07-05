@@ -20,11 +20,14 @@ class SynthesizeData():
     2. Generate synthetic voxels. Eccentricity and polar angle will be drawn from the uniform distribution.
     3. Generate BOLD predictions, with or without noise. """
 
-    def __init__(self, n_voxels=100, df=None, replace=True, p_dist="uniform", stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'):
+    def __init__(self, n_voxels=100, df=None, replace=True, p_dist="uniform",
+                 stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
+                 subj_df_dir = '/Volumes/'):
         self.n_voxels = n_voxels
         self.df = df
-        self.replace = replace,
+        self.replace = replace
         self.p_dist = p_dist
+        self.subj_df_dir = subj_df_dir
         self.stim_info = self.get_stim_info_for_n_voxels(stim_info_path)
         self.syn_voxels = self.generate_synthetic_voxels()
 
@@ -47,6 +50,16 @@ class SynthesizeData():
         polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=self.replace)
         eccentricity = np.random.choice(tmp_df['eccentricity'], size=(self.n_voxels,), replace = self.replace)
         return polar_angles, eccentricity
+
+    def _sample_noise_from_data(self):
+        if self.df is None:
+            #TODO: set df_dir to the /derivatives/subj_dataframes and then complete the parent path
+            random_sn = np.random.randint(1, 9, size=1)
+            tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='df_LITE_after_vs.csv')
+        else:
+            tmp_df = self.df
+        measure_sd_each_cond(to_sd='betas', dv_to_group=['subj', 'voxel'])
+        return noise
 
     def generate_synthetic_voxels(self):
         """Generate synthesized data for n voxels. if p_dist is set to "uniform",
@@ -95,7 +108,7 @@ class SynthesizeData():
         return syn_df
 
 
-def add_noise(betas, noise_mean=0, noise_sd=0.05):
+def add_noise(betas, noise_mean=0, noise_sd=0.03995):
     return betas + np.random.normal(noise_mean, noise_sd, len(betas))
 
 def melt_beta_task_type(df, id_cols=None):
@@ -153,9 +166,10 @@ def load_history_df(output_dir, noise_sd, lr_rate, max_epoch, n_voxels, df_type)
         model_history_path = os.path.join(output_dir, f'{df_type}_history_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}_n_vox-{n_voxels}.csv')
         tmp = pd.read_csv(model_history_path)
         #TODO: remove adding lr_rate and noise columns part and edit fit_model() to make columns in the first place
-        tmp['lr_rate'] = cur_lr
-        tmp['noise_sd'] = cur_noise
-        tmp['max_epoch'] = cur_epoch
+        if {'lr_rate', 'noise_sd', 'max_epoch'}.issubset(tmp.columns) is False:
+            tmp['lr_rate'] = cur_lr
+            tmp['noise_sd'] = cur_noise
+            tmp['max_epoch'] = cur_epoch
         all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
     return all_history_df
 
