@@ -552,6 +552,3 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
         plt.semilogy()
     utils.save_fig(save_fig, save_path)
 
-    utils.save_fig(save_fig, save_path=save_file_name)
-    plt.tight_layout()
-    plt.show()
