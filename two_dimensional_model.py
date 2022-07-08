@@ -81,14 +81,14 @@ class Forward():
 
 
 
-def normalize(voxel_info, to_norm, group_by=["voxel"], for_two_dim_model=True):
+def normalize(voxel_info, to_norm, phase_info=False):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
     if type(voxel_info) == pd.DataFrame:
-        if for_two_dim_model is True:
-            if all(voxel_info.groupby(group_by).size() == 28) is False:
+        if phase_info is False:
+            if all(voxel_info.groupby(["voxel"]).size() == 28) is False:
                 raise Exception('There are more than 28 conditions for one voxel!\n')
-        normed = voxel_info.groupby(group_by)[to_norm].apply(lambda x: x / np.linalg.norm(x))
+        normed = voxel_info.groupby(["voxel"])[to_norm].apply(lambda x: x / np.linalg.norm(x))
 
     elif type(voxel_info) == torch.Tensor:
         normed = torch.empty(to_norm.shape, dtype=torch.float64)
@@ -534,7 +534,7 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
                          col=to_col,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
-                         sharex=True, sharey=False)
+                         sharex=True, sharey=True)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     if ground_truth is True:
         for x_param, ax in g.axes_dict.items():
