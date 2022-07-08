@@ -363,14 +363,15 @@ def loss_fn(voxel_info, sigma_v_info, prediction, target):
         loss_all_voxels[i] = torch.mean(loss_v)
     return loss_all_voxels
 
-def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100, loss_all_voxels=True, anomaly_detection=True, amsgrad=False):
+def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100,
+              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
     # [sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
     my_parameters = [p for p in model.parameters() if p.requires_grad]
 
-    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, amsgrad=amsgrad, eps=1e-4)
+    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, amsgrad=amsgrad, eps=eps)
     losses_history = []
     loss_history = []
     model_history = []
