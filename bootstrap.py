@@ -58,8 +58,8 @@ def bootstrap_dataframe_all_subj(sn_list, df, n_bootstrap=100,
 
     return all_df
 
-def sigma_vi(bts_df, to_sample='avg_betas', to_group=['voxel', 'names', 'freq_lvl']):
-    bts_vi_df = bts_df.groupby(to_group)[to_sample].apply(lambda x: (abs(np.percentile(x, 84)-np.percentile(x, 16))/2)**2)
+def sigma_vi(bts_df, to_sample='avg_betas', to_group=['subj', 'voxel', 'names', 'freq_lvl']):
+    bts_vi_df = bts_df.groupby(to_group)[to_sample].apply(lambda x: (abs(np.percentile(x, 84)-np.percentile(x, 16))/2))
     bts_vi_df = bts_vi_df.reset_index().rename(columns={to_sample: 'sigma_vi'})
     return bts_vi_df
 
