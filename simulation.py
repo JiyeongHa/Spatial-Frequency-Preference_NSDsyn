@@ -121,19 +121,20 @@ def melt_beta_task_type(df, id_cols=None):
     df = pd.melt(df, id_vars=id_cols, value_vars=new_tasks, var_name='task', value_name='betas')
     return df
 
-def measure_sd_each_cond(df, to_sd, dv_to_group=['subj', 'voxel', 'names', 'freq_lvl']):
+def measure_sd_each_cond(df, to_sd, dv_to_group=['subj', 'voxel', 'names', 'freq_lvl'], normalize=True):
     """Measure each voxel's sd across 8 trials in a condition (2 tasks x 4 phases)"""
-    df[f'normed_{to_sd}'] = model.normalize(df, to_norm=to_sd, group_by=['voxel', 'subj'],
-                                            for_two_dim_model=False)
-    std_df = df.groupby(dv_to_group)[f'normed_{to_sd}'].agg(np.std, ddof=0).reset_index()
-    std_df = std_df.rename(columns={f'normed_{to_sd}': 'sd_' + f'normed_{to_sd}'})
+    if normalize:
+        df[f'{to_sd}'] = model.normalize(df, to_norm=to_sd)
+    std_df = df.groupby(dv_to_group)[f'{to_sd}'].agg(np.std, ddof=0).reset_index()
+    std_df = std_df.rename(columns={f'{to_sd}': 'sigma_vi'})
 
     return std_df
 
-def measure_sd_each_voxel(df, to_sd, dv_to_group=['subj', 'voxel']):
+def measure_sd_each_voxel(df, to_sd, dv_to_group=['subj', 'voxel'], normalize=True):
     tmp_dv_to_group = dv_to_group + ['names', 'freq_lvl']
-    std_df = measure_sd_each_cond(df, to_sd, dv_to_group=tmp_dv_to_group)
-    std_df = std_df.groupby(dv_to_group)[f'sd_normed_{to_sd}'].mean().reset_index()
+    std_df = measure_sd_each_cond(df, to_sd, dv_to_group=tmp_dv_to_group, normalize=normalize)
+    std_df = std_df.groupby(dv_to_group)['sigma_vi'].mean().reset_index()
+    std_df = std_df.rename(columns={'sigma_vi': 'sigma_v'})
     return std_df
 
 def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
