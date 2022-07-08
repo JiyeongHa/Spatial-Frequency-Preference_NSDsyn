@@ -99,11 +99,10 @@ class SynthesizeData():
 
         return syn_df
 
-    def synthesize_BOLD_2d(self, params, full_ver=True, noise_m=0, noise_sd=0):
+    def synthesize_BOLD_2d(self, params, full_ver=True):
         syn_df = self.syn_voxels.copy()
         syn_model = model.Forward(params, 0, self.syn_voxels)
         syn_df['betas'] = syn_model.two_dim_prediction(full_ver=full_ver)
-        syn_df['betas'] = add_noise(syn_df['betas'], noise_mean=noise_m, noise_sd=noise_sd)
 
         return syn_df
 
@@ -138,9 +137,9 @@ def measure_sd_each_voxel(df, to_sd, dv_to_group=['subj', 'voxel'], normalize=Tr
     return std_df
 
 def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
-                      x_label="SD across 8 trials",
+                      x_label="SD for each voxel across 8 trials",
                       stat="probability",
-                      l_title="Frequency level",
+                      lgd_title="Frequency level",
                       save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_histogram.png"):
     grid = sns.FacetGrid(std_df,
                          hue=to_label,
@@ -149,8 +148,10 @@ def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
                          sharex=True, sharey=True)
     grid.map(sns.histplot, to_x, stat=stat)
     grid.set_axis_labels(x_label, stat.title())
-    grid.fig.legend(title=l_title)
+    if to_label is not None:
+        grid.fig.legend(title=lgd_title)
     utils.save_fig(save_fig=save_fig, save_dir=save_dir, y_label=stat.title(), x_label=x_label, f_name=f_name)
+    plt.tight_layout()
     plt.show()
 
 
