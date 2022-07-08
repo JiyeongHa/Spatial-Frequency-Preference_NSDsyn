@@ -410,28 +410,29 @@ def melt_history_df(history_df):
 
 
 def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
-                      to_label=None, to_row=None,
+                      to_label=None, to_row=None, to_col=None,
                       lgd_title=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
-                       ci=68, n_boot=100, log_y=True):
+                       ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83]):
     sns.set(font_scale=1.3)
     x_label = 'Epoch'
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
                          hue=to_label,
                          row=to_row,
+                         col=to_col,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
-                         sharex=True, sharey=False)
+                         sharex=True, sharey=True)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
-    grid.fig.set_figwidth(10)
-    grid.fig.set_figheight(4)
+    #grid.fig.set_figwidth(5)
+    #grid.fig.set_figheight(7)
     grid.set_axis_labels(x_label, y_label, fontsize=18)
     if to_label is not None:
         grid.add_legend(title=lgd_title)
     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
-    grid.fig.subplots_adjust(top=0.85, right=0.85)
+    grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     if log_y is True:
         plt.semilogy()
     utils.save_fig(save_fig, save_path)
@@ -450,7 +451,7 @@ def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
                          col=to_col,
                          hue_order=hue_order,
                          legend_out=True,
-                         sharex=True, sharey=True)
+                         sharex=True, sharey=False)
     grid.map(sns.lineplot,
              to_x, to_y, markersize=8, alpha=0.8,
              marker='o', linestyle='', err_style='bars', ci=68)
@@ -502,7 +503,7 @@ def plot_grouped_parameters(df, params, col_group,
                          legend_out=True,
                          sharex=False, sharey=False)
     grid.map(sns.lineplot,
-             to_x, to_y, markersize=8, alpha=0.8,
+             to_x, to_y, markersize=8, alpha=0.4,
              marker='o', linestyle='', err_style='bars', ci=68)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
@@ -517,36 +518,38 @@ def plot_grouped_parameters(df, params, col_group,
 
 
 def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
-                      to_label=None, label_order=None, to_row=None, ground_truth=True,
+                      to_label=None, label_order=None, to_row=None, ground_truth=True, to_col=None,
                       lgd_title=None, title="Loss change over time (N = 9)",
-                      save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                      save_file_name='.png', ci=68, n_boot=100, log_y=True):
+                      save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
+                      ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83]):
 
     df = _group_params(df, params, col_group)
     sns.set(font_scale=1.3)
     x_label = "Epoch"
     y_label = "Parameter value"
-    grid = sns.FacetGrid(df,
+    grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
                          hue=to_label,
                          hue_order=label_order,
                          row=to_row,
+                         col=to_col,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=False)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
-    for x_param, ax in g.axes_dict.items():
-        g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
-        ax.axhline(g_value, ls="--", c="red",label="Ground truth")
-    grid.fig.set_figwidth(10)
-    grid.fig.set_figheight(13)
+    if ground_truth is True:
+        for x_param, ax in g.axes_dict.items():
+            g_value = df.query('params == @x_param[0] & lr_rate == "ground_truth"').value.item()
+            ax.axhline(g_value, ls="--", linewidth=3, c="black")
+    #grid.fig.set_figwidth(10)
+    #grid.fig.set_figheight(13)
     grid.set_axis_labels(x_label, y_label, fontsize=18)
     if to_label is not None:
-        grid.add_legend(title=lgd_title, labels=label_order)
-    #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
+        grid.add_legend(title=lgd_title)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
-    grid.fig.subplots_adjust(top=0.85, right=0.85)
+    grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     if log_y is True:
         plt.semilogy()
+    utils.save_fig(save_fig, save_path)
 
     utils.save_fig(save_fig, save_path=save_file_name)
     plt.tight_layout()

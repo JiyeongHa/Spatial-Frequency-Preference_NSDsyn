@@ -57,14 +57,22 @@ model_history, loss_history = sim.load_all_model_fitting_results(output_dir, noi
 
 for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
     f_name = f'loss_plot_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}-n_vox-3.png'
-    model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
-                            to_label=None, lgd_title='Learning rate',
-                            title=f'learning rate={cur_lr}, without noise',
-                            save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_Loss', f_name),
+    model.plot_loss_history(loss_history.query('epoch < 20000'), to_x="epoch", to_y="loss",
+                            to_label="noise_sd", lgd_title='Learning rate', to_row="lr_rate",
+                            title=f'100 synthetic voxel simulation with noise',
+                            save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_Loss', f_name),
                             ci="sd", n_boot=100, log_y=True)
     plt.show()
 
-to_label = 'lr_rate'
+f_name = f'loss_plot_noise-0.0005to0.0009_eph-40000_n_vox-100_2.png'
+model.plot_loss_history(loss_history.query('epoch < 10000'), to_x="epoch", to_y="loss",
+                        to_label="noise_sd", lgd_title='Learning rate', to_col="lr_rate",
+                        title=f'100 synthetic voxel simulation with noise',
+                        save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_Loss', f_name),
+                        ci="sd", n_boot=100, log_y=False, adjust=[0.75, 0.85])
+plt.show()
+
+to_label = 'noise_sd'
 if full_ver is True:
     param_names = params.columns.tolist()
 else:
@@ -79,12 +87,37 @@ for cur_epoch in [20000, 25000, 30000, 35000]:
                                   to_label=to_label, lgd_title="Learning rate", label_order=label_order,
                                   title=f'Parameters at epoch = {cur_epoch} (100 synthetic voxels)',
                                   save_fig=False, save_dir=save_dir, f_name=f_name)
-cur_noise=0
-cur_epoch=35000
-f_name = f'param_history_noise-{cur_noise}_eph-{cur_epoch}_after6999.png'
-model.plot_param_history(model_history.query('epoch > 6999 & lr_rate != 0.0001'), params=param_names, col_group=[1, 2, 3],
-                         to_x="epoch", to_y="value", to_row='params',
-                        to_label=to_label, label_order=label_order[1:], lgd_title='Learning rate',
-                        title=f'Parameter history, without noise',
-                        save_fig=False, save_dir=save_dir, save_file_name=f_name,
-                        ci="sd", n_boot=100, log_y=True)
+
+
+f_name = f'param_history_plot_noise-0.0005to0.0009_eph-40000_n_vox-100_2.png'
+cur_df = model_history.query('(epoch < 15000) or (lr_rate == "ground_truth")')
+model.plot_param_history(cur_df.drop(columns=['slope', 'intercept']), params=['sigma'], col_group=[1],
+                         to_x="epoch", to_y="value", to_row='params', to_col='lr_rate',
+                        to_label=to_label, lgd_title='Noise SD',
+                        title=f'100 synthetic voxel simulation with noise',
+                        save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_PramValues', f_name),
+                        ci="sd", n_boot=100, log_y=False, adjust=[0.9, 0.85])
+plt.tight_layout()
+plt.show()
+
+
+syn_df_orig = pd.read_csv(
+    '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes/syn_data_2d_100.csv')
+syn_df = syn_df_orig.query('voxel == 1')
+
+for cur_noise in noise_sd:
+
+    syn_df[f'{cur_noise}'] = sim.add_noise(syn_df['normed_betas'], noise_mean=0, noise_sd=cur_noise)
+
+x = np.arange(0, syn_df['normed_betas'].shape[0])
+color = plt.cm.rainbow(np.linspace(0, 1, 5))
+fig = plt.figure()
+for e in np.flip(np.arange(0,5)):
+    plt.plot(x, syn_df[str(noise_sd[e])], color=color[e], label=str(noise_sd[e]), linewidth=2)
+plt.plot(x, syn_df['normed_betas'], label='Synthetic beta (normalized)', linewidth=2, linestyle='dashed', markersize=12, color='k', marker='o')
+plt.legend(title='Noise SD')
+plt.ylabel('Synthetic BOLD')
+plt.title('1 synthetic voxel with noise')
+plt.tight_layout()
+plt.savefig(os.path.join(fig_dir, '1_voxel.png'))
+plt.show()
