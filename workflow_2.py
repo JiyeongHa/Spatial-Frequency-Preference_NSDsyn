@@ -686,4 +686,13 @@ plt.savefig('en'
             '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/Precision_weight_vs_density/100_voxels.png', bbox_inches='tight')
 plt.show()
 
+#measure_sd across 8 trials
+std_cond_df = sim.measure_sd_each_cond(all_subj_df, to_sd='betas', dv_to_group=['subj', 'voxel','names','freq_lvl'])
 
+std_df = sim.measure_sd_each_voxel(all_subj_df, to_sd='betas', dv_to_group=['subj', 'voxel'], normalize=False)
+sigma_cond_df = bts.sigma_v(all_subj_df, to_sample='betas', to_group=['subj', 'voxel'])
+sim.plot_sd_histogram(std_df, to_label=None, lgd_title='Subjects', save_fig=True,
+                      save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_across_8_trials_all_subj_histogram_2.png")
+
+
+syn_data = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes/syn_data_2d_100.csv')
