@@ -16,25 +16,26 @@ params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
                        'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
 
-stim_info_path = '/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'
-subj_df_dir='/Volumes/derivatives/subj_dataframes'
-output_dir = '/Users/auna/Desktop'
-save_dir = '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/'
-noise_sd = [0]
-max_epoch = [35000]
-lr_rate = [0.001]
-n_voxel = 3
+stim_info_path = '/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'
+subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
+output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes/simulation_results_2D'
+fig_dir = '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/'
+measured_noise_sd =0.03995  # unnormalized 1.502063
+noise_sd = [np.round(measured_noise_sd*x, 2) for x in [1, 1.5, 2, 2.5, 3]]
+max_epoch = [40000]
+lr_rate = np.linspace(5,9,5)*1e-4
+n_voxel = 100
 full_ver = False
 
 
 syn_data = sim.SynthesizeData(n_voxels=n_voxel, df=None, replace=True, p_dist="data",
                               stim_info_path=stim_info_path, subj_df_dir=subj_df_dir)
 syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=full_ver)
-
+syn_df_2d['normed_betas'] = model.normalize(syn_df_2d, to_norm="betas", phase_info=False)
 # add noise
 for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
     syn_df = syn_df_2d.copy()
-    syn_df['betas'] = sim.add_noise(syn_df['betas'], noise_mean=0, noise_sd=cur_noise)
+    syn_df['normed_betas'] = sim.add_noise(syn_df['normed_betas'], noise_mean=0, noise_sd=cur_noise)
     syn_df['sigma_v'] = np.ones(syn_df.shape[0], dtype=np.float64)
     syn_SFdataset = model.SpatialFrequencyDataset(syn_df, beta_col='betas')
     syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=False)
