@@ -518,14 +518,15 @@ def plot_grouped_parameters(df, params, col_group,
     plt.show()
 
 
-def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
-                      to_label=None, label_order=None, to_row=None, ground_truth=True, to_col=None,
+def plot_param_history(df, params, group,
+                      to_label=None, label_order=None, ground_truth=True, to_col=None,
                       lgd_title=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                      ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83]):
-
-    df = _group_params(df, params, col_group)
+                      ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83], sharey=True):
+    df = _group_params(df, params, group)
     sns.set(font_scale=1.3)
+    to_x = "epoch"
+    to_y="value"
     x_label = "Epoch"
     y_label = "Parameter value"
     grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
@@ -535,11 +536,12 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
                          col=to_col,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
-                         sharex=True, sharey=True)
+                         sharex=True, sharey=sharey)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     if ground_truth is True:
         for x_param, ax in g.axes_dict.items():
-            g_value = df.query('params == @x_param[0] & lr_rate == "ground_truth"').value.item()
+            ax.set_aspect('auto')
+            g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
             ax.axhline(g_value, ls="--", linewidth=3, c="black")
     #grid.fig.set_figwidth(10)
     #grid.fig.set_figheight(13)
@@ -547,8 +549,11 @@ def plot_param_history(df, params, col_group, to_x="epoch", to_y="value",
     if to_label is not None:
         grid.add_legend(title=lgd_title)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
-    grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     if log_y is True:
         plt.semilogy()
+    if adjust is "tight":
+        plt.tight_layout()
+    elif type(adjust) is list:
+        grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     utils.save_fig(save_fig, save_path)
 
