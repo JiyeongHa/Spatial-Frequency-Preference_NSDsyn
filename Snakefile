@@ -100,11 +100,28 @@ rule plot_loss_history:
             title=f'{input.loss_history.split(os.sep)[-1]}',
             save_fig=True, save_path=output.loss_fig, ci="sd", n_boot=100, log_y=True)
 
-rule plot_param_history:
+rule plot_model_param_history:
     input:
-        param_history =
+        model_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'model_history_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv')
+    output:
+        param_fig = os.path.join(config['FIG_DIR'], 'figures', 'Epoch_vs_Loss', 'param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png')
+    log:
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'figures', 'Epoch_vs_Pram_values','param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}-%j.log')
+    run:
 
+        params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
+                               'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
+                               'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
 
-
-
+        model_history = pd.read_csv(input.model_history)
+        if {'lr_rate', 'noise_sd', 'max_epoch'}.issubset(model_history.columns) is False:
+            model_history['lr_rate'] = float(wildcards.lr)
+            model_history['noise_sd'] = float(wildcards.noise_sd)
+            model_history['max_epoch'] = int(wildcards.max_epoch)
+        model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
+        params_col, params_group = sim.get_params_name_and_group(params, (wildcards.full_ver=="True"))
+        model.plot_param_history(model_history,params=params_col, group=params_group,
+            to_label=None,label_order=None, ground_truth=True, to_col=None,
+            lgd_title=None, title=f'noise_sd:{wildcards.noise_sd}, lr_rate: {wildcards.lr}',
+            save_fig=True, save_path=output.param_fig, ci=68, n_boot=100, log_y=True, sharey=False, adjust="tight")
 
