@@ -27,7 +27,7 @@ def break_down_phase(df):
     return df
 
 
-class Forward():
+class PredictBOLD2d():
     """ Define parameters used in forward model"""
 
     def __init__(self, params, params_idx, subj_df):
@@ -72,7 +72,7 @@ class Forward():
             Pv = ecc_dependency
         return Pv
 
-    def two_dim_prediction(self, full_ver=True):
+    def forward(self, full_ver=True):
         """ Return predicted BOLD response in eccentricity (formula no. 5 in Broderick et al. (2022)) """
         Av = self.get_Av(full_ver=full_ver)
         Pv = self.get_Pv(full_ver=full_ver)

@@ -44,12 +44,12 @@ params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
                        'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
 # normalize
-normed_betas = model.normalize(filtered_df, to_norm='avg_betas', group_by=["subj", "voxel"])
+normed_betas = model.normalize(filtered_df, to_norm='avg_betas')
 filtered_df['norm_betas'] = normed_betas
 
 # forward
-filtered_df['pred'] = model.Forward(params, 0, filtered_df).two_dim_prediction()
-filtered_df['norm_pred'] = model.normalize(filtered_df, to_norm='pred', group_by=["subj", "voxel"])
+filtered_df['pred'] = model.PredictBOLD2d(params, 0, filtered_df).forward()
+filtered_df['norm_pred'] = model.normalize(filtered_df, to_norm='pred')
 
 df[df.columns & colnames]
 
@@ -266,8 +266,8 @@ loss_history_df.to_csv(df_save_path, index=False)
 syn_df = sim.generate_synthesized_voxels()
 params_new = pd.concat([params]*2, ignore_index=True)
 params_new.iloc[1, 3:9] = 0
-syn_model = model.Forward(params_new, 0, syn_df)
-syn_df['avg_betas'] = syn_model.two_dim_prediction(full_ver=False)
+syn_model = model.PredictBOLD2d(params_new, 0, syn_df)
+syn_df['avg_betas'] = syn_model.forward(full_ver=False)
 
 syn_SFdataset = model.SpatialFrequencyDataset(syn_df)
 # model
@@ -451,7 +451,7 @@ all_subj_df = sim.melt_beta_task_type(all_subj_df)
 all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']
 
 all_subj_df = vs.drop_voxels(all_subj_df, beta_col='betas')
-all_subj_df['normed_betas'] = model.normalize(all_subj_df, to_norm='betas', group_by=['voxel', 'subj'],)
+all_subj_df['normed_betas'] = model.normalize(all_subj_df, to_norm='betas')
 
 std_normed_df = sim.measure_sd_each_cond(all_subj_df, to_sd='normed_betas')
 std_df = sim.measure_sd_each_cond(all_subj_df, to_sd='betas')
@@ -567,7 +567,7 @@ params_2d = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
 
 # measure noise
 df = model.break_down_phase(all_subj_df)
-df['normed_betas'] = model.normalize(voxel_info=df, to_norm='betas', group_by=['voxel', 'subj'])
+df['normed_betas'] = model.normalize(voxel_info=df, to_norm='betas')
 std_normed_df = sim.measure_sd_each_cond(df, to_sd='normed_betas', dv_to_group=['subj', 'voxel'])
 std_df = sim.measure_sd_each_cond(df, to_sd='betas', dv_to_group=['subj', 'voxel'])
 
