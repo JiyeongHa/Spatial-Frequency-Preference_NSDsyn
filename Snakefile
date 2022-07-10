@@ -11,11 +11,11 @@ import two_dimensional_model as model
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.01]#np.linspace(5,9,5)*1e-4
-NOISE_SD = [0, 1, 2]#[np.round(measured_noise_sd*x, 2) for x in [0, 1, 1.5, 2, 2.5, 3]]
-MAX_EPOCH = [3]
-N_VOXEL = [3]
-FULL_VER = ["False"]
+LR_RATE = [0.0007]#np.linspace(5,9,5)*1e-4
+NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [0, 1]]#, 1.5, 2, 2.5, 3
+MAX_EPOCH = [30000]
+N_VOXEL = [100]
+FULL_VER = ["True"]
 params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
                        'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
@@ -23,12 +23,12 @@ params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
 
 rule plot_all_loss_and_param_history:
     input:
-        loss_fig = expand(os.path.join(config['FIG_DIR'], 'figures', 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL),
-        param_fig = expand(os.path.join(config['FIG_DIR'],'figures','Epoch_vs_Param_values', 'param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL)
+        loss_fig = expand(os.path.join(config['FIG_DIR'], "simulation", "results_2D", 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL),
+        param_fig = expand(os.path.join(config['FIG_DIR'],"simulation", "results_2D", 'Epoch_vs_Param_values', 'param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL)
 
 rule plot_all_loss_history:
     input:
-        expand(os.path.join(config['FIG_DIR'], 'figures', 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL)
+        expand(os.path.join(config['FIG_DIR'], "simulation", "results_2D", 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, noise_sd=NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL)
 
 
 rule generate_synthetic_data:
@@ -36,7 +36,7 @@ rule generate_synthetic_data:
         stim_info_path=os.path.join(config['STIM_INFO_DIR'],'nsdsynthetic_sf_stim_description.csv'),
         subj_df_dir = config['SUBJ_DF_DIR'],
     output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}_original.csv")
+        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
     run:
         params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                                'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -49,7 +49,7 @@ rule generate_synthetic_data:
 
 rule generate_noisy_synthetic_data:
     input:
-        syn_df_2d = os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D",  "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}_original.csv")
+        syn_df_2d = os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D",  "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}.csv")
     run:
@@ -91,7 +91,7 @@ rule plot_loss_history:
     input:
         loss_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'loss_history_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv')
     output:
-        loss_fig = os.path.join(config['FIG_DIR'], 'figures', 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png')
+        loss_fig = os.path.join(config['FIG_DIR'], "simulation", "results_2D", 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png')
     log:
         os.path.join(config['OUTPUT_DIR'], 'logs', 'figures', 'Epoch_vs_Loss','loss_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}-%j.log')
     run:
@@ -108,7 +108,7 @@ rule plot_model_param_history:
     input:
         model_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'model_history_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv')
     output:
-        param_fig = os.path.join(config['FIG_DIR'], 'figures', 'Epoch_vs_Param_values', 'param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png')
+        param_fig = os.path.join(config['FIG_DIR'], "simulation", "results_2D", 'Epoch_vs_Param_values', 'param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png')
     log:
         os.path.join(config['OUTPUT_DIR'], 'logs', 'figures', 'Epoch_vs_Param_values','param_history_plot_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}-%j.log')
     run:
