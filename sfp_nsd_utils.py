@@ -99,3 +99,21 @@ def save_fig(save_fig, save_path):
         if not os.path.exists(parent_path.parent.absolute()):
             os.makedirs(parent_path.parent.absolute())
         plt.savefig(save_path, bbox_inches='tight')
+
+def plot_voxels(df, n_voxels=1, to_plot="normed_beta", save_fig=False, save_path=None):
+    x = np.arange(df[to_plot].shape[0])
+    fig = plt.figure()
+    color = plt.cm.rainbow(np.linspace(0,1,5))
+    plt.plot(x, df[to_plot], color='k', label="betas", linewidth=2, linstyle='dashed', markersize=12, marker='o')
+    plt.legend(title='Noise SD')
+    plt.ylabel('Synthetic BOLD')
+    plt.title('1 Synthetic voxel with noise')
+    plt.tight_layout()
+    save_fig(save_fig, save_path)
+
+
+def melt_df(df, value_vars, var_name="type", value_name="value"):
+    """This function uses pd.melt to melt df while maintaining all columns"""
+    id_cols = df.drop(columns=value_vars).columns.tolist()
+    long_df = pd.melt(df, id_vars=id_cols, value_vars=value_vars, var_name=var_name, value_name=value_name)
+    return long_df
