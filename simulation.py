@@ -111,8 +111,8 @@ def add_noise(betas, noise_mean=0, noise_sd=0.03995):
     return betas + np.random.normal(noise_mean, noise_sd, len(betas))
 
 def copy_df_and_add_noise(df, beta_col, noise_mean=0, noise_sd=0):
-    if noise_sd == 0:
-        raise Exception('noise sd == 0 is the same as original data!\n')
+    # if noise_sd == 0:
+    #     raise Exception('noise sd == 0 is the same as original data!\n')
     noisy_df = df.copy()
     noisy_df['noise_SD'] = noise_sd
     noisy_df[beta_col] = add_noise(df[beta_col], noise_mean=noise_mean, noise_sd=noise_sd)
