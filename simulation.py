@@ -22,7 +22,7 @@ class SynthesizeData():
 
     def __init__(self, n_voxels=100, df=None, replace=True, p_dist="uniform",
                  stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
-                 subj_df_dir = '/Volumes/'):
+                 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'):
         self.n_voxels = n_voxels
         self.df = df
         self.replace = replace
@@ -64,7 +64,7 @@ class SynthesizeData():
     def generate_synthetic_voxels(self):
         """Generate synthesized data for n voxels. if p_dist is set to "uniform",
         Each voxel's polar angle and eccentricity will be drawn from uniform distribution.
-        In case p_dist == "data", the probability distribution will be from the actual data.
+        For  p_dist == "data", the probability distribution will be from the actual data.
         The polar angle is in the unit of degree and eccentricity is in the unit of visual angle."""
         df = pd.DataFrame()
         df['voxel'] = np.arange(0, self.n_voxels)
@@ -101,14 +101,23 @@ class SynthesizeData():
 
     def synthesize_BOLD_2d(self, params, full_ver=True):
         syn_df = self.syn_voxels.copy()
-        syn_model = model.Forward(params, 0, self.syn_voxels)
-        syn_df['betas'] = syn_model.two_dim_prediction(full_ver=full_ver)
-
+        syn_model = model.PredictBOLD2d(params, 0, self.syn_voxels)
+        syn_df['noise_SD'] = 0
+        syn_df['betas'] = syn_model.forward(full_ver=full_ver)
         return syn_df
 
 
 def add_noise(betas, noise_mean=0, noise_sd=0.03995):
     return betas + np.random.normal(noise_mean, noise_sd, len(betas))
+
+def copy_df_and_add_noise(df, beta_col, noise_mean=0, noise_sd=0):
+    if noise_sd == 0:
+        raise Exception('noise sd == 0 is the same as original data!\n')
+    noisy_df = df.copy()
+    noisy_df['noise_SD'] = noise_sd
+    noisy_df[beta_col] = add_noise(df[beta_col], noise_mean=noise_mean, noise_sd=noise_sd)
+    return noisy_df
+
 
 def melt_beta_task_type(df, id_cols=None):
 
@@ -205,3 +214,10 @@ def load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch, n_v
     return model_history, loss_history
 
 
+def get_params_name_and_group(params, full_ver):
+    if full_ver:
+        params_col = params.columns.tolist()
+    else:
+        params_col = params.columns.tolist()[:3]
+    group = list(range(len(params_col)))
+    return params_col, group
