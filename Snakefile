@@ -36,7 +36,7 @@ rule generate_synthetic_data:
         stim_info_path=os.path.join(config['STIM_INFO_DIR'],'nsdsynthetic_sf_stim_description.csv'),
         subj_df_dir = config['SUBJ_DF_DIR'],
     output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
+        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}_original.csv")
     run:
         params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                                'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -50,7 +50,7 @@ rule generate_synthetic_data:
 
 rule generate_noisy_synthetic_data:
     input:
-        syn_df_2d = os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D",  "syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
+        syn_df_2d = os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D",  "syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}_original.csv")
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}.csv")
     run:
