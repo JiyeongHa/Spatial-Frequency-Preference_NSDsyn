@@ -217,7 +217,7 @@ def load_all_model_fitting_results(output_dir, full_ver, noise_sd, lr_rate, max_
 
 def get_params_name_and_group(params, full_ver):
     if full_ver:
-        params_col = params.columns.tolist()
+        params_col = params.columns.tolist()[:-2]
     else:
         params_col = params.columns.tolist()[:3]
     group = list(range(len(params_col)))
