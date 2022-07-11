@@ -18,14 +18,14 @@ params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
 
 stim_info_path = '/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'
 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
-output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes/simulation_results_2D'
+output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/simulation/results_2D'
 fig_dir = '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/'
 measured_noise_sd =0.03995  # unnormalized 1.502063
-noise_sd = [np.round(measured_noise_sd*x, 2) for x in [1, 1.5, 2, 2.5, 3]]
-max_epoch = [40000]
-lr_rate = np.linspace(5,9,5)*1e-4
-n_voxel = 100
-full_ver = False
+noise_sd = [1,2]
+max_epoch = [3]
+lr_rate = [0.01]
+n_voxel = 3
+full_ver = [True]
 
 
 syn_data = sim.SynthesizeData(n_voxels=n_voxel, df=None, replace=True, p_dist="data",
@@ -52,16 +52,16 @@ for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
 
 # load and make a figure?
 
-model_history, loss_history = sim.load_all_model_fitting_results(output_dir, noise_sd, lr_rate, max_epoch, n_voxels=n_voxel,
+model_history, loss_history = sim.load_all_model_fitting_results(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels=n_voxel,
                                                                  ground_truth=params, id_val='ground_truth')
 
-for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
-    f_name = f'loss_plot_noise-{cur_noise}_lr-{cur_lr}_eph-{cur_epoch}-n_vox-3.png'
-    model.plot_loss_history(loss_history.query('epoch < 20000'), to_x="epoch", to_y="loss",
-                            to_label="noise_sd", lgd_title='Learning rate', to_row="lr_rate",
+for cur_ver, cur_noise, cur_lr, cur_epoch in product(full_ver, noise_sd, lr_rate, max_epoch):
+    f_name = f'loss_plot_full_ver-{cur_ver}_sd-{cur_noise}_n_vox-{n_voxel}_lr-{cur_lr}_eph-{cur_epoch}.png'
+    model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
+                            to_label=None, lgd_title='Learning rate', to_row=None,
                             title=f'100 synthetic voxel simulation with noise',
                             save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_Loss', f_name),
-                            ci="sd", n_boot=100, log_y=True)
+                            ci="sd", n_boot=100, log_y=True, adjust="tight")
     plt.show()
 
 f_name = f'loss_plot_noise-0.0005to0.0009_eph-40000_n_vox-100_2.png'
@@ -87,6 +87,16 @@ for cur_epoch in [20000, 25000, 30000, 35000]:
                                   to_label=to_label, lgd_title="Learning rate", label_order=label_order,
                                   title=f'Parameters at epoch = {cur_epoch} (100 synthetic voxels)',
                                   save_fig=False, save_dir=save_dir, f_name=f_name)
+
+for cur_ver, cur_noise, cur_lr, cur_epoch in product(full_ver, noise_sd, lr_rate, max_epoch):
+    params_col, group = sim.get_params_name_and_group(params, cur_ver)
+    f_name = f'param_history_plot_full_ver-{cur_ver}_sd-{cur_noise}_n_vox-{n_voxel}_lr-{cur_lr}_eph-{cur_epoch}.png'
+    model.plot_param_history(model_history, params=params_col, group=group, to_label=None,
+                             to_col=None, lgd_title=None,
+                             title=f'100 synthetic voxel simulation with noise', save_fig=False,
+                             save_path=os.path.join(fig_dir, 'Epoch_vs_PramValues', f_name), ci="sd", n_boot=100,
+                             log_y=False, adjust=[0.9, 0.85])
+    plt.show()
 
 
 f_name = f'param_history_plot_noise-0.0005to0.0009_eph-40000_n_vox-100_2.png'
