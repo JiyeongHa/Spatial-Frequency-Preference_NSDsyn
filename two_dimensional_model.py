@@ -433,7 +433,6 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
         grid.add_legend(title=lgd_title)
     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
-    grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     if log_y is True:
         plt.semilogy()
     if adjust is "tight":
@@ -552,7 +551,7 @@ def plot_param_history(df, params, group,
     #grid.fig.set_figwidth(10)
     #grid.fig.set_figheight(13)
     grid.set_axis_labels(x_label, y_label, fontsize=18)
-    if to_label is not None:
+    if lgd_title is not None:
         grid.add_legend(title=lgd_title)
     grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
     if log_y is True:
