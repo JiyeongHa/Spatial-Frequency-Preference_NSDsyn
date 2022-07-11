@@ -436,6 +436,10 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
     grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     if log_y is True:
         plt.semilogy()
+    if adjust is "tight":
+        plt.tight_layout()
+    elif type(adjust) is list:
+        grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     utils.save_fig(save_fig, save_path)
 
 
@@ -529,6 +533,8 @@ def plot_param_history(df, params, group,
     to_y="value"
     x_label = "Epoch"
     y_label = "Parameter value"
+    if to_label is None:
+        to_label = 'params'
     grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
                          hue=to_label,
                          hue_order=label_order,
