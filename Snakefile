@@ -11,10 +11,10 @@ import two_dimensional_model as model
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.0007]#np.linspace(5,9,5)*1e-4
-NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [0, 1]]#, 1.5, 2, 2.5, 3
-MAX_EPOCH = [30000]
-N_VOXEL = [100]
+LR_RATE = [0.01] #[0.0007]#np.linspace(5,9,5)*1e-4
+NOISE_SD = [1,2] #[np.round(measured_noise_sd*x, 2) for x in [0, 1]]#, 1.5, 2, 2.5, 3
+MAX_EPOCH = [3]
+N_VOXEL = [3]
 FULL_VER = ["True"]
 params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -100,9 +100,10 @@ rule plot_loss_history:
             loss_history['lr_rate'] = float(wildcards.lr)
             loss_history['noise_sd'] = float(wildcards.noise_sd)
             loss_history['max_epoch'] = int(wildcards.max_epoch)
+            loss_history['full_ver'] = wildcards.full_ver
         model.plot_loss_history(loss_history, to_x="epoch",to_y="loss", to_label=None,
-            title=f'{input.loss_history.split(os.sep)[-1]}',
-            save_fig=True, save_path=output.loss_fig, ci="sd", n_boot=100, log_y=True)
+            title=f'noise SD:{wildcards.noise_sd}\nlearning rate: {wildcards.lr}\n# of voxels: {wildcards.n_voxels}',
+            save_fig=True, save_path=output.loss_fig, ci="sd", n_boot=100, log_y=True, adjust="tight")
 
 rule plot_model_param_history:
     input:
@@ -122,10 +123,11 @@ rule plot_model_param_history:
             model_history['lr_rate'] = float(wildcards.lr)
             model_history['noise_sd'] = float(wildcards.noise_sd)
             model_history['max_epoch'] = int(wildcards.max_epoch)
+            model_history['full_ver'] = wildcards.full_ver
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params, (wildcards.full_ver=="True"))
         model.plot_param_history(model_history,params=params_col, group=params_group,
             to_label=None,label_order=None, ground_truth=True, to_col=None,
-            lgd_title=None, title=f'noise_sd:{wildcards.noise_sd}, lr_rate: {wildcards.lr}',
+            lgd_title=None, title=f'noise SD:{wildcards.noise_sd}\nlearning rate: {wildcards.lr}\n# of voxels: {wildcards.n_voxels}',
             save_fig=True, save_path=output.param_fig, ci=68, n_boot=100, log_y=True, sharey=False, adjust="tight")
 
