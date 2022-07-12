@@ -15,7 +15,6 @@ import re
 import functools
 from scipy import stats
 from torch.utils import data as torchdata
-from hessian import hessian
 import binning_eccen as binning
 from timeit import default_timer as timer
 
