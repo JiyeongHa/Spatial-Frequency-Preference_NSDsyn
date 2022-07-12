@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import simulation as sim
 import matplotlib
-matplotlib.use("TkAgg")
+matplotlib.use("svg")
 import sfp_nsd_utils as utils
 import two_dimensional_model as model
 
@@ -37,6 +37,8 @@ rule generate_synthetic_data:
         subj_df_dir = config['SUBJ_DF_DIR'],
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
+    log:
+        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
     run:
         params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                                'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
