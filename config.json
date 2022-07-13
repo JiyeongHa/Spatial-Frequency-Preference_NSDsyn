@@ -1,6 +1,6 @@
 {
-  "STIM_INFO_DIR": "/scratch/wfb229/sfp_nsd/",
-  "SUBJ_DF_DIR": "/scratch/wfb229/sfp_nsd/derivatives/subj_dataframes",
-  "OUTPUT_DIR": "/scratch/wfb229/sfp_nsd/derivatives/",
-  "FIG_DIR": "/scratch/wfb229/sfp_nsd/derivatives/figures/",
+  "STIM_INFO_DIR": "/home/jh7685/sfp_nsd/natural-scenes-dataset",
+  "SUBJ_DF_DIR": "/home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes",
+  "OUTPUT_DIR": "/scratch/jh7685/sfp_nsd/derivatives/",
+  "FIG_DIR": "/scratch/jh7685/sfp_nsd/derivatives/figures/",
 }
