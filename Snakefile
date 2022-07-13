@@ -67,13 +67,13 @@ rule plot_synthetic_data:
     output:
         os.path.join(config['FIG_DIR'], 'lineplot_syn_data_2d_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}.png')
     log:
-        os.path.join(config['FIG_DIR'],"logs", "'lineplot_syn_data_2d_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}.png')
+        os.path.join(config['FIG_DIR'],"logs", 'lineplot_syn_data_2d_full_ver-{full_ver}_sd-{noise_sd}_n_vox-{n_voxels}.png')
     run:
         all_df = pd.DataFrame({})
         for file in input.all_files:
             print(file)
             tmp =  pd.read_csv(file)
-            all_df = pd.concat((all_df, tmp), ignore_index=True)
+            all_df = pd.concat((all_df,tmp),ignore_index=True)
 
 
 rule run_simulation:
