@@ -1,9 +1,6 @@
 {
-  "STIM_INFO_DIR": "/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/",
-  "SUBJ_DF_DIR": "/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes",
-  "OUTPUT_DIR": "/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/",
-  "FIG_DIR": "/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults"
-
+  "STIM_INFO_DIR": "/scratch/wfb229/sfp_nsd/",
+  "SUBJ_DF_DIR": "/scratch/wfb229/sfp_nsd/derivatives/subj_dataframes",
+  "OUTPUT_DIR": "/scratch/wfb229/sfp_nsd/derivatives/",
+  "FIG_DIR": "/scratch/wfb229/sfp_nsd/derivatives/figures/",
 }
-
-
