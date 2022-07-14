@@ -11,6 +11,7 @@ import binning_eccen as binning
 import first_level_analysis as fitting
 import matplotlib.pyplot as plt
 from itertools import product
+import bootstrap as bts
 
 
 
@@ -45,16 +46,15 @@ class SynthesizeData():
         polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=False)
         eccentricity = np.random.choice(tmp_df['eccentricity'], size=(self.n_voxels,), replace=False)
         return polar_angles, eccentricity
-
-    def _sample_noise_from_data(self):
-        if self.df is None:
-            #TODO: set df_dir to the /derivatives/subj_dataframes and then complete the parent path
-            random_sn = np.random.randint(1, 9, size=1)
-            tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='df_LITE_after_vs.csv')
-        else:
-            tmp_df = self.df
-        measure_sd_each_cond(to_sd='betas', dv_to_group=['subj', 'voxel'])
-        return noise
+    #
+    # def _sample_noise_from_data(self):
+    #     if self.df is None:
+    #         random_sn = np.random.randint(1, 9, size=1)
+    #         tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='df_LITE_after_vs.csv')
+    #     else:
+    #         tmp_df = self.df
+    #     #measure_sd_each_cond(to_sd='betas', dv_to_group=['subj', 'voxel'])
+    #     return noise
 
     def generate_synthetic_voxels(self):
         """Generate synthesized data for n voxels. if p_dist is set to "uniform",
@@ -102,6 +102,7 @@ class SynthesizeData():
         syn_model = model.PredictBOLD2d(params, 0, self.syn_voxels)
         syn_df['noise_SD'] = 0
         syn_df['betas'] = syn_model.forward(full_ver=full_ver)
+        syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
         return syn_df
 
 
