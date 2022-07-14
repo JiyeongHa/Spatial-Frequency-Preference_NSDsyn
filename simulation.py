@@ -193,7 +193,6 @@ def load_history_df(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels
     for cur_noise, cur_lr, cur_epoch, cur_ver, in product(noise_sd, lr_rate, max_epoch, full_ver):
         model_history_path = os.path.join(output_dir, f'{df_type}_history_full_ver-{cur_ver}_sd-{cur_noise}_n_vox-{n_voxels}_lr-{cur_lr}_eph-{cur_epoch}.csv')
         tmp = pd.read_csv(model_history_path)
-        #TODO: remove adding lr_rate and noise columns part and edit fit_model() to make columns in the first place
         if {'lr_rate', 'noise_sd', 'max_epoch', 'full_ver'}.issubset(tmp.columns) is False:
             tmp['lr_rate'] = cur_lr
             tmp['noise_sd'] = cur_noise
