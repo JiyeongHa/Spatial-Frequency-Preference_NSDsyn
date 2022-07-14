@@ -80,14 +80,14 @@ class PredictBOLD2d():
 
 
 
-def normalize(voxel_info, to_norm, phase_info=False):
+def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
     if type(voxel_info) == pd.DataFrame:
         if phase_info is False:
-            if all(voxel_info.groupby(["voxel"]).size() == 28) is False:
+            if all(voxel_info.groupby(to_group).size() == 28) is False:
                 raise Exception('There are more than 28 conditions for one voxel!\n')
-        normed = voxel_info.groupby(["voxel"])[to_norm].apply(lambda x: x / np.linalg.norm(x))
+        normed = voxel_info.groupby(to_group)[to_norm].apply(lambda x: x / np.linalg.norm(x))
 
     elif type(voxel_info) == torch.Tensor:
         normed = torch.empty(to_norm.shape, dtype=torch.float64)
