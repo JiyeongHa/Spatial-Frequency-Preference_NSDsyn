@@ -20,14 +20,13 @@ class SynthesizeData():
     2. Generate synthetic voxels. Eccentricity and polar angle will be drawn from the uniform distribution.
     3. Generate BOLD predictions, with or without noise. """
 
-    def __init__(self, n_voxels=100, df=None, replace=True, p_dist="uniform",
+    def __init__(self, n_voxels=100, to_noise_sample='normed_betas', p_dist="uniform",
                  stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
-                 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'):
+                 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
         self.n_voxels = n_voxels
-        self.df = df
-        self.replace = replace
         self.p_dist = p_dist
         self.subj_df_dir = subj_df_dir
+        self.to_sd = to_noise_sample
         self.stim_info = self.get_stim_info_for_n_voxels(stim_info_path)
         self.syn_voxels = self.generate_synthetic_voxels()
 
@@ -41,14 +40,10 @@ class SynthesizeData():
         return stim_info
 
     def _sample_pRF_from_data(self):
-        if self.df is None:
-            #TODO: set df_dir to the /derivatives/subj_dataframes and then complete the parent path
-            random_sn = np.random.randint(1, 9, size=1)
-            tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='df_LITE_after_vs.csv')
-        else:
-            tmp_df = self.df
-        polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=self.replace)
-        eccentricity = np.random.choice(tmp_df['eccentricity'], size=(self.n_voxels,), replace = self.replace)
+        random_sn = np.random.randint(1, 9, size=1)
+        tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
+        polar_angles = np.random.choice(tmp_df['angle'], size=(self.n_voxels,), replace=False)
+        eccentricity = np.random.choice(tmp_df['eccentricity'], size=(self.n_voxels,), replace=False)
         return polar_angles, eccentricity
 
     def _sample_noise_from_data(self):
@@ -73,10 +68,13 @@ class SynthesizeData():
             df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
         elif self.p_dist is "data":
             df['angle'], df['eccentricity'] = self._sample_pRF_from_data()
+        sigma_v = generate_sigma_v(self.n_voxels, to_sd=self.to_sd, df_dir=self.subj_df_dir)
+        df = df.merge(sigma_v, on='voxel')
         syn_df = self.stim_info.merge(df, on='voxel')
         syn_df = make_df._calculate_local_orientation(syn_df)
         syn_df = make_df._calculate_local_sf(syn_df)
         return syn_df
+
 
     def synthesize_BOLD_1d(self, bin_list, bin_labels, params):
         #TODO: write 1D model forward class?
@@ -128,6 +126,23 @@ def melt_beta_task_type(df, id_cols=None):
         id_cols = df.drop(columns=new_tasks).columns.tolist()
     df = pd.melt(df, id_vars=id_cols, value_vars=new_tasks, var_name='task', value_name='betas')
     return df
+
+def generate_sigma_v(n_voxels, to_sd='normed_betas',
+                   df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes/'):
+    if to_sd is None:
+        sample_sigma_v = np.ones((n_voxels,), dtype=np.float64)
+    else:
+        sample_sigma_v_path = os.path.join(df_dir, f'sigma_v_to_sd-{to_sd}_n_vox-{n_voxels}.csv')
+        if os.path.exists(sample_sigma_v_path):
+            sample_sigma_v = pd.read_csv(sample_sigma_v_path)
+        else:
+            all_subj_df = utils.load_all_subj_df(np.arange(1, 9), df_dir=df_dir,
+                                                 df_name='stim_voxel_info_df_vs.csv')
+            sigma_v_df = bts.sigma_v(all_subj_df, to_sd=to_sd)
+            sample_sigma_v = np.random.choice(sigma_v_df['sigma_v'], size=(n_voxels,), replace=False)
+            sample_sigma_v = pd.DataFrame(sample_sigma_v).reset_index().rename(columns={'index': 'voxel', 0: 'sigma_v'})
+            sample_sigma_v.to_csv(sample_sigma_v_path, index=False)
+    return sample_sigma_v
 
 def measure_sd_each_cond(df, to_sd, dv_to_group=['subj', 'voxel', 'names', 'freq_lvl'], normalize=True):
     """Measure each voxel's sd across 8 trials in a condition (2 tasks x 4 phases)"""
