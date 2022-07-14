@@ -17,22 +17,25 @@ params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
 
 stim_info_path = '/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv'
-subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes'
+subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'
 output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/simulation/results_2D'
 fig_dir = '/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/'
 measured_noise_sd =0.03995  # unnormalized 1.502063
 noise_sd = [1,2]
 max_epoch = [3]
 lr_rate = [0.01]
-n_voxel = 3
+n_voxel = 100
 full_ver = [True]
+full_ver=True
 
 
-syn_data = sim.SynthesizeData(n_voxels=n_voxel, df=None, replace=True, p_dist="data",
+syn_data = sim.SynthesizeData(n_voxels=n_voxel, p_dist="data", to_noise_sample='normed_betas',
                               stim_info_path=stim_info_path, subj_df_dir=subj_df_dir)
-syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=full_ver)
-syn_df_2d['normed_betas'] = model.normalize(syn_df_2d, to_norm="betas", phase_info=False)
-# add noise
+syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=True)
+
+sim.copy_df_and_add_noise(syn_df_2d, beta_col="normed_beta", noise_mean=0, noise_sd=cur_noise)
+
+
 for cur_noise, cur_lr, cur_epoch in product(noise_sd, lr_rate, max_epoch):
     syn_df = syn_df_2d.copy()
     syn_df['normed_betas'] = sim.add_noise(syn_df['normed_betas'], noise_mean=0, noise_sd=cur_noise)
@@ -64,13 +67,6 @@ for cur_ver, cur_noise, cur_lr, cur_epoch in product(full_ver, noise_sd, lr_rate
                             ci="sd", n_boot=100, log_y=True, adjust="tight")
     plt.show()
 
-f_name = f'loss_plot_noise-0.0005to0.0009_eph-40000_n_vox-100_2.png'
-model.plot_loss_history(loss_history.query('epoch < 10000'), to_x="epoch", to_y="loss",
-                        to_label="noise_sd", lgd_title='Learning rate', to_col="lr_rate",
-                        title=f'100 synthetic voxel simulation with noise',
-                        save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_Loss', f_name),
-                        ci="sd", n_boot=100, log_y=False, adjust=[0.75, 0.85])
-plt.show()
 
 to_label = 'noise_sd'
 if full_ver is True:
@@ -99,15 +95,36 @@ for cur_ver, cur_noise, cur_lr, cur_epoch in product(full_ver, noise_sd, lr_rate
     plt.show()
 
 
-f_name = f'param_history_plot_noise-0.0005to0.0009_eph-40000_n_vox-100_2.png'
-cur_df = model_history.query('(epoch < 15000) or (lr_rate == "ground_truth")')
-model.plot_param_history(cur_df.drop(columns=['slope', 'intercept']), params=['sigma'], col_group=[1],
-                         to_x="epoch", to_y="value", to_row='params', to_col='lr_rate',
-                        to_label=to_label, lgd_title='Noise SD',
-                        title=f'100 synthetic voxel simulation with noise',
-                        save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_PramValues', f_name),
-                        ci="sd", n_boot=100, log_y=False, adjust=[0.9, 0.85])
-plt.tight_layout()
+f_name = 'ww'
+params_col = params.columns.tolist()[:3]
+model.plot_param_history(model_history, params=params_col, group=list(range(len(params_col))),
+                         to_label=None, label_order=None, ground_truth=True, to_col=None,
+                         lgd_title=None, title='wow',
+                         save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_PramValues', f_name),
+                         ci=68, n_boot=100, log_y=True, adjust="tight", sharey=False)
+
+df = model._group_params(model_history, params_col, list(range(len(params_col))))
+sns.set(font_scale=1.3)
+to_x = "epoch"
+to_y = "value"
+x_label = "Epoch"
+y_label = "Parameter value"
+grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
+                     hue=None,
+                     hue_order=None,
+                     row='params',
+                     col=None,
+                     palette=sns.color_palette("rocket"),
+                     legend_out=True,
+                     sharex=True, sharey=True)
+g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci="sd")
+for x_param, ax in g.axes_dict.items():
+    ax.set_aspect(2 / 3)
+    g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
+    ax.axhline(g_value, ls="--", linewidth=3, c="black")
+# grid.fig.set_figwidth(10)
+# grid.fig.set_figheight(13)
+#plt.tight_layout()
 plt.show()
 
 
