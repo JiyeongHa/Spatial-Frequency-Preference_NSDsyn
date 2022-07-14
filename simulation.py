@@ -118,9 +118,10 @@ def copy_df_and_add_noise(df, beta_col, noise_mean=0, noise_sd=0):
     return noisy_df
 
 
-def melt_beta_task_type(df, id_cols=None):
-
-    tasks = ['fixation_task_betas', 'memory_task_betas', 'avg_betas']
+def melt_beta_task_type(df, include_avg=False, id_cols=None):
+    tasks = ['fixation_task_betas', 'memory_task_betas']
+    if include_avg is True:
+        tasks = tasks + ['avg_betas']
     new_tasks = [x.replace('_task_betas', '') for x in tasks]
     df = df.rename(columns=dict(zip(tasks, new_tasks)))
     if id_cols == None:
