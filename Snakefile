@@ -81,7 +81,7 @@ rule run_simulation:
         syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
         syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=(wildcards.full_ver=="True"))
         syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=5000, anomaly_detection=False, amsgrad=False, eps=1e-8)
+            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2000, anomaly_detection=False, amsgrad=False, eps=1e-8)
         utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
         utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
 
