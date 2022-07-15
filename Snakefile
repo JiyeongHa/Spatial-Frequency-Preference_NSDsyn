@@ -4,22 +4,17 @@ import numpy as np
 import pandas as pd
 import simulation as sim
 import matplotlib
-matplotlib.use("TkAgg")
 import sfp_nsd_utils as utils
 import two_dimensional_model as model
 
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.01] #[0.0007]#np.linspace(5,9,5)*1e-4
-NOISE_SD = [1,2] #[np.round(measured_noise_sd*x, 2) for x in [0, 1]]#, 1.5, 2, 2.5, 3
-MAX_EPOCH = [3]
-N_VOXEL = [3]
+LR_RATE = [0.005, 0.001, 0.0005, 0.0001, 0.00005] #[0.0007]#np.linspace(5,9,5)*1e-4
+NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [0, 1]] #, 1.5, 2, 2.5, 3
+MAX_EPOCH = [40000]
+N_VOXEL = [100]
 FULL_VER = ["True"]
-params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
-                       'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
-                       'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
-
 
 rule plot_all_loss_and_param_history:
     input:
@@ -34,19 +29,15 @@ rule plot_all_loss_history:
 rule generate_synthetic_data:
     input:
         stim_info_path=os.path.join(config['STIM_INFO_DIR'],'nsdsynthetic_sf_stim_description.csv'),
-        subj_df_dir = config['SUBJ_DF_DIR'],
+        subj_df_dir = config['DF_DIR'],
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
     log:
         os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_sd-0_n_vox-{n_voxels}.csv")
     run:
-        params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
-                               'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
-                               'A_1': [0.04], 'A_2': [-0.01], 'A_3': [0], 'A_4': [0]})
-        syn_data = sim.SynthesizeData(n_voxels=int(wildcards.n_voxels),df=None,replace=True,p_dist="data",
-            stim_info_path=input.stim_info_path, subj_df_dir=input.subj_df_dir)
-        syn_df_2d = syn_data.synthesize_BOLD_2d(params,full_ver=(wildcards.full_ver=="True"))
-        syn_df_2d['normed_betas'] = model.normalize(syn_df_2d, to_norm="betas", phase_info=False)
+        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
+        syn_data = sim.SynthesizeData(n_voxels=int(wildcards.n_voxels), sigma_v_from=None, p_dist="data", stim_info_path=input.stim_info_path, subj_df_dir=input.subj_df_dir)
+        syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=(wildcards.full_ver=="True"))
         syn_df_2d.to_csv(output[0])
 
 rule generate_noisy_synthetic_data:
@@ -87,7 +78,6 @@ rule run_simulation:
     run:
         # add noise
         syn_df = pd.read_csv(input.input_path)
-        syn_df['sigma_v'] = np.ones(syn_df.shape[0],dtype=np.float64)
         syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
         syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=(wildcards.full_ver=="True"))
         syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
