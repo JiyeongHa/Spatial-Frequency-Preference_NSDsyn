@@ -413,30 +413,29 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
                       lgd_title=None, title="Loss change over time (N = 9)",
                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
                        ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83]):
-    sns.set(font_scale=1.3)
+    #sns.set(font_scale=1.3)
     x_label = 'Epoch'
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
                          hue=to_label,
                          row=to_row,
                          col=to_col,
+                         height=5,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
-    #grid.fig.set_figwidth(5)
-    #grid.fig.set_figheight(7)
-    grid.set_axis_labels(x_label, y_label, fontsize=18)
+    grid.set_axis_labels(x_label, y_label)
     if to_label is not None:
         grid.add_legend(title=lgd_title)
     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
-    grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
+    grid.fig.suptitle(f'{title}', fontweight="bold")
     if log_y is True:
         plt.semilogy()
-    if adjust is "tight":
-        plt.tight_layout()
-    elif type(adjust) is list:
-        grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
+    #if adjust is "tight":
+    #plt.tight_layout()
+    #elif type(adjust) is list:
+    #grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     utils.save_fig(save_fig, save_path)
 
 
@@ -525,7 +524,7 @@ def plot_param_history(df, params, group,
                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
                       ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83], sharey=True):
     df = _group_params(df, params, group)
-    sns.set(font_scale=1.3)
+    #sns.set(font_scale=1.3)
     to_x = "epoch"
     to_y="value"
     x_label = "Epoch"
@@ -543,20 +542,18 @@ def plot_param_history(df, params, group,
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     if ground_truth is True:
         for x_param, ax in g.axes_dict.items():
-            ax.set_aspect('auto')
+            #ax.set_aspect('auto')
             g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
             ax.axhline(g_value, ls="--", linewidth=3, c="black")
-    #grid.fig.set_figwidth(10)
-    #grid.fig.set_figheight(13)
     grid.set_axis_labels(x_label, y_label, fontsize=18)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
-    grid.fig.suptitle(f'{title}', fontsize=20, fontweight="bold")
+    grid.fig.suptitle(f'{title}', fontweight="bold")
     if log_y is True:
         plt.semilogy()
-    if adjust is "tight":
-        plt.tight_layout()
-    elif type(adjust) is list:
-        grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
+    #if adjust is "tight":
+    #plt.tight_layout()
+    #elif type(adjust) is list:
+    #grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     utils.save_fig(save_fig, save_path)
 
