@@ -57,6 +57,7 @@ def create_empty_df(col_list=None):
     return empty_df
 
 def save_df_to_csv(df, output_path, indexing=False):
+    """Save dataframe to .csv files under the designated path. Make a directory if it's needed."""
     parent_path = Path(output_path)
     if not os.path.exists(parent_path.parent.absolute()):
         os.makedirs(parent_path.parent.absolute())
