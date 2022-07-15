@@ -47,7 +47,6 @@ class PredictBOLD2d():
         self.theta_v = self.subj_df['angle']
         self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
         self.w_l = self.subj_df['local_sf']  # in cycles per degree
-
     def get_Av(self, full_ver):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         if full_ver is True:
@@ -63,10 +62,10 @@ class PredictBOLD2d():
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
         ecc_dependency = self.amp * self.r_v + self.intercept
         if full_ver is True:
-            Pv = ecc_dependency * (1 + self.A_1 * np.cos(2 * self.theta_l) +
-                                   self.A_2 * np.cos(4 * self.theta_l) +
-                                   self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
-                                   self.A_4 * np.cos(4 * (self.theta_l - self.theta_v)))
+            Pv = ecc_dependency * (1 + self.p_1 * np.cos(2 * self.theta_l) +
+                                   self.p_2 * np.cos(4 * self.theta_l) +
+                                   self.p_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
+                                   self.p_4 * np.cos(4 * (self.theta_l - self.theta_v)))
         elif full_ver is False:
             Pv = ecc_dependency
         return Pv
@@ -310,9 +309,9 @@ class SpatialFrequencyModel(torch.nn.Module):
         # theta_v = _cast_as_tensor(theta_v)
         if self.full_ver is True:
             Av = 1 + self.A_1 * torch.cos(2 * self.theta_l) + \
-             self.A_2 * torch.cos(4 * self.theta_l) + \
-             self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) + \
-             self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v))
+                 self.A_2 * torch.cos(4 * self.theta_l) + \
+                 self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) + \
+                 self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v))
         elif self.full_ver is False:
             Av = 1
         return Av
@@ -324,10 +323,10 @@ class SpatialFrequencyModel(torch.nn.Module):
         # r_v = _cast_as_tensor(r_v)
         ecc_dependency = self.slope * self.r_v + self.intercept
         if self.full_ver is True:
-            Pv = ecc_dependency * (1 + self.A_1 * torch.cos(2 * self.theta_l) +
-                                   self.A_2 * torch.cos(4 * self.theta_l) +
-                                   self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) +
-                                   self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v)))
+            Pv = ecc_dependency * (1 + self.p_1 * torch.cos(2 * self.theta_l) +
+                                   self.p_2 * torch.cos(4 * self.theta_l) +
+                                   self.p_3 * torch.cos(2 * (self.theta_l - self.theta_v)) +
+                                   self.p_4 * torch.cos(4 * (self.theta_l - self.theta_v)))
         elif self.full_ver is False:
             Pv = ecc_dependency
         return Pv
