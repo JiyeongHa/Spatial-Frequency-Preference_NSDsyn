@@ -282,10 +282,10 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.intercept = _cast_as_param(np.random.random(1))
         self.full_ver = full_ver
         if full_ver is True:
-            self.p_1 = _cast_as_param(np.random.random(1))
-            self.p_2 = _cast_as_param(np.random.random(1))
-            self.p_3 = _cast_as_param(np.random.random(1))
-            self.p_4 = _cast_as_param(np.random.random(1))
+            self.p_1 = _cast_as_param(np.random.random(1)/10)
+            self.p_2 = _cast_as_param(np.random.random(1)/10)
+            self.p_3 = _cast_as_param(np.random.random(1)/10)
+            self.p_4 = _cast_as_param(np.random.random(1)/10)
             self.A_1 = _cast_as_param(np.random.random(1))
             self.A_2 = _cast_as_param(np.random.random(1))
             self.A_3 = 0
