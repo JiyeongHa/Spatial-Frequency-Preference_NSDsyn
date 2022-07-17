@@ -410,42 +410,37 @@ def melt_history_df(history_df):
 
 def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
                       to_label=None, to_row=None, to_col=None,
-                      lgd_title=None, title="Loss change over time (N = 9)",
-                      save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
-                       ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83]):
-    #sns.set(font_scale=1.3)
+                      lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
+                       ci=68, n_boot=100, log_y=True, sharey=False):
+    sns.set_context("notebook", font_scale=1.5)
+    #sns.set(font_scale=1.5)
     x_label = 'Epoch'
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
                          hue=to_label,
                          row=to_row,
                          col=to_col,
-                         height=5,
+                         height=7,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
-                         sharex=True, sharey=True)
+                         sharex=True, sharey=sharey)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     grid.set_axis_labels(x_label, y_label)
-    if to_label is not None:
+    if lgd_title is not None:
         grid.add_legend(title=lgd_title)
     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
-    grid.fig.suptitle(f'{title}', fontweight="bold")
+    #grid.fig.suptitle(f'{title}', fontweight="bold")
     if log_y is True:
         plt.semilogy()
-    #if adjust is "tight":
-    #plt.tight_layout()
-    #elif type(adjust) is list:
-    #grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     utils.save_fig(save_fig, save_path)
 
 
 def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
                     to_label="study_type", legend_title="Study", hue_order=None,
                     x_label="Parameter", y_label="Parameter Value",
-                    title="Final parameter values (N = 9)",
-                    save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                    f_name='.png', rotate_ticks=True):
-    sns.set(font_scale=1.3)
+                    save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png',
+                    rotate_ticks=True):
+    sns.set_context("notebook", font_scale=1.5)
     grid = sns.FacetGrid(model_history_df,
                          palette=sns.color_palette("rocket", n_colors=model_history_df[to_label].nunique()),
                          hue=to_label,
@@ -454,7 +449,7 @@ def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
                          legend_out=True,
                          sharex=True, sharey=False)
     grid.map(sns.lineplot,
-             to_x, to_y, markersize=8, alpha=0.8,
+             to_x, to_y, markersize=8, alpha=0.9,
              marker='o', linestyle='', err_style='bars', ci=68)
     grid.fig.set_figwidth(9)
     grid.fig.set_figheight(6)
@@ -462,10 +457,9 @@ def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
     grid.set_axis_labels(x_label, y_label)
     if rotate_ticks:
         plt.xticks(rotation=45)
-    grid.fig.subplots_adjust(top=0.9, right=0.75)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{title}', fontweight="bold")
-    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
-    plt.show()
+    #grid.fig.subplots_adjust(top=0.9, right=0.75)  # adjust the Figure in rp
+    #grid.fig.suptitle(f'{title}', fontweight="bold")
+    utils.save_fig(save_fig, save_path)
 
 
 def _add_param_type_column(model_history_df, params):
@@ -487,55 +481,48 @@ def _group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
 
 
 def plot_grouped_parameters(df, params, col_group,
-                               to_x="param", to_y="value",
                                to_label="study_type", lgd_title="Study", label_order=None,
-                               title="Final parameter values (N = 8)",
-                               save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                               f_name='.png'):
+                               save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     df = _group_params(df, params, col_group)
-    sns.set(font_scale=1.3)
+    sns.set_context("notebook", font_scale=1.5)
     x_label = "Parameter"
     y_label = "Value"
     grid = sns.FacetGrid(df,
+                         col="group",
+                         col_wrap=3,
                          palette=sns.color_palette("rocket", n_colors=df[to_label].nunique()),
                          hue=to_label,
-                         col='group',
+                         height=7,
                          hue_order=label_order,
                          legend_out=True,
                          sharex=False, sharey=False)
-    grid.map(sns.lineplot,
-             to_x, to_y, markersize=8, alpha=0.4,
-             marker='o', linestyle='', err_style='bars', ci=68)
+    grid.map(sns.lineplot, "params", "value", markersize=15, alpha=0.9, marker='o', linestyle='', err_style='bars', ci=68)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
-    grid.fig.set_figwidth(9)
-    grid.fig.set_figheight(6)
-    grid.fig.legend(title=lgd_title, bbox_to_anchor=(1, 0.9), labels=label_order)
+    grid.fig.legend(title=lgd_title, labels=label_order)
     grid.set_axis_labels("", y_label)
-    grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{title}', fontweight="bold")
-    utils.save_fig(save_fig, save_dir, x_label=x_label, y_label=y_label, f_name=f_name)
-    plt.show()
+    #grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
+    #grid.fig.suptitle(f'{title}', fontweight="bold")
+    utils.save_fig(save_fig, save_path)
 
 
 def plot_param_history(df, params, group,
                       to_label=None, label_order=None, ground_truth=True, to_col=None,
-                      lgd_title=None, title="Loss change over time (N = 9)",
+                      lgd_title=None,
                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                      ci=68, n_boot=100, log_y=True, adjust=[0.8, 0.83], sharey=True):
+                      ci=68, n_boot=100, log_y=True, sharey=True):
     df = _group_params(df, params, group)
-    #sns.set(font_scale=1.3)
+    sns.set_context("notebook", font_scale=1.5)
     to_x = "epoch"
-    to_y="value"
+    to_y = "value"
     x_label = "Epoch"
     y_label = "Parameter value"
-    if to_label is None:
-        to_label = 'params'
     grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
                          hue=to_label,
                          hue_order=label_order,
                          row="params",
                          col=to_col,
+                         height=7,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=sharey)
@@ -543,17 +530,47 @@ def plot_param_history(df, params, group,
     if ground_truth is True:
         for x_param, ax in g.axes_dict.items():
             #ax.set_aspect('auto')
-            g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
+            g_value = df.query('params == @x_param[0] & lr_rate == "ground_truth"').value.item()
             ax.axhline(g_value, ls="--", linewidth=3, c="black")
-    grid.set_axis_labels(x_label, y_label, fontsize=18)
+    grid.set_axis_labels(x_label, y_label)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
-    grid.fig.suptitle(f'{title}', fontweight="bold")
+    #grid.fig.suptitle(f'{title}', fontweight="bold")
     if log_y is True:
         plt.semilogy()
-    #if adjust is "tight":
-    #plt.tight_layout()
-    #elif type(adjust) is list:
-    #grid.fig.subplots_adjust(top=adjust[0], right=adjust[1])
     utils.save_fig(save_fig, save_path)
 
+
+def plot_param_history_horizontal(df, params, group,
+                                  to_label=None, label_order=None, ground_truth=True,
+                                  lgd_title=None,
+                                  save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
+                                  ci=68, n_boot=100, log_y=True):
+    df = _group_params(df, params, group)
+    sns.set_context("notebook", font_scale=1.5)
+    to_x = "epoch"
+    to_y = "value"
+    x_label = "Epoch"
+    y_label = "Parameter value"
+    grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
+                         hue=to_label,
+                         hue_order=label_order,
+                         col="params",
+                         col_wrap=4,
+                         height=5,
+                         palette=sns.color_palette("rocket"),
+                         legend_out=True,
+                         sharex=True, sharey=False)
+    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
+    if ground_truth is True:
+        for x_param, ax in g.axes_dict.items():
+            # ax.set_aspect('auto')
+            g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
+            ax.axhline(g_value, ls="--", linewidth=2, c="black")
+    grid.set_axis_labels(x_label, y_label)
+    if lgd_title is not None:
+        grid.add_legend(title=lgd_title)
+    # grid.fig.suptitle(f'{title}', fontweight="bold")
+    if log_y is True:
+        plt.semilogy()
+    utils.save_fig(save_fig, save_path)
