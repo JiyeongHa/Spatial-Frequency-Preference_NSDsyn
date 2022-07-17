@@ -33,7 +33,7 @@ rule generate_synthetic_data:
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-False_sd-0_n_vox-{n_voxels}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-False_sd-0_n_vox-{n_voxels}.csv")
+        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-False_sd-0_n_vox-{n_voxels}.log")
     run:
         params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
         syn_data = sim.SynthesizeData(n_voxels=int(wildcards.n_voxels), sigma_v_from=None, p_dist="data", stim_info_path=input.stim_info_path, subj_df_dir=input.subj_df_dir)
