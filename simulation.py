@@ -199,16 +199,17 @@ def change_voxel_info_in_df(df):
 
 
 
-def load_history_df(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels, df_type):
+def load_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch, df_type):
     all_history_df = pd.DataFrame()
-    for cur_noise, cur_lr, cur_epoch, cur_ver, in product(noise_sd, lr_rate, max_epoch, full_ver):
-        model_history_path = os.path.join(output_dir, f'{df_type}_history_full_ver-{cur_ver}_sd-{cur_noise}_n_vox-{n_voxels}_lr-{cur_lr}_eph-{cur_epoch}.csv')
+    for cur_ver, cur_pw, cur_noise, cur_lr, cur_epoch  in product(full_ver, pw, noise_sd, lr_rate, max_epoch):
+        model_history_path = os.path.join(output_dir, f'{df_type}_history_full_ver-{cur_ver}_pw-{cur_pw}_sd-{cur_noise}_n_vox-{n_voxels}_lr-{cur_lr}_eph-{cur_epoch}.csv')
         tmp = pd.read_csv(model_history_path)
-        if {'lr_rate', 'noise_sd', 'max_epoch', 'full_ver'}.issubset(tmp.columns) is False:
+        if {'lr_rate', 'noise_sd', 'max_epoch', 'full_ver', 'pw'}.issubset(tmp.columns) is False:
             tmp['lr_rate'] = cur_lr
             tmp['noise_sd'] = cur_noise
             tmp['max_epoch'] = cur_epoch
             tmp['full_ver'] = cur_ver
+            tmp['pw'] = cur_pw #precision weight
         all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
     return all_history_df
 
@@ -227,15 +228,15 @@ def add_ground_truth_to_df(ground_truth, df, id_val='ground_truth'):
     return df
 
 
-def load_model_history_df_with_ground_truth(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels,
+def load_model_history_df_with_ground_truth(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch,
                                             ground_truth, id_val='ground_truth'):
-    df = load_history_df(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels, df_type="model")
+    df = load_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch, df_type="model")
     df = add_ground_truth_to_df(ground_truth, df, id_val=id_val)
     return df
 
-def load_all_model_fitting_results(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels,
+def load_all_model_fitting_results(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch,
                                    ground_truth, id_val='ground_truth'):
-    model_history = load_model_history_df_with_ground_truth(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels,
+    model_history = load_model_history_df_with_ground_truth(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch,
                                                             ground_truth, id_val)
     loss_history = load_history_df(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels, df_type="loss")
 
