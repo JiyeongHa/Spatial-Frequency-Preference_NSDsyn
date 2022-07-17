@@ -451,9 +451,6 @@ def plot_parameters(model_history_df, to_x="param", to_y="value", to_col=None,
     grid.map(sns.lineplot,
              to_x, to_y, markersize=8, alpha=0.9,
              marker='o', linestyle='', err_style='bars', ci=68)
-    grid.fig.set_figwidth(9)
-    grid.fig.set_figheight(6)
-    grid.fig.legend(title=legend_title)
     grid.set_axis_labels(x_label, y_label)
     if rotate_ticks:
         plt.xticks(rotation=45)
