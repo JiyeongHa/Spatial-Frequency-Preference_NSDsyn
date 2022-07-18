@@ -420,7 +420,7 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
                          hue=to_label,
                          row=to_row,
                          col=to_col,
-                         height=7,
+                         height=5,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=sharey)
