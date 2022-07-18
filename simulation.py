@@ -105,13 +105,11 @@ class SynthesizeData():
         syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
         return syn_df
 
-
 def add_noise(betas, noise_mean=0, noise_sd=0.03995):
     return betas + np.random.normal(noise_mean, noise_sd, len(betas))
 
 def copy_df_and_add_noise(df, beta_col, noise_mean=0, noise_sd=0):
-    # if noise_sd == 0:
-    #     raise Exception('noise sd == 0 is the same as original data!\n')
+
     noisy_df = df.copy()
     noisy_df['noise_SD'] = noise_sd
     noisy_df[beta_col] = add_noise(df[beta_col], noise_mean=noise_mean, noise_sd=noise_sd)
@@ -238,7 +236,7 @@ def load_all_model_fitting_results(output_dir, full_ver, pw, noise_sd, n_voxels,
                                    ground_truth, id_val='ground_truth'):
     model_history = load_model_history_df_with_ground_truth(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch,
                                                             ground_truth, id_val)
-    loss_history = load_history_df(output_dir, full_ver, noise_sd, lr_rate, max_epoch, n_voxels, df_type="loss")
+    loss_history = load_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch, df_type="loss")
 
     return model_history, loss_history
 
