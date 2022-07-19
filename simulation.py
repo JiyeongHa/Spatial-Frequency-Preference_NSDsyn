@@ -68,7 +68,7 @@ class SynthesizeData():
             df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
         elif self.p_dist is "data":
             df['angle'], df['eccentricity'] = self._sample_pRF_from_data()
-        sigma_v = generate_sigma_v(self.n_voxels, betas=self.to_sd, df_dir=self.subj_df_dir)
+        sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
         df = df.merge(sigma_v, on='voxel')
         syn_df = self.stim_info.merge(df, on='voxel')
         syn_df = make_df._calculate_local_orientation(syn_df)
