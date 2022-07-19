@@ -100,7 +100,6 @@ class SynthesizeData():
     def synthesize_BOLD_2d(self, params, full_ver=True):
         syn_df = self.syn_voxels.copy()
         syn_model = model.PredictBOLD2d(params, 0, self.syn_voxels)
-        syn_df['noise_SD'] = 0
         syn_df['betas'] = syn_model.forward(full_ver=full_ver)
         syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
         return syn_df
@@ -127,33 +126,54 @@ def melt_beta_task_type(df, include_avg=False, id_cols=None):
     df = pd.melt(df, id_vars=id_cols, value_vars=new_tasks, var_name='task', value_name='betas')
     return df
 
-def generate_sigma_v(n_voxels, betas='normed_betas',
+def sample_sigma_v(n_voxels, pw=True,
                    df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
-    """Sample sigma_v from the NSD synthetic data. It will first attempt to read in an any saved sigma_v.csv files.
-    If none exists, it will automatically sample from the actual data after calculating sigma_v for each  voxel and for each
+    """Sample sigma_v_squared from the NSD synthetic data.
+    The final output is a dataframe that contains two columns: noise_SD (sigma_v_squared) & sigma_v_squared.
+    It will first attempt to read in an any saved sigma_v_squared.csv files.
+    If none exists, it will automatically sample from the actual data after calculating sigma_v_squared for each  voxel and for each
     subject. """
 
-    sigma_v_dir = os.path.join(df_dir, 'sigma_v')
+    sigma_v_dir = os.path.join(df_dir, 'sigma_v_squared')
     if not os.path.exists(sigma_v_dir):
         os.makedirs(sigma_v_dir)
-
-    if betas is None:
-        sample_sigma_v = pd.DataFrame(np.ones((n_voxels,), dtype=np.float64)).reset_index().rename(columns={'index':'voxel', 0:'sigma_v'})
+    if pw is False:
+        measured_noise_sd = 0.03995
+        noise_SD = pd.DataFrame(np.ones((n_voxels,), dtype=np.float64)*measured_noise_sd).reset_index().rename(columns={'index': 'voxel', 0: 'noise_SD'})
+        sigma_v_squared = pd.DataFrame(np.ones((n_voxels,), dtype=np.float64)).reset_index().rename(columns={'index': 'voxel', 0: 'sigma_v_squared'})
+        sigma_v_df = noise_SD.merge(sigma_v_squared, on='voxel')
     else:
-        sample_sigma_v_path = os.path.join(sigma_v_dir, f'sigma_v_{betas}_n_vox-{n_voxels}.csv')
-        if os.path.exists(sample_sigma_v_path):
-            sample_sigma_v = pd.read_csv(sample_sigma_v_path)
+        betas = 'normed_betas'
+        sigma_v_path = os.path.join(sigma_v_dir, f'sigma_v_{betas}_n_vox-{n_voxels}.csv')
+        if os.path.exists(sigma_v_path):
+            sigma_v_df = pd.read_csv(sigma_v_path)
         else:
-            if os.path.exists(os.path.join(sigma_v_dir, f'sigma_v_{betas}.csv')):
-                sigma_v_df = pd.read_csv(os.path.join(sigma_v_dir, f'sigma_v_{betas}.csv'))
-            else:
-                all_subj_df = utils.load_all_subj_df(np.arange(1, 9), df_dir=df_dir, df_name='stim_voxel_info_df_vs.csv')
-                sigma_v_df = bts.sigma_v(all_subj_df, to_sd=betas)
-                utils.save_df_to_csv(sigma_v_df, os.path.join(sigma_v_dir, f'sigma_v_{betas}.csv'), indexing=False)
-            sample_sigma_v = np.random.choice(sigma_v_df['sigma_v'], size=(n_voxels,), replace=False)
-            sample_sigma_v = pd.DataFrame(sample_sigma_v).reset_index().rename(columns={'index': 'voxel', 0: 'sigma_v'})
-            utils.save_df_to_csv(sample_sigma_v, sample_sigma_v_path, indexing=False)
-    return sample_sigma_v
+            all_sigma_v_path = re.sub('_n_vox.+.csv', '.csv', sigma_v_path)
+            all_sigma_v_df = _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, df_dir)
+            sigma_v_df = all_sigma_v_df[['noise_SD', 'sigma_v_squared']].sample(n=n_voxels,
+                                                                                replace=False,
+                                                                                ignore_index=True,
+                                                                                random_state=1)
+            sigma_v_df = sigma_v_df.reset_index().rename(columns={'index': 'voxel'})
+            utils.save_df_to_csv(sigma_v_df, sigma_v_path, indexing=False)
+    return sigma_v_df
+
+def _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, subj_df_dir):
+    if os.path.exists(all_sigma_v_path):
+        all_sigma_v_df = pd.read_csv(all_sigma_v_path)
+    else:
+        all_subj_df = utils.load_all_subj_df(np.arange(1, 9), df_dir=subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
+        all_sigma_v_df = bts.get_multiple_sigma_vs(all_subj_df, power=[1,2], columns=['noise_SD', 'sigma_v_squared'], to_sd=betas)
+        utils.save_df_to_csv(all_sigma_v_df, all_sigma_v_path, indexing=False)
+    return all_sigma_v_df
+
+def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['voxel','subj']):
+    """Generate multiple sigma_v_squared using different powers. power argument must be pass as a list."""
+    sigma_v_df = bts.sigma_v(df, power=power, to_sd=to_sd, to_group=to_group)
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_v_squared':'tmp'})
+    sigma_v_df[columns] = pd.DataFrame(sigma_v_df['tmp'].to_list(), columns=columns)
+    sigma_v_df = sigma_v_df.drop(columns=['tmp'])
+    return sigma_v_df
 
 def measure_sd_each_cond(df, to_sd, dv_to_group=['subj', 'voxel', 'names', 'freq_lvl'], ddof=0, normalize=True):
     """Measure each voxel's sd across 8 trials in a condition (2 tasks x 4 phases)"""
@@ -168,7 +188,7 @@ def measure_sd_each_voxel(df, to_sd, dv_to_group=['subj', 'voxel'], ddof=0, norm
     tmp_dv_to_group = dv_to_group + ['names', 'freq_lvl']
     std_df = measure_sd_each_cond(df, to_sd, dv_to_group=tmp_dv_to_group, ddof=ddof, normalize=normalize)
     std_df = std_df.groupby(dv_to_group)['sigma_vi'].mean().reset_index()
-    std_df = std_df.rename(columns={'sigma_vi': 'sigma_v'})
+    std_df = std_df.rename(columns={'sigma_vi': 'sigma_v_squared'})
     return std_df
 
 def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
