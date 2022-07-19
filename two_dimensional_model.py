@@ -77,8 +77,6 @@ class PredictBOLD2d():
         return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
 
 
-
-
 def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
@@ -90,9 +88,10 @@ def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False)
 
     elif type(voxel_info) == torch.Tensor:
         normed = torch.empty(to_norm.shape, dtype=torch.float64)
-        for idx in voxel_info.unique():
+        voxel_list = voxel_info.unique()
+        for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
             voxel_idx = voxel_info == idx
-            normed[voxel_idx] = to_norm[voxel_idx] / torch.linalg.norm(to_norm[voxel_idx])
+            normed[i] = to_norm[voxel_idx] / torch.linalg.norm(to_norm[voxel_idx])
     return normed
 
 
@@ -258,11 +257,11 @@ def count_nan_in_torch_vector(x):
 
 class SpatialFrequencyDataset:
     def __init__(self, df, beta_col='avg_betas'):
-        self.tmp = df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', beta_col, 'sigma_v']]
+        self.tmp = df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', beta_col, 'sigma_v_squared']]
         self.my_tensor = torch.tensor(self.tmp.to_numpy())
         self.voxel_info = self.my_tensor[:, 0]
         self.target = self.my_tensor[:, 5]
-        self.sigma_v = self.my_tensor[:, 6]
+        self.sigma_v_squared = self.my_tensor[:, 6]
 
     def df_to_numpy(self):
         return self.tmp.to_numpy()
@@ -297,7 +296,7 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.r_v = self.subj_tensor[:, 3]
         self.w_l = self.subj_tensor[:, 4]
         self.target = self.subj_tensor[:, 5]
-        self.sigma_v = self.subj_tensor[:,6]
+        self.sigma_v_squared = self.subj_tensor[:, 6]
         # self.theta_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_ori'])
         # self.theta_v = _cast_as_tensor(self.subj_df.iloc[0:]['angle'])
         # self.r_v = _cast_as_tensor(self.subj_df.iloc[0:]['eccentricity'])  # voxel eccentricity (in degrees)
@@ -356,9 +355,9 @@ def loss_fn(voxel_info, sigma_v_info, prediction, target):
     for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
         voxel_idx = voxel_info == idx
         n = sum(voxel_idx)
-        sigma_v = sigma_v_info[voxel_idx]
-        loss_v = (1/n) * torch.dot(sigma_v, ((norm_pred[voxel_idx] - norm_measured[voxel_idx]) ** 2))
-        loss_all_voxels[i] = torch.mean(loss_v)
+        sigma_v_squared = sigma_v_info[voxel_idx]
+        loss_v = (1/n) * torch.dot((1/sigma_v_squared), ((norm_pred[voxel_idx] - norm_measured[voxel_idx]) ** 2))
+        loss_all_voxels[i] = loss_v
     return loss_all_voxels
 
 def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100,
@@ -378,7 +377,7 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
     for t in range(max_epoch):
 
         pred = model.forward()  # predictions should be put in here
-        losses = loss_fn(dataset.voxel_info, dataset.sigma_v, prediction=pred, target=dataset.target)  # loss should be returned here
+        losses = loss_fn(dataset.voxel_info, dataset.sigma_v_squared, prediction=pred, target=dataset.target)  # loss should be returned here
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
