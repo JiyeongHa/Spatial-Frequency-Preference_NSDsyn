@@ -134,7 +134,7 @@ def sample_sigma_v(n_voxels, pw=True,
     If none exists, it will automatically sample from the actual data after calculating sigma_v_squared for each  voxel and for each
     subject. """
 
-    sigma_v_dir = os.path.join(df_dir, 'sigma_v_squared')
+    sigma_v_dir = os.path.join(df_dir, 'sigma_v')
     if not os.path.exists(sigma_v_dir):
         os.makedirs(sigma_v_dir)
     if pw is False:
@@ -170,7 +170,7 @@ def _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, subj_df_dir):
 def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['voxel','subj']):
     """Generate multiple sigma_v_squared using different powers. power argument must be pass as a list."""
     sigma_v_df = bts.sigma_v(df, power=power, to_sd=to_sd, to_group=to_group)
-    sigma_v_df = sigma_v_df.rename(columns={'sigma_v_squared':'tmp'})
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_v_squared': 'tmp'})
     sigma_v_df[columns] = pd.DataFrame(sigma_v_df['tmp'].to_list(), columns=columns)
     sigma_v_df = sigma_v_df.drop(columns=['tmp'])
     return sigma_v_df
