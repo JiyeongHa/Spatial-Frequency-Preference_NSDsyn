@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from itertools import product
 import bootstrap as bts
 from pathlib import Path
-
+import re
 
 class SynthesizeData():
     """Synthesize data for 1D model and 2D model simulations. This class consists of three parts:
@@ -21,13 +21,13 @@ class SynthesizeData():
     2. Generate synthetic voxels. Eccentricity and polar angle will be drawn from the uniform distribution.
     3. Generate BOLD predictions, with or without noise. """
 
-    def __init__(self, n_voxels=100, sigma_v_from='normed_betas', p_dist="uniform",
+    def __init__(self, n_voxels=100, pw=True, p_dist="uniform",
                  stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
                  subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
         self.n_voxels = n_voxels
         self.p_dist = p_dist
         self.subj_df_dir = subj_df_dir
-        self.to_sd = sigma_v_from
+        self.pw = pw
         self.stim_info = self.get_stim_info_for_n_voxels(stim_info_path)
         self.syn_voxels = self.generate_synthetic_voxels()
 
