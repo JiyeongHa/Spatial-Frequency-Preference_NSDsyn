@@ -42,7 +42,7 @@ class SynthesizeData():
 
     def _sample_pRF_from_data(self):
         random_sn = np.random.randint(1, 9, size=1)
-        tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
+        tmp_df = utils.load_all_subj_df(np.arange(1, 9), df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
         polar_angles = np.random.choice(tmp_df['angle'].unique(), size=(self.n_voxels,), replace=False)
         eccentricity = np.random.choice(tmp_df['eccentricity'].unique(), size=(self.n_voxels,), replace=False)
         return polar_angles, eccentricity
