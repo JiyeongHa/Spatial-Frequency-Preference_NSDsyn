@@ -60,16 +60,24 @@ def bootstrap_dataframe_all_subj(sn_list, df, n_bootstrap=100,
 
 
 def sigma_vi(bts_df, power, to_sd='normed_betas', to_group=['subj', 'voxel', 'names', 'freq_lvl']):
-    bts_vi_df = bts_df.groupby(to_group)[to_sd].apply(lambda x: (abs(np.percentile(x, 84)-np.percentile(x, 16))**power/2))
-    bts_vi_df = bts_vi_df.reset_index().rename(columns={to_sd: 'sigma_vi'})
-    return bts_vi_df
+    sigma_vi_df = bts_df.groupby(to_group)[to_sd].apply(lambda x: (abs(np.percentile(x, 84)-np.percentile(x, 16))/2)**power)
+    sigma_vi_df = sigma_vi_df.reset_index().rename(columns={to_sd: 'sigma_vi'})
+    return sigma_vi_df
 
 def sigma_v(bts_df, power, to_sd='normed_betas', to_group=['voxel', 'subj']):
     selected_cols = to_group + ['names', 'freq_lvl']
-    bts_vi_df = sigma_vi(bts_df, power, to_sd=to_sd, to_group=selected_cols)
-    bts_v_df = bts_vi_df.groupby(to_group)['sigma_vi'].mean().reset_index()
-    bts_v_df = bts_v_df.rename(columns={'sigma_vi': 'sigma_v'})
-    return bts_v_df
+    sigma_vi_df = sigma_vi(bts_df, power, to_sd=to_sd, to_group=selected_cols)
+    sigma_v_df = sigma_vi_df.groupby(to_group)['sigma_vi'].mean().reset_index()
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_vi': 'sigma_v'})
+    return sigma_v_df
+
+def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['voxel','subj']):
+    """Generate multiple sigma_v using different powers. power argument must be pass as a list."""
+    sigma_v_df = sigma_v(df, power=power, to_sd=to_sd, to_group=to_group)
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_v':'tmp'})
+    sigma_v_df[columns] = pd.DataFrame(sigma_v_df['tmp'].to_list(), columns=columns)
+    sigma_v_df = sigma_v_df.drop(columns=['tmp'])
+    return sigma_v_df
 
 def merge_sigma_v_to_main_df(bts_v_df, subj_df, on=['subj', 'voxel']):
     return subj_df.merge(bts_v_df, on=on)
