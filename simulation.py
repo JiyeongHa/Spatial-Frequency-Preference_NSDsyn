@@ -41,11 +41,21 @@ class SynthesizeData():
         return stim_info
 
     def _sample_pRF_from_data(self):
-        random_sn = np.random.choice(np.arange(1,9), size=(8,), replace=False)
-        tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
-        polar_angles = np.random.choice(tmp_df['angle'].unique(), size=(self.n_voxels,), replace=False)
-        eccentricity = np.random.choice(tmp_df['eccentricity'].unique(), size=(self.n_voxels,), replace=False)
-        return polar_angles, eccentricity
+        prf_loc_dir = os.path.join(self.subj_df_dir, 'pRF_loc')
+
+        if not os.path.exists(prf_loc_dir):
+            os.makedirs(prf_loc_dir)
+        prf_path = os.path.join(prf_loc_dir, f'pRF_loc_n_vox-{self.n_voxels}.csv')
+        if os.path.exists(prf_path):
+            prf_df = pd.read_csv(prf_path)
+        else:
+            random_sn = np.random.choice(np.arange(1,9), size=(1,), replace=False)
+            tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
+            polar_angles = np.random.choice(tmp_df['angle'].unique(), size=(self.n_voxels,), replace=False)
+            eccentricity = np.random.choice(tmp_df['eccentricity'].unique(), size=(self.n_voxels,), replace=False)
+            prf_df = pd.DataFrame({'angle': polar_angles, 'eccentricity': eccentricity})
+            utils.save_df_to_csv(prf_df, prf_path, indexing=False)
+        return prf_df
     #
     # def _sample_noise_from_data(self):
     #     if self.df is None:
@@ -67,7 +77,8 @@ class SynthesizeData():
             df['angle'] = np.random.uniform(0, 360, size=self.n_voxels)
             df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
         elif self.p_dist is "data":
-            df['angle'], df['eccentricity'] = self._sample_pRF_from_data()
+            prf_df = self._sample_pRF_from_data()
+            df = pd.concat((df, prf_df), axis=1)
         sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
         df = df.merge(sigma_v, on='voxel')
         syn_df = self.stim_info.merge(df, on='voxel')
