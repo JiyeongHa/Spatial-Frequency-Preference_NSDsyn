@@ -179,14 +179,6 @@ def _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, subj_df_dir):
         utils.save_df_to_csv(all_sigma_v_df, all_sigma_v_path, indexing=False)
     return all_sigma_v_df
 
-def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['voxel','subj']):
-    """Generate multiple sigma_v_squared using different powers. power argument must be pass as a list."""
-    sigma_v_df = bts.sigma_v(df, power=power, to_sd=to_sd, to_group=to_group)
-    sigma_v_df = sigma_v_df.rename(columns={'sigma_v_squared': 'tmp'})
-    sigma_v_df[columns] = pd.DataFrame(sigma_v_df['tmp'].to_list(), columns=columns)
-    sigma_v_df = sigma_v_df.drop(columns=['tmp'])
-    return sigma_v_df
-
 def measure_sd_each_cond(df, to_sd, dv_to_group=['subj', 'voxel', 'names', 'freq_lvl'], ddof=0, normalize=True):
     """Measure each voxel's sd across 8 trials in a condition (2 tasks x 4 phases)"""
     if normalize:
