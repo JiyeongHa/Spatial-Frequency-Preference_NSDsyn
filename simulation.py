@@ -163,9 +163,8 @@ def sample_sigma_v(n_voxels, pw=True,
             all_sigma_v_df = _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, df_dir)
             sigma_v_df = all_sigma_v_df[['noise_SD', 'sigma_v_squared']].sample(n=n_voxels,
                                                                                 replace=False,
-                                                                                ignore_index=True,
                                                                                 random_state=1)
-            sigma_v_df = sigma_v_df.reset_index().rename(columns={'index': 'voxel'})
+            sigma_v_df = sigma_v_df.reset_index().reset_index().drop(columns='index').rename(columns={'level_0': 'voxel'})
             utils.save_df_to_csv(sigma_v_df, sigma_v_path, indexing=False)
     return sigma_v_df
 
