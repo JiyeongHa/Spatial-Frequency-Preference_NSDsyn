@@ -88,10 +88,9 @@ def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False)
 
     elif type(voxel_info) == torch.Tensor:
         normed = torch.empty(to_norm.shape, dtype=torch.float64)
-        voxel_list = voxel_info.unique()
-        for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
+        for idx in voxel_info.unique():
             voxel_idx = voxel_info == idx
-            normed[i] = to_norm[voxel_idx] / torch.linalg.norm(to_norm[voxel_idx])
+            normed[voxel_idx] = to_norm[voxel_idx] / torch.linalg.norm(to_norm[voxel_idx])
     return normed
 
 
