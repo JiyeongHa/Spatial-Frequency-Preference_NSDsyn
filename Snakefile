@@ -10,13 +10,13 @@ import two_dimensional_model as model
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.0005, 0.001] #[0.0007]#np.linspace(5,9,5)*1e-4
-MULTIPLES_OF_NOISE_SD = [1]
+LR_RATE = [0.0005, 0.001, 0.005, 0.01] #[0.0007]#np.linspace(5,9,5)*1e-4
+MULTIPLES_OF_NOISE_SD = [1,3,5,7]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
 MAX_EPOCH = [25000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
-PW = ["True", "False"]
+PW = ["True","False"]
 
 rule plot_all_loss_and_param_history:
     input:
