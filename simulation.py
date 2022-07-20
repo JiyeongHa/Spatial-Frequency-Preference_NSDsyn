@@ -49,7 +49,7 @@ class SynthesizeData():
         if os.path.exists(prf_path):
             prf_df = pd.read_csv(prf_path)
         else:
-            random_sn = np.random.choice(np.arange(1,9), size=(1,), replace=False)
+            random_sn = np.random.choice(np.arange(1,9), size=(8,), replace=False)
             tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
             polar_angles = np.random.choice(tmp_df['angle'].unique(), size=(self.n_voxels,), replace=False)
             eccentricity = np.random.choice(tmp_df['eccentricity'].unique(), size=(self.n_voxels,), replace=False)
@@ -174,7 +174,8 @@ def _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, subj_df_dir):
         all_sigma_v_df = pd.read_csv(all_sigma_v_path)
     else:
         all_subj_df = utils.load_all_subj_df(np.arange(1, 9), df_dir=subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
-        all_sigma_v_df = bts.get_multiple_sigma_vs(all_subj_df, power=[1,2], columns=['noise_SD', 'sigma_v_squared'], to_sd=betas)
+        all_sigma_v_df = bts.get_multiple_sigma_vs(all_subj_df, power=[1,2], to_group=['voxel','subj'],
+                                                   columns=['noise_SD', 'sigma_v_squared'], to_sd=betas)
         utils.save_df_to_csv(all_sigma_v_df, all_sigma_v_path, indexing=False)
     return all_sigma_v_df
 
