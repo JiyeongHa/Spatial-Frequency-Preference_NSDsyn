@@ -395,12 +395,19 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
     params_col = [name for name, param in model.named_parameters() if param.requires_grad]
     print(f'**epoch no.{max_epoch}: Finished! final model params...\n{dict(zip(params_col, model_values))}')
     print(f'Elapsed time: {np.round(end - start, 2)} sec')
+    voxel_list = dataset.voxel_info.unique().numpy().astype(int).tolist()
 
+    losses_history = pd.DataFrame(np.asarray(losses_history), columns=voxel_list).reset_index().rename(columns={'index': 'epoch'})
     loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
     model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
 
     return loss_history, model_history, elapsed_time, losses_history
 
+def shape_losses_history(losses_history, syn_df):
+    voxel_list = losses_history.drop(columns=['epoch']).columns.tolist()
+    losses_history = pd.melt(losses_history, id_vars=['epoch'], value_vars=voxel_list, var_name='voxel', value_name='loss')
+    losses_history = losses_history.merge(syn_df[['voxel','noise_SD','sigma_v_squared']], on=['voxel'])
+    return losses_history
 
 def melt_history_df(history_df):
     return pd.concat(history_df).reset_index().rename(columns={'level_0': 'subj', 'level_1': 'epoch'})
