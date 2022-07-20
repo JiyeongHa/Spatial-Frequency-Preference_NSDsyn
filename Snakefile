@@ -16,7 +16,7 @@ NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
 MAX_EPOCH = [25000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
-PW = ["True","False"]
+PW = ["True"]
 
 rule plot_all_loss_and_param_history:
     input:
