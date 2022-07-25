@@ -218,7 +218,10 @@ def change_voxel_info_in_df(df):
     df['voxel'] = df['voxel'].replace(voxel_list, range(voxel_list.shape[0]))
     return df
 
-
+def load_losses_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch):
+    losses_history_path = os.path.join(output_dir, f'losses_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{noise_sd}_n_vox-{n_voxels}_lr-{lr_rate}_eph-{max_epoch}.csv')
+    losses_history = pd.read_csv(losses_history_path)
+    return losses_history
 
 def load_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch, df_type):
     all_history_df = pd.DataFrame()
