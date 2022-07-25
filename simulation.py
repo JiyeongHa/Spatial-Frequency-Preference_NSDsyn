@@ -115,6 +115,79 @@ class SynthesizeData():
         syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
         return syn_df
 
+
+
+class SynthesizeRealData():
+    """Synthesize using the real dataset information as much as possible for 2D model simulations.
+    This class consists of three parts:
+    1. Load stimulus information (stim class, frequency level, w_a, w_r, etc) without phase information
+    2. Choose one subject and load in all prf information and sigma_v in V1. The relationship between voxel info and
+    prf values should not be changed.
+    3. Generate BOLD predictions, with or without noise. """
+
+    def __init__(self, sn, pw=True,
+                 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
+        self.sn = sn
+        self.subj_df_dir = subj_df_dir
+        self.pw = pw
+        self.subj_voxels = self.load_prf_stim_info_from_data()
+        self.n_voxels = self.subj_voxels.voxel.nunique()
+
+    def _get_sigma_v(self, subj_df, voxel_list):
+        sigma_v_dir = os.path.join(self.subj_df_dir, 'sigma_v')
+        if self.pw is False:
+            measured_noise_sd = 0.03995
+            sigma_v_df = pd.DataFrame({'voxel': voxel_list})
+            sigma_v_df['noise_SD'] = np.ones((voxel_list.shape[0]), dtype=np.float64) * measured_noise_sd
+            sigma_v_df['sigma_v_squared'] = np.ones((voxel_list.shape[0]), dtype=np.float64)
+        else:
+            betas = 'normed_betas'
+            all_sigma_v_path = os.path.join(sigma_v_dir, f'sigma_v_{betas}.csv')
+            if os.path.exists(all_sigma_v_path):
+                all_sigma_v_df = pd.read_csv(all_sigma_v_path)
+                subj = utils.sub_number_to_string(self.sn)
+                sigma_v_df = all_sigma_v_df.query('subj == @subj & voxel in @voxel_list')
+                sigma_v_df = sigma_v_df[['voxel', 'noise_SD', 'sigma_v_squared']]
+                print('used existing dir')
+            else:
+                sigma_v_df = bts.get_multiple_sigma_vs(subj_df, power=[1,2], to_group=['voxel'],
+                                                   columns=['noise_SD', 'sigma_v_squared'], to_sd=betas)
+                print('made new sigma_v')
+        return sigma_v_df
+
+    def _drop_phase_info(self, subj_df):
+        tmp_df = subj_df.groupby(['voxel', 'freq_lvl', 'names']).mean().reset_index()
+        subj_df_no_phase = tmp_df.drop(columns=['betas', 'normed_betas', 'phase', 'phase_idx', 'avg_betas'])
+        return subj_df_no_phase
+
+    def load_prf_stim_info_from_data(self):
+        tmp_df = utils.load_df(self.sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
+        subj_df = tmp_df.query('vroinames == "V1"')
+        sigma_v_df = self._get_sigma_v(subj_df, tmp_df.voxel.unique())
+        subj_df = subj_df.merge(sigma_v_df, on='voxel')
+        subj_df = self._drop_phase_info(subj_df)
+        return subj_df
+
+    def synthesize_BOLD_2d(self, params, full_ver=True):
+        syn_df = self.subj_voxels.copy()
+        syn_model = model.PredictBOLD2d(params, 0, self.subj_voxels)
+        syn_df['betas'] = syn_model.forward(full_ver=full_ver)
+        syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
+        return syn_df
+
+def merge_sigma_v_squared(syn_df):
+    sigma_v_df = bts.sigma_v(syn_df, power=2, to_sd='normed_betas', to_group=['voxel'])
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_v': 'sigma_v_squared'})
+    new_df = syn_df.merge(sigma_v_df, on='voxel')
+    return new_df
+
+
+
+
+
+
+
+
 def add_noise(betas, noise_mean=0, noise_sd=0.03995):
     return betas + np.random.normal(noise_mean, noise_sd, len(betas))
 
