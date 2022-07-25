@@ -226,7 +226,7 @@ def load_losses_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate
 def load_history_df(output_dir, full_ver, pw, noise_sd, n_voxels, lr_rate, max_epoch, df_type):
     all_history_df = pd.DataFrame()
     for cur_ver, cur_pw, cur_noise, cur_lr, cur_epoch  in product(full_ver, pw, noise_sd, lr_rate, max_epoch):
-        model_history_path = os.path.join(output_dir, f'{df_type}_history_full_ver-{cur_ver}_pw-{cur_pw}_sd-{cur_noise}_n_vox-{n_voxels}_lr-{cur_lr}_eph-{cur_epoch}.csv')
+        model_history_path = os.path.join(output_dir, f'{df_type}_history_full_ver-{cur_ver}_pw-{cur_pw}_noise_mtpl-{cur_noise}_n_vox-{n_voxels}_lr-{cur_lr}_eph-{cur_epoch}.csv')
         tmp = pd.read_csv(model_history_path)
         if {'lr_rate', 'noise_sd', 'max_epoch', 'full_ver', 'pw'}.issubset(tmp.columns) is False:
             tmp['lr_rate'] = cur_lr
