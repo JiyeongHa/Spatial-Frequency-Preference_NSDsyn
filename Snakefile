@@ -10,13 +10,19 @@ import two_dimensional_model as model
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.0005, 0.001, 0.005, 0.01] #[0.0007]#np.linspace(5,9,5)*1e-4
-MULTIPLES_OF_NOISE_SD = [1,3,5,7]
+LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
+MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [25000]
+MAX_EPOCH = [20000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
+SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
+
+rule run_simulation_all_subj:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'loss_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}_lr-{lr}_eph-{max_epoch}.csv'), full_ver=FULL_VER, pw=PW, n_sd_mtpl=MULTIPLES_OF_NOISE_SD, sn=SN_LIST,  lr=LR_RATE, max_epoch=MAX_EPOCH)
+
 
 rule plot_all_loss_and_param_history:
     input:
