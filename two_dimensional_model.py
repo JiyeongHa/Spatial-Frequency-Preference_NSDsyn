@@ -414,7 +414,7 @@ def melt_history_df(history_df):
 
 
 def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
-                      to_label=None, to_row=None, to_col=None,
+                      to_label=None, label_order=None, to_row=None, to_col=None,
                       lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
                        ci=68, n_boot=100, log_y=True, sharey=False):
     sns.set_context("notebook", font_scale=1.5)
@@ -423,6 +423,7 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
                          hue=to_label,
+                         hue_order=label_order,
                          row=to_row,
                          col=to_col,
                          height=5,
