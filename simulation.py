@@ -56,7 +56,7 @@ class SynthesizeData():
             prf_df = pd.DataFrame({'angle': polar_angles, 'eccentricity': eccentricity})
             utils.save_df_to_csv(prf_df, prf_path, indexing=False)
         return prf_df
-    #
+
     # def _sample_noise_from_data(self):
     #     if self.df is None:
     #         random_sn = np.random.randint(1, 9, size=1)
@@ -73,10 +73,10 @@ class SynthesizeData():
         The polar angle is in the unit of degree and eccentricity is in the unit of visual angle."""
         df = pd.DataFrame()
         df['voxel'] = np.arange(0, self.n_voxels)
-        if self.p_dist is "uniform":
+        if self.p_dist == "uniform":
             df['angle'] = np.random.uniform(0, 360, size=self.n_voxels)
             df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
-        elif self.p_dist is "data":
+        elif self.p_dist == "data":
             prf_df = self._sample_pRF_from_data()
             df = pd.concat((df, prf_df), axis=1)
         sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
