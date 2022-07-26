@@ -68,13 +68,13 @@ def sigma_v(bts_df, power, to_sd='normed_betas', to_group=['voxel', 'subj']):
     selected_cols = to_group + ['names', 'freq_lvl']
     sigma_vi_df = sigma_vi(bts_df, power, to_sd=to_sd, to_group=selected_cols)
     sigma_v_df = sigma_vi_df.groupby(to_group)['sigma_vi'].mean().reset_index()
-    sigma_v_df = sigma_v_df.rename(columns={'sigma_vi': 'sigma_v_squared'})
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_vi': 'sigma_v'})
     return sigma_v_df
 
 def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['voxel','subj']):
     """Generate multiple sigma_v_squared using different powers. power argument must be pass as a list."""
     sigma_v_df = sigma_v(df, power=power, to_sd=to_sd, to_group=to_group)
-    sigma_v_df = sigma_v_df.rename(columns={'sigma_v_squared': 'tmp'})
+    sigma_v_df = sigma_v_df.rename(columns={'sigma_v': 'tmp'})
     sigma_v_df[columns] = pd.DataFrame(sigma_v_df['tmp'].to_list(), columns=columns)
     sigma_v_df = sigma_v_df.drop(columns=['tmp'])
     return sigma_v_df
