@@ -76,9 +76,17 @@ def _masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/s
         mask[hemi] = roi_mask
     return mask
 
-def load_prf(sn, prf_label_names=['angle','eccen','sigma']):
-    for hemi, prf_names in itertools.product(['lh','rh'], prf_label_names):
-        prf_name = f"{hemi}.inferred_{prf_label_names}.mgz"
-        prf_path = os.path.join('/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/', "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', prf_name)
+
+def load_prf(sn, prf_label_names=['angle', 'eccen', 'sigma', 'varea'], vroi_range=["V1"], eroi_range=[0.98, 12],
+             prf_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
+    mgzs = {}
+    mask = _masking(sn, vroi_range=vroi_range, eroi_range=eroi_range, mask_path=prf_path)
+    for hemi, prf_names in itertools.product(['lh', 'rh'], prf_label_names):
+        k = f"{hemi}-{prf_names}"
+        prf_file = f"{hemi}.inferred_{prf_names}.mgz"
+        prf_path = os.path.join('/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+                                "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', prf_file)
         prf = nib.load(prf_path).get_fdata().squeeze()
-    return prf
+        prf = prf[mask[hemi]]
+        mgzs[k] = prf
+    return mgzs
