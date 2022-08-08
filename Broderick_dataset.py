@@ -59,13 +59,22 @@ def _get_benson_atlas_rois(roi_index):
     return switcher.get(roi_index, "No Visual area")
 
 
-def load_roi(sn, prf_label_names=['angle','eccen','sigma']):
-    """ Load inferred_varea.mgz for each hemisphere and each subject. see https://osf.io/knb5g/wiki/Usage/"""
-    for hemi, prf_names in itertools.product(['lh','rh'], prf_label_names):
+def _masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
+    """create a mask using visual rois and eccentricity range."""
+    mask = {}
+    vroi_num = [_get_benson_atlas_rois(x) for x in vroi_range]
+    for hemi in ['lh', 'rh']:
         varea_name = f"{hemi}.inferred_varea.mgz"
-        varea_path = os.path.join('/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/', "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', varea_name)
+        varea_path = os.path.join(mask_path, "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', varea_name)
         varea = nib.load(varea_path).get_fdata().squeeze()
-    return prf
+        vroi_mask = np.isin(varea, vroi_num)
+        eccen_name = f"{hemi}.inferred_eccen.mgz"
+        eccen_path = os.path.join(mask_path, "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', eccen_name)
+        eccen = nib.load(eccen_path).get_fdata().squeeze()
+        eccen_mask = (eroi_range[0] < eccen) & (eccen < eroi_range[-1])
+        roi_mask = vroi_mask & eccen_mask
+        mask[hemi] = roi_mask
+    return mask
 
 def load_prf(sn, prf_label_names=['angle','eccen','sigma']):
     for hemi, prf_names in itertools.product(['lh','rh'], prf_label_names):
