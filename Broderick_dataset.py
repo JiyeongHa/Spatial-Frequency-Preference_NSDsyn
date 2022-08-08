@@ -59,7 +59,7 @@ def _get_benson_atlas_rois(roi_index):
     return switcher.get(roi_index, "No Visual area")
 
 
-def _masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
+def masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
     """create a mask using visual rois and eccentricity range."""
     mask = {}
     vroi_num = [_get_benson_atlas_rois(x) for x in vroi_range]
@@ -76,11 +76,9 @@ def _masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/s
         mask[hemi] = roi_mask
     return mask
 
-
-def load_prf(sn, prf_label_names=['angle', 'eccen', 'sigma', 'varea'], vroi_range=["V1"], eroi_range=[0.98, 12],
+def load_prf(sn, mask, prf_label_names=['angle', 'eccen', 'sigma', 'varea'], vroi_range=["V1"], eroi_range=[0.98, 12],
              prf_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
     mgzs = {}
-    mask = _masking(sn, vroi_range=vroi_range, eroi_range=eroi_range, mask_path=prf_path)
     for hemi, prf_names in itertools.product(['lh', 'rh'], prf_label_names):
         k = f"{hemi}-{prf_names}"
         prf_file = f"{hemi}.inferred_{prf_names}.mgz"
