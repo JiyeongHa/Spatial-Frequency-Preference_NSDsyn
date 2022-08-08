@@ -49,14 +49,14 @@ def load_stim_info(stim_description_path='/Volumes/server/Projects/sfp_nsd/Brode
     return stim_df
 
 
-def _get_benson_atlas_rois(roi_num):
-    # load GLMdenoise file
-    # f.keys() -> shows betas
+def _get_benson_atlas_rois(roi_index):
+    """ switch num to roi names or the other way around. see https://osf.io/knb5g/wiki/Usage/"""
+
     num_key = {1: "V1", 2: "V2", 3: "V3", 4: "hV4", 5: "VO1", 6: "VO2",
         7: "LO1", 8: "LO2", 9: "TO1", 10: "TO2", 11: "V3b", 12: "V3a"}
     name_key = {y: x for x, y in num_key.items()}
     switcher = {**num_key, **name_key}
-    return switcher.get(roi_num, "No Visual area")
+    return switcher.get(roi_index, "No Visual area")
 
 
 def load_roi(sn, prf_label_names=['angle','eccen','sigma']):
