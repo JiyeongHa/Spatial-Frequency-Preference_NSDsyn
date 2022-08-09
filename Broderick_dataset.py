@@ -88,3 +88,78 @@ def load_prf(sn, mask, prf_label_names=['angle', 'eccen', 'sigma', 'varea'], vro
         prf = prf[mask[hemi]]
         mgzs[k] = prf
     return mgzs
+
+
+def load_betas(sn, mask, results_names=['modelmd'], beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/'):
+    """Load beta files. This is shaped as .mat files and lh and rh files are concatenated.
+    See _load_mat_files() in first_level_analysis.py of the Broderick et al (2022) Github."""
+    betas = {}
+    subj = "sub-wlsubj{:03d}".format(sn)
+    betas_file = f'{subj}_ses-04_task-sfprescaled_results.mat'
+    betas_path = os.path.join(beta_dir, betas_file)
+    # this is the case for all the models fields of the .mat file (modelse, modelmd,
+    # models). [0, 0] contains the hrf, and [1, 0] contains the actual results
+    with h5py.File(betas_path, 'r') as f:
+        for var in results_names:
+            tmp_ref = f['results'][var]
+            res = f[tmp_ref[1, 0]][:] #actual data
+            tmp = res.squeeze().transpose() # voxel x conditions
+            for hemi in ['lh', 'rh']:
+                k = f"{hemi}-betas"
+                if hemi == 'lh':
+                    tmper = tmp[:mask['lh'].shape[0]]
+                else:
+                    tmper = tmp[-mask['rh'].shape[0]:]
+                tmper = tmper[mask[hemi], :]
+                betas[k] = tmper
+    return betas
+
+def melt_2D_betas_into_df(betas):
+    """Melt 2D shaped betas dict into a wide form of a dataframe."""
+    betas_df = {}
+    for hemi in ['lh', 'rh']:
+        k = f'{hemi}-betas'
+        tmp = pd.DataFrame(betas[k]).reset_index()
+        tmp = pd.melt(tmp, id_vars='index', var_name='class_idx', value_name='betas', ignore_index=True)
+        tmp = tmp.rename(columns={'index': 'voxel'})
+        betas_df[hemi] = tmp
+    return betas_df
+
+
+def _label_vareas(row):
+    return _get_benson_atlas_rois(row.varea)
+
+def merge_prf_and_betas(betas_df, prf_mgzs, prf_label_names=['angle','eccen','sigma','varea']):
+
+    for hemi, prf_name in itertools.product(['lh','rh'], prf_label_names):
+        k = f'{hemi}-{prf_name}'
+        tmp = pd.DataFrame(prf_mgzs[k]).reset_index()
+        tmp = tmp.rename(columns={'index': 'voxel', 0: prf_name})
+        if prf_name == 'vareas':
+            tmp['vroinames'] = tmp.apply(_label_vareas, axis=1)
+        betas_df[hemi] = betas_df[hemi].merge(tmp, on='voxel')
+    return betas_df
+
+def concat_lh_and_rh_df(df):
+    df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
+    return pd.concat(df).reset_index(0).rename(columns={'level_0': 'hemi'})
+
+def add_stim_info_to_df(df, stim_df):
+    stim_df = stim_df[stim_df['phase'] == 0]
+    return df.merge(stim_df, on='class_idx')
+
+def calculate_local_orientation(df):
+    ang = np.arctan2(df['w_a'], df['w_r'])
+    df['local_ori'] = np.deg2rad(df['angle']) + ang
+    df['local_ori'] = np.remainder(df['local_ori'], np.pi)
+    return df
+
+def calculate_local_sf(df):
+    df['local_sf'] = np.sqrt((df.w_r ** 2 + df.w_a ** 2))
+    df['local_sf'] = df['local_sf'] / df['eccen']
+    df['local_sf'] = np.divide(df['local_sf'], 2 * np.pi)
+    return df
+
+
+
+
