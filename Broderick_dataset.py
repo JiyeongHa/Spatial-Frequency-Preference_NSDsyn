@@ -98,11 +98,12 @@ def load_betas(sn, mask, results_names=['modelmd'], beta_dir='/Volumes/server/Pr
     betas_path = os.path.join(beta_dir, betas_file)
     # this is the case for all the models fields of the .mat file (modelse, modelmd,
     # models). [0, 0] contains the hrf, and [1, 0] contains the actual results
-    with h5py.File(betas_path, 'r') as f:
-        for var in results_names:
-            tmp_ref = f['results'][var]
-            res = f[tmp_ref[1, 0]][:] #actual data
-            tmp = res.squeeze().transpose() # voxel x conditions
+    f = h5py.File(betas_path, 'r')
+    for var in results_names:
+        tmp_ref = f['results'][var]
+        res = f[tmp_ref[1, 0]][:]  # actual data
+        tmp = res.squeeze().transpose()  # voxel x conditions
+        if var == "modelmd":
             for hemi in ['lh', 'rh']:
                 k = f"{hemi}-betas"
                 if hemi == 'lh':
@@ -111,6 +112,16 @@ def load_betas(sn, mask, results_names=['modelmd'], beta_dir='/Volumes/server/Pr
                     tmper = tmp[-mask['rh'].shape[0]:]
                 tmper = tmper[mask[hemi], :]
                 betas[k] = tmper
+        elif var == "models": # voxel x conditions x bootstrap
+            for hemi in ['lh', 'rh']:
+                k = f"{hemi}-betas"
+                if hemi == 'lh':
+                    tmper = tmp[:mask['lh'].shape[0], :, :]
+                else:
+                    tmper = tmp[-mask['rh'].shape[0]:, :, :]
+                tmper = tmper[mask[hemi], :, :]
+                betas[k] = tmper
+
     return betas
 
 def melt_2D_betas_into_df(betas):
