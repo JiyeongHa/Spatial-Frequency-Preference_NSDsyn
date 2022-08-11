@@ -145,15 +145,30 @@ def melt_2D_betas_into_df(betas):
 def _label_vareas(row):
     return _get_benson_atlas_rois(row.varea)
 
-def merge_prf_and_betas(betas_df, prf_mgzs, prf_label_names=['angle','eccen','sigma','varea']):
+def _transform_angle():
+    pass
 
-    for hemi, prf_name in itertools.product(['lh','rh'], prf_label_names):
-        k = f'{hemi}-{prf_name}'
-        tmp = pd.DataFrame(prf_mgzs[k]).reset_index()
-        tmp = tmp.rename(columns={'index': 'voxel', 0: prf_name})
-        if prf_name == 'vareas':
-            tmp['vroinames'] = tmp.apply(_label_vareas, axis=1)
-        betas_df[hemi] = betas_df[hemi].merge(tmp, on='voxel')
+def prf_mgzs_to_df(prf_mgzs, prf_label_names=['angle','eccen','sigma','varea']):
+
+    prf_df = {}
+    for hemi in ['lh', 'rh']:
+        tmp = {}
+        for prf_name in prf_label_names:
+            k = f'{hemi}-{prf_name}'
+            tmp[prf_name] = pd.DataFrame(prf_mgzs[k])
+            tmp[prf_name] = tmp[prf_name].rename(columns={0: prf_name})
+            if prf_name == 'varea':
+                tmp[prf_name]['vroinames'] = tmp[prf_name].apply(_label_vareas, axis=1)
+            if (hemi == 'rh') & (prf_name == 'angle'):
+                tmp[prf_name]['angle'] = tmp[prf_name]['angle']
+        prf_df[hemi] = pd.concat(tmp, axis=1).droplevel(0, axis=1)
+        prf_df[hemi] = prf_df[hemi].reset_index().rename(columns={'index': 'voxel'})
+    return prf_df
+
+def merge_prf_and_betas(betas_df, prf_df):
+
+    for hemi in ['lh', 'rh']:
+        betas_df[hemi] = betas_df[hemi].merge(prf_df[hemi], on='voxel')
     return betas_df
 
 def concat_lh_and_rh_df(df):
