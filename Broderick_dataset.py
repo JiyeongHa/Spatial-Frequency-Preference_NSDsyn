@@ -1,14 +1,12 @@
 import sys
 sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 import os
-import itertools
 import nibabel as nib
 import numpy as np
 import pandas as pd
 import h5py
 import itertools
-import pandas as pd
-from scipy.io import loadmat
+import sfp_nsd_utils as utils
 
 def _label_stim_names(row):
     if row.w_r == 0 and row.w_a != 0:
@@ -76,13 +74,14 @@ def masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/se
         mask[hemi] = roi_mask
     return mask
 
-def load_prf(sn, mask, prf_label_names=['angle', 'eccen', 'sigma', 'varea'], vroi_range=["V1"], eroi_range=[0.98, 12],
-             prf_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
+
+def load_prf(sn, mask, prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
+             prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
     mgzs = {}
     for hemi, prf_names in itertools.product(['lh', 'rh'], prf_label_names):
         k = f"{hemi}-{prf_names}"
         prf_file = f"{hemi}.inferred_{prf_names}.mgz"
-        prf_path = os.path.join('/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+        prf_path = os.path.join(prf_dir,
                                 "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', prf_file)
         prf = nib.load(prf_path).get_fdata().squeeze()
         prf = prf[mask[hemi]]
