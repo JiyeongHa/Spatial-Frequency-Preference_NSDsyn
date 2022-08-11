@@ -129,10 +129,16 @@ def melt_2D_betas_into_df(betas):
     betas_df = {}
     for hemi in ['lh', 'rh']:
         k = f'{hemi}-betas'
-        tmp = pd.DataFrame(betas[k]).reset_index()
-        tmp = pd.melt(tmp, id_vars='index', var_name='class_idx', value_name='betas', ignore_index=True)
-        tmp = tmp.rename(columns={'index': 'voxel'})
-        betas_df[hemi] = tmp
+        if betas[k].ndim < 3:
+            tmp = pd.DataFrame(betas[k]).reset_index()
+            tmp = pd.melt(tmp, id_vars='index', var_name='class_idx', value_name='betas', ignore_index=True)
+            tmp = tmp.rename(columns={'index': 'voxel'})
+            betas_df[hemi] = tmp
+        else:
+            names = ['voxel', 'class_idx', 'bootstraps']
+            index = pd.MultiIndex.from_product([range(s) for s in betas[k].shape], names=names)
+            tmp = pd.DataFrame({'betas': betas[k].flatten()}, index=index)['betas']
+            betas_df[hemi] = tmp.reset_index()
     return betas_df
 
 
