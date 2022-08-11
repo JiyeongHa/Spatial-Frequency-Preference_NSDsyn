@@ -192,5 +192,53 @@ def calculate_local_sf(df):
     return df
 
 
+def sub_main(sn,
+             stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
+             vroi_range=["V1"], eroi_range=[0.98, 12],
+             mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+             prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
+             prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+             beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
+             df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
+             save_df=False):
+    subj = utils.sub_number_to_string(sn, dataset="broderick")
+    stim_df = load_stim_info(stim_description_path, save_copy=False)
+    mask = masking(sn, vroi_range, eroi_range, mask_path)
+    prf_mgzs = load_prf(sn, mask, prf_label_names, prf_dir)
+    betas = load_betas(sn, mask, results_names=['models'], beta_dir=beta_dir)
+    betas_df = melt_2D_betas_into_df(betas)
+    prf_df = prf_mgzs_to_df(prf_mgzs)
+    voxel_df = merge_prf_and_betas(betas_df, prf_df)
+    df = concat_lh_and_rh_df(voxel_df)
+    df = add_stim_info_to_df(df, stim_df)
+    df = calculate_local_orientation(df)
+    df = calculate_local_sf(df)
+    df['subj'] = subj
+    df = df.rename(columns={'eccen': 'eccentricity'})
+    if save_df:
+        # save the final output
+        df_save_name = "%s_%s" % (subj, "stim_voxel_info_df_vs.csv")
+        if not os.path.exists(df_save_dir):
+            os.makedirs(df_save_dir)
+        df_save_path = os.path.join(df_save_dir, df_save_name)
+        df.to_csv(df_save_path, index=False)
+        print(f'... {subj} dataframe saved.')
+    return df
 
+def run_all_subj_main(sn_list,
+                      stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
+             vroi_range=["V1"], eroi_range=[0.98, 12],
+             mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+             prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
+             prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+             beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
+             df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
+             save_df=False):
+    df = {}
+    for sn in sn_list:
+        df[sn] = sub_main(sn, stim_description_path,
+                      vroi_range, eroi_range,
+                      mask_path, prf_label_names, prf_dir, beta_dir, df_save_dir, save_df)
+    all_subj_df = pd.concat(df, ignore_index=True)
+    return all_subj_df
 
