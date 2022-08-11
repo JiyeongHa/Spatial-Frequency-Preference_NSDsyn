@@ -353,9 +353,9 @@ def loss_fn(voxel_info, sigma_v_info, prediction, target):
     loss_all_voxels = torch.empty(voxel_list.shape, dtype=torch.float64)
     for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
         voxel_idx = voxel_info == idx
-        n = sum(voxel_idx)
+        #n = sum(voxel_idx)
         sigma_v_squared = sigma_v_info[voxel_idx]
-        loss_v = (1/n) * torch.dot((1/sigma_v_squared), ((norm_pred[voxel_idx] - norm_measured[voxel_idx]) ** 2))
+        loss_v = (1/28) * torch.dot((1/sigma_v_squared), ((norm_pred[voxel_idx] - norm_measured[voxel_idx]) ** 2))
         loss_all_voxels[i] = loss_v
     return loss_all_voxels
 
