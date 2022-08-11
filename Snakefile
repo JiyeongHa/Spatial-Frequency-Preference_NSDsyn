@@ -13,11 +13,11 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [20000]
+MAX_EPOCH = [3]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
-SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
+SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,2)]
 
 rule run_simulation_all_subj:
     input:
