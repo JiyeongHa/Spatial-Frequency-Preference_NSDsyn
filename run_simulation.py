@@ -148,3 +148,36 @@ model.plot_loss_history(new_sigma, to_x="epoch", to_y="loss",
                         save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss', 'pw_group.png'),
                         ci=68, n_boot=100, log_y=True, sharey=True)
 plt.show()
+
+subj_data = sim.SynthesizeRealData(sn=1, pw=True, subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes')
+subj_syn_df_2d = subj_data.synthesize_BOLD_2d(params, full_ver=True)
+subj_syn_df_2d.to_csv('/Users/jh7685/Documents/Projects/test.csv')
+subj_syn_df = pd.read_csv('/Users/jh7685/Documents/Projects/test.csv')
+noisy_df_2d = sim.copy_df_and_add_noise(subj_syn_df, beta_col="normed_betas", noise_mean=0, noise_sd=subj_syn_df['noise_SD']*1)
+noisy_df_2d.to_csv('/Users/jh7685/Documents/Projects/test_2.csv')
+# add noise
+output_losses_history = '/Users/jh7685/Documents/Projects/test_3.csv'
+output_model_history = '/Users/jh7685/Documents/Projects/test_4.csv'
+output_loss_history = '/Users/jh7685/Documents/Projects/test_5.csv'
+
+syn_df = pd.read_csv('/Users/jh7685/Documents/Projects/test_2.csv')
+syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
+syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor, full_ver=True)
+syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
+    learning_rate=0.001, max_epoch=3, print_every=2000, anomaly_detection=False, amsgrad=False, eps=1e-8)
+losses_history = model.shape_losses_history(losses, syn_df)
+utils.save_df_to_csv(losses_history, output_losses_history, indexing=False)
+utils.save_df_to_csv(syn_model_history, output_model_history, indexing=False)
+utils.save_df_to_csv(syn_loss_history, output_loss_history, indexing=False)
+
+#broderick
+import Broderick_dataset as bd
+df = bd.sub_main(6, save_df=True)
+
+bd.run_all_subj_main(sn_list=[6, ], save_df=True)
+modelmd = bd.load_betas(sn=6, results_names=['modelmd'], mask=mask)
+modelmd_df = bd.melt_2D_betas_into_df(modelmd)
+
+models = bd.load_betas(sn=6, results_names=['models'], mask=mask)
+models_df = bd.melt_2D_betas_into_df(models)
+models_df2 = models_df['lh'].groupby(['voxel','class_idx']).median().reset_index()
