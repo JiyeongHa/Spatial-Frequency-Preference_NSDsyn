@@ -7,9 +7,13 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from pathlib import Path
 
-def sub_number_to_string(sub_number):
+def sub_number_to_string(sub_number, dataset="nsd"):
     """ Return number (1,2,3,..) to "subj0x" form """
-    return "subj%02d" % sub_number
+    if dataset == "nsd":
+        return "subj%02d" % sub_number
+    elif dataset == "broderick":
+        return "sub-wlsubj{:03d}".format(sub_number)
+
 
 def remove_subj_strings(subj_list):
     """ Remove 'subj' from the list and change the list type into integers """
