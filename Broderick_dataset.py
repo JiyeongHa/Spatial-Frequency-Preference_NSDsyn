@@ -175,10 +175,13 @@ def prf_mgzs_to_df(prf_mgzs, prf_label_names=['angle','eccen','sigma','varea']):
             tmp[prf_name] = tmp[prf_name].rename(columns={0: prf_name})
             if prf_name == 'varea':
                 tmp[prf_name]['vroinames'] = tmp[prf_name].apply(_label_vareas, axis=1)
-            if (hemi == 'rh') & (prf_name == 'angle'):
-                tmp[prf_name]['angle'] = tmp[prf_name]['angle']
+            if prf_name == 'angle':
+                if hemi == 'rh':
+                    tmp[prf_name]['angle'] = -tmp[prf_name]['angle']
+                tmp[prf_name]['angle'] = np.mod((tmp[prf_name]['angle'] - 90), 360)
         prf_df[hemi] = pd.concat(tmp, axis=1).droplevel(0, axis=1)
         prf_df[hemi] = prf_df[hemi].reset_index().rename(columns={'index': 'voxel'})
+
     return prf_df
 
 def merge_prf_and_betas(betas_df, prf_df):
@@ -198,7 +201,7 @@ def add_stim_info_to_df(df, stim_df):
 def calculate_local_orientation(df):
     ang = np.arctan2(df['w_a'], df['w_r'])
     df['local_ori'] = np.deg2rad(df['angle']) + ang
-    df['local_ori'] = np.remainder(df['local_ori'], np.pi)
+    df['local_ori'] = np.mod(df['local_ori'], np.pi)
     return df
 
 def calculate_local_sf(df):
@@ -210,7 +213,7 @@ def calculate_local_sf(df):
 
 def sub_main(sn,
              stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
-             vroi_range=["V1"], eroi_range=[0.98, 12],
+             vroi_range=["V1"], eroi_range=[1, 12],
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
@@ -241,9 +244,9 @@ def sub_main(sn,
         print(f'... {subj} dataframe saved.')
     return df
 
-def run_all_subj_main(sn_list,
+def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
                       stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
-             vroi_range=["V1"], eroi_range=[0.98, 12],
+             vroi_range=["V1"], eroi_range=[1, 12],
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
