@@ -145,8 +145,24 @@ def melt_2D_betas_into_df(betas):
 def _label_vareas(row):
     return _get_benson_atlas_rois(row.varea)
 
-def _transform_angle():
-    pass
+
+def _transform_angle(row):
+    """this function is a modified ver. of the script from sfp (Broderick et al.2022).
+     transform angle from Benson14 convention to our convention
+    The Benson atlases' convention for angle in visual field is: zero is the upper vertical
+    meridian, angle is in degrees, the left and right hemisphere both run from 0 to 180 from the
+    upper to lower meridian (so they increase as you go clockwise and counter-clockwise,
+    respectively). For our calculations, we need the following convention: zero is the right
+    horizontal meridian, angle is in radians (and lie between 0 and 360, rather than -pi and pi),
+    angle increases as you go clockwise, and each angle is unique (refers to one point on the
+    visual field; we don't have the same number in the left and right hemispheres)
+    """
+    if row.hemi == 'rh':
+        # we want to remap the right hemisphere angles to negative. Noah says this is the
+        # convention, but I have seen positive values there, so maybe it changed at one point.
+        if row.angle > 0:
+            row.angle = -row.angle
+    return np.mod((row.angle - 90), 360)
 
 def prf_mgzs_to_df(prf_mgzs, prf_label_names=['angle','eccen','sigma','varea']):
 
