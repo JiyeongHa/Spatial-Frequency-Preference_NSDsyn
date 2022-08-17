@@ -87,10 +87,12 @@ def pix_to_deg(size_in_pix=100, screen_height=39.29, n_pixel_height=1080, visual
     return deg_per_pix * size_in_pix
 
 
-def drop_voxels_outside_stim_range(df, dv_to_group=['freq_lvl', 'subj']):
-    inner_radi = pix_to_deg(np.asarray([1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]))  # in pixels
-    outer_radi = pix_to_deg(714 / 2)
-    df = df.query('@inner_radi[-1] < eccentricity < @outer_radi')
+def drop_voxels_outside_stim_range(df, in_pix=42.878, out_pix=714/2):
+    #inner_radi = pix_to_deg(np.asarray([1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]))  # in pixels
+    #outer_radi = pix_to_deg(714 / 2)
+    inner_radi = pix_to_deg(in_pix)
+    outer_radi = pix_to_deg(out_pix)
+    df = df.query('@inner_radi < eccentricity < @outer_radi')
     return df
 
 
@@ -141,13 +143,13 @@ def _find_min_and_max(img_min_max):
     inner_boundary = img_min_max[:, 0]
     return inner_boundary, outer_boundary
 
-def drop_voxels(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas',
+def drop_voxels(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas', in_pix=42.878, out_pix=712/4,
                 mean_negative=True, stim_range=True):
     """Performs voxel selection all at once"""
     if mean_negative is True:
         df = drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=dv_to_group, beta_col=beta_col)
     if stim_range is True:
-        df = drop_voxels_outside_stim_range(df, dv_to_group=['freq_lvl', 'subj'])
+        df = drop_voxels_outside_stim_range(df, in_pix, out_pix, dv_to_group=['freq_lvl', 'subj'])
 
     return df
 
