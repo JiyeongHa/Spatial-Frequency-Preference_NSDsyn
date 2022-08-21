@@ -221,6 +221,7 @@ def sub_main(sn,
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+             results_names=['models'],
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
              df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
              save_df=False, vs=True):
@@ -228,7 +229,7 @@ def sub_main(sn,
     stim_df = load_stim_info(stim_description_path, save_copy=False)
     mask = masking(sn, vroi_range, eroi_range, mask_path)
     prf_mgzs = load_prf(sn, mask, prf_label_names, prf_dir)
-    betas = load_betas(sn, mask, results_names=['models'], beta_dir=beta_dir)
+    betas = load_betas(sn, mask, results_names=results_names, beta_dir=beta_dir)
     betas_df = melt_2D_betas_into_df(betas)
     prf_df = prf_mgzs_to_df(prf_mgzs)
     voxel_df = merge_prf_and_betas(betas_df, prf_df)
@@ -258,6 +259,7 @@ def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
+             results_names=['models'],
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
              df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
              save_df=False, vs=True):
@@ -265,7 +267,7 @@ def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
     for sn in sn_list:
         df[sn] = sub_main(sn, stim_description_path,
                       vroi_range, eroi_range,
-                      mask_path, prf_label_names, prf_dir, beta_dir, df_save_dir, save_df, vs=vs)
+                      mask_path, prf_label_names, prf_dir, results_names, beta_dir, df_save_dir, save_df, vs=vs)
     all_subj_df = pd.concat(df, ignore_index=True)
     return all_subj_df
 
@@ -294,7 +296,7 @@ def save_sigma_v_df(sn, beta_col='betas',
     if not os.path.exists(df_save_dir):
         os.makedirs(df_save_dir)
     df_save_path = os.path.join(df_save_dir, df_save_name)
-    df.to_csv(df_save_path, index=False)
+    sigma_v_df.to_csv(df_save_path, index=False)
     print(f'... {subj} sigma_v dataframe saved.')
     return sigma_v_df
 
@@ -313,12 +315,14 @@ def modify_voxel_stim_info_df(sn, beta_col='betas',
                               df_save_name='stim_voxel_info_df_vs.csv'):
     subj = utils.sub_number_to_string(sn, dataset="broderick")
     df = pd.read_csv(os.path.join(df_dir, f"{subj}_{df_name}"))
-    sigma_v_df = pd.read_csv(os.path.join(df_dir, 'sigma_v', f"{subj}_sigma_v_{beta_col}.csv"))
+    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1,2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel','subj'])
     df = df.merge(sigma_v_df, on=['voxel','subj'])
     df = vs.drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=['subj', 'voxel'], beta_col=beta_col)
-    fnl_df = df.groupby(['voxel','subj','names','freq_lvl']).median
-    df_save_path = os.path.join(df_dir, f"{subj}_{df_save_name}")
-    fnl_df.to_csv(df_save_path, index=False)
+    df.to_csv(os.path.join(df_dir, 'tmp', f"{subj}_stim_voxel_info_df_vs.csv"))
+    fnl_df = df.groupby(['voxel', 'subj', 'names', 'freq_lvl', 'class_idx']).median().reset_index()
+    fnl_df = fnl_df.drop(['bootstraps','phase'], axis=1)
+    fnl_df_save_path = os.path.join(df_dir, f"{subj}_stim_voxel_info_df_vs_md.csv")
+    fnl_df.to_csv(fnl_df_save_path, index=False)
     print(f'... {subj} df dataframe saved as {df_save_name}.')
     return fnl_df
 
