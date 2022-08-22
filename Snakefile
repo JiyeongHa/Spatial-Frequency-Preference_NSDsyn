@@ -22,10 +22,10 @@ broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
 os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv')
+
 rule run_Broderick_all_subj:
     input:
         expand(os.path.join(config['BD_DIR'], "sfp_model", "results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'), full_ver="True", subj=SUBJ, lr=LR_RATE, max_epoch=MAX_EPOCH)
-
 
 rule run_simulation_all_subj:
     input:
