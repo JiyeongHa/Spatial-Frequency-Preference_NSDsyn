@@ -171,13 +171,18 @@ utils.save_df_to_csv(syn_model_history, output_model_history, indexing=False)
 utils.save_df_to_csv(syn_loss_history, output_loss_history, indexing=False)
 
 #broderick
-import Broderick_dataset as bd
-df = bd.sub_main(6, save_df=True)
+df = pd.read_csv('')
 
-bd.run_all_subj_main(sn_list=[6, ], save_df=True)
-modelmd = bd.load_betas(sn=6, results_names=['modelmd'], mask=mask)
-modelmd_df = bd.melt_2D_betas_into_df(modelmd)
-
-models = bd.load_betas(sn=6, results_names=['models'], mask=mask)
-models_df = bd.melt_2D_betas_into_df(models)
-models_df2 = models_df['lh'].groupby(['voxel','class_idx']).median().reset_index()
+subj_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes/sub-wlsubj007_stim_voxel_info_df_vs_md.csv')
+subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
+subj_model = model.SpatialFrequencyModel(subj_dataset.my_tensor, full_ver=True)
+syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(subj_model, subj_dataset,
+                                                                                learning_rate=0.0005,
+                                                                                max_epoch=2,
+                                                                                print_every=2000,
+                                                                                anomaly_detection=False, amsgrad=False,
+                                                                                eps=1e-8)
+losses_history = model.shape_losses_history(losses, subj_df)
+utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
+utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
+utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
