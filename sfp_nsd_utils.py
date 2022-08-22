@@ -38,8 +38,8 @@ def sort_a_df_column(df_vroinames):
     return roi_list
 
 def load_df(sn, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
-            df_name='results_1D_model.csv'):
-    subj = sub_number_to_string(sn)
+            df_name='results_1D_model.csv', dataset="nsd"):
+    subj = sub_number_to_string(sn, dataset)
     df_path = os.path.join(df_dir, subj + '_' + df_name)
     df = pd.read_csv(df_path)
     return df
