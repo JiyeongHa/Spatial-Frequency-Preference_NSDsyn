@@ -16,11 +16,11 @@ from importlib import reload
 import binning_eccen as binning
 import first_level_analysis as fitting
 import bootstrap as bts
-
-df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes/'
+from inspect import getfullargspec
+df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes/'
 new_df_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes/'
 
-for sn in np.arange(2, 9):
+for sn in np.arange(1, 9):
     df = utils.load_df(sn, df_dir, df_name='stim_voxel_info_df.csv')
     df = vs.drop_voxels(df, dv_to_group=['subj', 'voxel'])
     df = sim.melt_beta_task_type(df, include_avg=False)
@@ -30,9 +30,9 @@ for sn in np.arange(2, 9):
 
 
 # load subjects df.
-subj_list = np.arange(1, 9)
+subj_list = np.arange(1, 2)
 all_subj_df = utils.load_all_subj_df(subj_list,
-                                     df_dir=df_dir, df_name='stim_voxel_info_df.csv')
+                                     df_dir=df_dir, df_name='stim_voxel_info_df_vs.csv')
 all_subj_df = vs.drop_voxels(all_subj_df, dv_to_group=['subj', 'voxel'])
 all_subj_df = sim.melt_beta_task_type(all_subj_df)
 all_subj_df = all_subj_df[all_subj_df.task != 'avg_betas']

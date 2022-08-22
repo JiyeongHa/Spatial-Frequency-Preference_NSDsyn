@@ -2,14 +2,14 @@
     "__default__":
     {
 	"nodes": 1,
-	"tasks_per_node": 1,
-	"mem": "140GB",
-	"time": "8-12:00:00",
+	"tasks_per_node": 1,=
+	"mem": "80GB",
+	"time": "6-12:00:00",
 	"job_name": "{rule}.{wildcards}",
-	"cpus_per_task": 26,
+	"cpus_per_task": 2,
 	"output": "{log}-%j",
 	"error": "{log}-%j",
-	"mail_type": "FAIL",
+	"mail_type": "END",
 	"mail_user": "jiyeong.ha@nyu.edu"
     }
 }

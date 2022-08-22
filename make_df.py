@@ -1,4 +1,5 @@
 import sys
+sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 import os
 import itertools
 import nibabel as nib
@@ -8,9 +9,7 @@ import h5py
 import itertools
 import pandas as pd
 from scipy.io import loadmat
-from matplotlib import pyplot as plt
 
-sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 
 def cart2pol(xramp, yramp):
     R = np.sqrt(xramp ** 2 + yramp ** 2)
