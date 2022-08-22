@@ -18,7 +18,7 @@ N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
-broderick_sn_list =  [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
 os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv')
@@ -214,7 +214,7 @@ rule run_Broderick_subj:
         subj_df = pd.read_csv(input.input_path)
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
         subj_model = model.SpatialFrequencyModel(subj_dataset.my_tensor, full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset,
+        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, dset_name="broderick",
             learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2000, anomaly_detection=False, amsgrad=False, eps=1e-8)
         losses_history = model.shape_losses_history(losses, subj_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
