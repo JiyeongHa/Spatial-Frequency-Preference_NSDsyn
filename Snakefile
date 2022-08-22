@@ -25,6 +25,10 @@ os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broder
 rule run_Broderick_all_subj:
     input:
         expand(os.path.join(config['BD_DIR'], "sfp_model", "results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'), full_ver="True", subj=SUBJ, lr=LR_RATE, max_epoch=MAX_EPOCH)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9691e8de665d8dbfdb7b90e2eb3c00ab2c602433
 
 rule run_simulation_all_subj:
     input:
