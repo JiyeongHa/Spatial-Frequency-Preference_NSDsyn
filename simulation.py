@@ -271,19 +271,22 @@ def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
                       x_label="SD for each voxel across 8 trials",
                       stat="probability",
                       lgd_title="Frequency level",
-                      save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_histogram.png"):
+                      height=3,
+                      save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_histogram.png"):
+    sns.set_context("notebook")
     grid = sns.FacetGrid(std_df,
                          hue=to_label,
                          palette=sns.color_palette("husl"),
                          legend_out=True,
+                         height=height,
                          sharex=True, sharey=True)
     grid.map(sns.histplot, to_x, stat=stat)
     grid.set_axis_labels(x_label, stat.title())
     if to_label is not None:
         grid.fig.legend(title=lgd_title)
-    utils.save_fig(save_fig=save_fig, save_dir=save_dir, y_label=stat.title(), x_label=x_label, f_name=f_name)
-    plt.tight_layout()
-    plt.show()
+    save_path = os.path.join(save_dir, f'{x_label}_vs_{stat.title()}', f_name)
+    utils.save_fig(save_fig, save_path)
+
 
 
 def change_voxel_info_in_df(df):
