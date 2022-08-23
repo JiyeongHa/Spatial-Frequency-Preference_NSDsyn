@@ -486,8 +486,8 @@ def _group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
 
 
 def plot_grouped_parameters(df, params, col_group,
-                               to_label="study_type", lgd_title="Study", label_order=None,
-                               save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+                            to_label="study_type", lgd_title="Study", label_order=None,
+                            save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     df = _group_params(df, params, col_group)
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Parameter"
