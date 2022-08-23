@@ -46,10 +46,10 @@ def load_df(sn, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/
 
 def load_all_subj_df(subj_to_run,
                      df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
-                     df_name='results_1D_model.csv'):
+                     df_name='results_1D_model.csv', dataset="nsd"):
     all_subj_df = []
     for sn in subj_to_run:
-        tmp_df = load_df(sn, df_dir=df_dir, df_name=df_name)
+        tmp_df = load_df(sn, df_dir=df_dir, df_name=df_name, dataset=dataset)
         if not 'subj' in tmp_df.columns:
             tmp_df['subj'] = sub_number_to_string(sn)
         all_subj_df.append(tmp_df)
