@@ -47,6 +47,7 @@ class PredictBOLD2d():
         self.theta_v = self.subj_df['angle']
         self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
         self.w_l = self.subj_df['local_sf']  # in cycles per degree
+
     def get_Av(self, full_ver):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         if full_ver is True:
@@ -280,10 +281,10 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.intercept = _cast_as_param(np.random.random(1))
         self.full_ver = full_ver
         if full_ver is True:
-            self.p_1 = _cast_as_param(np.random.random(1)/10)
-            self.p_2 = _cast_as_param(np.random.random(1)/10)
-            self.p_3 = _cast_as_param(np.random.random(1)/10)
-            self.p_4 = _cast_as_param(np.random.random(1)/10)
+            self.p_1 = _cast_as_param(np.random.random(1) / 10)
+            self.p_2 = _cast_as_param(np.random.random(1) / 10)
+            self.p_3 = _cast_as_param(np.random.random(1) / 10)
+            self.p_4 = _cast_as_param(np.random.random(1) / 10)
             self.A_1 = _cast_as_param(np.random.random(1))
             self.A_2 = _cast_as_param(np.random.random(1))
             self.A_3 = 0
@@ -345,16 +346,12 @@ class SpatialFrequencyModel(torch.nn.Module):
         return update_tensor
 
 
-def loss_fn(voxel_info, sigma_v_info, prediction, target, dataset="nsd"):
+def loss_fn(voxel_info, sigma_v_info, prediction, target, n_cond=28):
     """"""
     norm_pred = normalize(voxel_info=voxel_info, to_norm=prediction)
     norm_measured = normalize(voxel_info=voxel_info, to_norm=target)
     voxel_list = voxel_info.unique()
     loss_all_voxels = torch.empty(voxel_list.shape, dtype=torch.float64)
-    if dataset == "nsd":
-        n_cond = 28
-    elif dataset == "broderick":
-        n_cond = 48
     for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
         voxel_idx = voxel_info == idx
         sigma_v_squared = sigma_v_info[voxel_idx]
@@ -362,8 +359,9 @@ def loss_fn(voxel_info, sigma_v_info, prediction, target, dataset="nsd"):
         loss_all_voxels[i] = loss_v
     return loss_all_voxels
 
-def fit_model(model, dataset, dset_name="nsd", learning_rate=1e-4, max_epoch=1000, print_every=100,
-              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
+
+def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100,
+              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8, n_cond=28):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
@@ -379,7 +377,8 @@ def fit_model(model, dataset, dset_name="nsd", learning_rate=1e-4, max_epoch=100
     for t in range(max_epoch):
 
         pred = model.forward()  # predictions should be put in here
-        losses = loss_fn(dataset.voxel_info, dataset.sigma_v_squared, prediction=pred, target=dataset.target, dataset=dset_name)  # loss should be returned here
+        losses = loss_fn(dataset.voxel_info, dataset.sigma_v_squared, prediction=pred, target=dataset.target,
+                         n_cond=n_cond)  # loss should be returned here
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
@@ -513,10 +512,10 @@ def plot_grouped_parameters(df, params, col_group,
 
 
 def plot_param_history(df, params, group,
-                      to_label=None, label_order=None, ground_truth=True, to_col=None,
-                      lgd_title=None,
-                      save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                      ci=68, n_boot=100, log_y=True, sharey=True):
+                       to_label=None, label_order=None, ground_truth=True, to_col=None,
+                       lgd_title=None,
+                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
+                       ci=68, n_boot=100, log_y=True, sharey=True):
     df = _group_params(df, params, group)
     sns.set_context("notebook", font_scale=1.5)
     to_x = "epoch"
