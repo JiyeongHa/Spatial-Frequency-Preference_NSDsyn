@@ -34,7 +34,7 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
                        save_fig=False, save_file_name='n_voxels_ROI_beta_sign.png',
                        save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                        super_title=None):
-
+    sns.set_context("notebook")
     grid = sns.catplot(data=n_voxel_df,
                        x=x_axis, y=y_axis,
                        hue=to_hue,
@@ -44,8 +44,7 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
                        hue_order=utils.sort_a_df_column(n_voxel_df[to_hue])
                        )
     grid.set_axis_labels(x_axis_label, y_axis_label, fontsize=15)
-    legend = grid._legend
-    legend.set_title(legend_title)
+    grid.fig.legend(title=legend_title)
     if new_legend is not None:
         for t, l in zip(legend.texts, new_legend):
             t.set_text(l)
@@ -53,15 +52,9 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
         grid.fig.suptitle(f'{super_title}', fontsize=18, fontweight="bold")
     grid.fig.subplots_adjust(top=0.9, right=0.7)
     grid.tight_layout()
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{save_file_name}')
-        plt.savefig(save_path)
-    plt.show()
+    fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+    save_path = os.path.join(fig_dir, f'{save_file_name}')
+    utils.save_fig(save_fig, save_path)
     return grid
 
 
