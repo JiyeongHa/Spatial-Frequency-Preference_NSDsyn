@@ -213,7 +213,7 @@ rule run_Broderick_subj:
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
         subj_model = model.SpatialFrequencyModel(subj_dataset.my_tensor, full_ver=(wildcards.full_ver=="True"))
         loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, dset_name="broderick",
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2000, anomaly_detection=False, amsgrad=False, eps=1e-8)
+            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2, anomaly_detection=False, amsgrad=False, eps=1e-8, n_cond=48)
         losses_history = model.shape_losses_history(losses, subj_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
         utils.save_df_to_csv(model_history, output.model_history, indexing=False)
