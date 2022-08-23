@@ -579,3 +579,29 @@ def plot_param_history_horizontal(df, params, group,
     if log_y is True:
         plt.semilogy()
     utils.save_fig(save_fig, save_path)
+
+
+def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, df_type):
+    all_history_df = pd.DataFrame()
+    subj_list = [utils.sub_number_to_string(x, "broderick") for x in sn_list]
+    for cur_ver, cur_subj, cur_lr, cur_epoch in itertools.product(full_ver, subj_list, lr_rate, max_epoch):
+        model_history_path = os.path.join(output_dir,
+                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}.csv')
+        tmp = pd.read_csv(model_history_path)
+        if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
+            tmp['lr_rate'] = cur_lr
+            tmp['max_epoch'] = cur_epoch
+            tmp['full_ver'] = cur_ver
+            tmp['subj'] = cur_subj
+        all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
+    return all_history_df
+
+
+def load_loss_and_model_history_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, losses=True):
+    loss_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "loss")
+    model_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "model")
+    if losses is True:
+        losses_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "losses")
+    else:
+        losses_history = []
+    return loss_history, model_history, losses_history
