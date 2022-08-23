@@ -271,15 +271,13 @@ def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
                       x_label="SD for each voxel across 8 trials",
                       stat="probability",
                       lgd_title="Frequency level",
-                      height=3, col=None, col_wrap=4,
+                      height=3,
                       save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_histogram.png"):
     sns.set_context("notebook")
     grid = sns.FacetGrid(std_df,
                          hue=to_label,
                          palette=sns.color_palette("hls", std_df[to_label].nunique()),
                          legend_out=True,
-                         col=col,
-                         col_wrap=col_wrap,
                          height=height,
                          sharex=True, sharey=True)
     grid.map(sns.histplot, to_x, stat=stat, alpha=0.7)
@@ -290,6 +288,27 @@ def plot_sd_histogram(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
     utils.save_fig(save_fig, save_path)
 
 
+def plot_sd_histogram_with_cols(std_df, to_x="sd_normed_betas", to_label="freq_lvl",
+                      x_label="SD for each voxel across 8 trials",
+                      stat="probability", col=None, col_wrap=1,
+                      lgd_title="Frequency level",
+                      height=3,
+                      save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/', f_name="sd_histogram.png"):
+    sns.set_context("notebook")
+    grid = sns.FacetGrid(std_df,
+                         hue=to_label,
+                         palette=sns.color_palette("hls", std_df[to_label].nunique()),
+                         legend_out=True,
+                         height=height,
+                         col=col,
+                         col_warp=col_wrap,
+                         sharex=True, sharey=True)
+    grid.map(sns.histplot, to_x, stat=stat, alpha=0.7)
+    grid.set_axis_labels(x_label, stat.title())
+    if lgd_title is not None:
+        grid.fig.legend(title=lgd_title)
+    save_path = os.path.join(save_dir, f'{x_label}_vs_{stat.title()}', f_name)
+    utils.save_fig(save_fig, save_path)
 
 def change_voxel_info_in_df(df):
     voxel_list = df.voxel.unique()
