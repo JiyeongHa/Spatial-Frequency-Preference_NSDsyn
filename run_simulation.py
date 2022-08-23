@@ -11,6 +11,7 @@ import simulation as sim
 from importlib import reload
 from itertools import product
 from inspect import getfullargspec
+import voxel_selection as vs
 
 params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -186,3 +187,49 @@ losses_history = model.shape_losses_history(losses, subj_df)
 utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
 utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
 utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
+
+
+sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+all_subj_df = utils.load_all_subj_df(sn_list, '/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes', 'stim_voxel_info_df_vs_md.csv', dataset="broderick")
+df = utils.load_all_subj_df(np.arange(1,9), df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes',
+                            df_name='stim_voxel_info_df_vs.csv')
+df = df.query('vroinames == "V1"')
+sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1,2], columns=['normed_noise_SD', 'normed_sigma_v_squared'], to_group=['voxel','subj'])
+nsd_sigma_v_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes/sigma_v/sigma_v_normed_betas_V1.csv')
+bd_sigma_v_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes/sigma_v/sigma_v_normed_betas_V1.csv')
+nsd_sigma_v_df['dataset'] = "nsd_syn"
+bd_sigma_v_df['dataset'] = "Broderick_et_al"
+
+all_sigma_df = pd.concat((nsd_sigma_v_df, bd_sigma_v_df), axis=0)
+sim.plot_sd_histogram(bd_sigma_v_df, to_x="normed_noise_SD", x_label="SD for each voxel across 100 bootstraps", to_label='subj', lgd_title='Subjects',
+                      f_name="Broderick_sd_histogram_normed.png", height=5, save_fig=True)
+plt.tight_layout()
+plt.show()
+
+sim.plot_sd_histogram(all_sigma_df, to_x="normed_noise_SD", x_label="SD for each voxel", to_label='dataset', lgd_title='Dataset',
+                      f_name="Broderick_sd_histogram_vs_nsd_syn.png", height=5, save_fig=True)
+plt.tight_layout()
+plt.show()
+
+n_voxel_df = all_sigma_df.groupby(['subj','dataset'])['voxel'].nunique().reset_index()
+n_voxel_df = n_voxel_df.rename(columns={'voxel': 'n_voxel'})
+vs.plot_num_of_voxels(n_voxel_df, to_hue='dataset', legend_title="Dataset",
+                      x_axis='dataset', y_axis='n_voxel', x_axis_label='Dataset',
+                      save_file_name='n_voxels_diff_dataset.png', save_fig=True)
+plt.show()
+
+
+model_history, loss_history = sim.load_all_model_fitting_results(output_dir, full_ver, pw, noise_sd, n_voxel, lr_rate, max_epoch,
+                                                                 ground_truth=params, id_val='ground_truth')
+
+output_dir = '/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/sfp_model/results_2D'
+loss_history, model_history, losses = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
+                                                                                       sn_list=[1], lr_rate=[0.0005],
+                                                                                       max_epoch=[3], losses=True)
+
+model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
+                        to_label='noise_sd', to_col='lr_rate', lgd_title="Multiples of noise SD", to_row=None,
+                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss', f_name),
+                        ci="sd", n_boot=100, log_y=True, sharey=True)
+plt.show()
+
