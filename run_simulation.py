@@ -233,3 +233,28 @@ model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
                         ci="sd", n_boot=100, log_y=True, sharey=True)
 plt.show()
 
+
+syn_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_n_vox-100.csv')
+syn_df['class_idx'] = np.tile(np.arange(0, 28), 100)
+syn_df = syn_df.query('voxel < 5')
+#
+# syn_SFdataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
+# syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=True)
+# loss_history, model_history, el_time, losses = model.fit_model(syn_model, syn_SFdataset, max_epoch=10)
+
+
+syn_SFdatset_new = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
+syn_model_new = model.SpatialFrequencyModel(syn_SFdatset_new, full_ver=True)
+# my_parameters = [p for p in syn_model_new.parameters() if p.requires_grad]
+# optimizer = torch.optim.Adam(my_parameters, lr=0.005)
+# pred = syn_model_new.forward()
+loss_history, model_history, el_time, losses = model.fit_model(syn_model_new, syn_SFdatset_new, max_epoch=10)
+
+my_betas = torch.tensor(syn_df.pivot('voxel','image_idx','betas').to_numpy())
+my_ori = torch.tensor(syn_df.pivot('voxel','image_idx','local_ori').to_numpy())
+my_angle = torch.tensor(syn_df.pivot('voxel','image_idx','angle').to_numpy())
+my_eccen = torch.tensor(syn_df.pivot('voxel','image_idx','eccentricity').to_numpy())
+my_sf = torch.tensor(syn_df.pivot('voxel','image_idx','local_sf').to_numpy())
+my_betas / torch.linalg.norm(my_betas, ord=2, dim=1, keepdim=True)
+
+e = voxel_info / torch.linalg.norm(voxel_info, ord=2, dim=1, keepdim=True)
