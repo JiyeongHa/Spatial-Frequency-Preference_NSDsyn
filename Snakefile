@@ -13,12 +13,12 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [2]
+MAX_EPOCH = [1000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
-broderick_sn_list = [7] #[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
 rule run_Broderick_all_subj:
@@ -200,6 +200,7 @@ rule run_simulation_subj:
 rule run_Broderick_subj:
     input:
         input_path = os.path.join(config['BD_DIR'],  "dataframes", "{subj}_stim_voxel_info_df_vs_md.csv")
+        log_file = os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'log_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.txt')
     output:
         model_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'),
         loss_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'),
@@ -214,9 +215,9 @@ rule run_Broderick_subj:
     run:
         subj_df = pd.read_csv(input.input_path)
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
-        subj_model = model.SpatialFrequencyModel(subj_dataset.my_tensor, full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2, anomaly_detection=False, amsgrad=False, eps=1e-8, n_cond=48)
+        subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
+        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, input.log,
+            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=100, anomaly_detection=False, amsgrad=False, eps=1e-8)
         losses_history = model.shape_losses_history(losses, subj_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
         utils.save_df_to_csv(model_history, output.model_history, indexing=False)
