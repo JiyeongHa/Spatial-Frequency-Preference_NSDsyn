@@ -1,0 +1,40 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cluster nodes: 2
+Job stats:
+job                       count    min threads    max threads
+----------------------  -------  -------------  -------------
+run_Broderick_all_subj        1              1              1
+run_Broderick_subj           12              1              1
+total                        13              1              1
+
+Select jobs to execute...
+
+[Mon Aug 22 10:53:56 2022]
+rule run_Broderick_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/dataframes/sub-wlsubj114_stim_voxel_info_df_vs_md.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/model_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj114_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/loss_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj114_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/losses_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj114_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/logs/sfp_model/results_2D/loss_history_dset-Broderick_full_ver-True_sub-wlsubj114_lr-0.0005_eph-20000.log
+    jobid: 10
+    benchmark: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/benchmark/sfp_model/results_2D/loss_history_dset-Broderick_full_ver-True_sub-wlsubj114_lr-0.0005_eph-20000_benchmark.txt
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/loss_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj114_lr-0.0005_eph-20000.csv
+    wildcards: full_ver=True, subj=sub-wlsubj114, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 10 with external jobid '23917167'.
+
+[Mon Aug 22 10:53:57 2022]
+rule run_Broderick_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/dataframes/sub-wlsubj081_stim_voxel_info_df_vs_md.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/model_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj081_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/loss_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj081_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/losses_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj081_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/logs/sfp_model/results_2D/loss_history_dset-Broderick_full_ver-True_sub-wlsubj081_lr-0.0005_eph-20000.log
+    jobid: 8
+    benchmark: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/benchmark/sfp_model/results_2D/loss_history_dset-Broderick_full_ver-True_sub-wlsubj081_lr-0.0005_eph-20000_benchmark.txt
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset/sfp_model/results_2D/loss_history_dset-Broderick_bts-md_full_ver-True_sub-wlsubj081_lr-0.0005_eph-20000.csv
+    wildcards: full_ver=True, subj=sub-wlsubj081, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 8 with external jobid '23917168'.
+Terminating processes on user request, this might take some time.
+No --cluster-cancel given. Will exit after finishing currently running jobs.
+Complete log: .snakemake/log/2022-08-22T105336.356508.snakemake.log

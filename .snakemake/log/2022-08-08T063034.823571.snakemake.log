@@ -1,0 +1,39 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 26
+Rules claiming more threads will be scaled down.
+Job stats:
+job                        count    min threads    max threads
+-----------------------  -------  -------------  -------------
+run_simulation_all_subj        1              1              1
+run_simulation_subj            1              1              1
+total                          2              1              1
+
+Select jobs to execute...
+
+[Mon Aug  8 06:30:36 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.log
+    jobid: 1
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=01, lr=0.0005, max_epoch=3
+    resources: tmpdir=/state/partition1/job-23345047
+
+[Mon Aug  8 08:34:12 2022]
+Finished job 1.
+1 of 2 steps (50%) done
+Select jobs to execute...
+
+[Mon Aug  8 08:34:12 2022]
+localrule run_simulation_all_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv
+    jobid: 0
+    reason: Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv
+    resources: tmpdir=/state/partition1/job-23345047
+
+[Mon Aug  8 08:34:12 2022]
+Finished job 0.
+2 of 2 steps (100%) done
+Complete log: .snakemake/log/2022-08-08T063034.823571.snakemake.log

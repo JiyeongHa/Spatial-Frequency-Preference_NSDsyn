@@ -2,7 +2,7 @@
     "__default__":
     {
 	"nodes": 1,
-	"tasks_per_node": 1,=
+	"tasks_per_node": 1,
 	"mem": "80GB",
 	"time": "6-12:00:00",
 	"job_name": "{rule}.{wildcards}",

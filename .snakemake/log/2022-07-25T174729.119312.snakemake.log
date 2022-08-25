@@ -1,0 +1,543 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cluster nodes: 20
+Job stats:
+job                                   count    min threads    max threads
+----------------------------------  -------  -------------  -------------
+generate_noisy_synthetic_data_subj        8              1              1
+generate_synthetic_data_subj              8              1              1
+run_simulation_all_subj                   1              1              1
+run_simulation_subj                       8              1              1
+total                                    25              1              1
+
+Select jobs to execute...
+
+[Mon Jul 25 17:47:50 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-06.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-06.log
+    jobid: 18
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-06.csv
+    wildcards: full_ver=True, pw=True, sn=06
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 18 with external jobid '22770470'.
+
+[Mon Jul 25 17:47:50 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-07.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-07.log
+    jobid: 21
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-07.csv
+    wildcards: full_ver=True, pw=True, sn=07
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 21 with external jobid '22770471'.
+
+[Mon Jul 25 17:47:51 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-03.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-03.log
+    jobid: 9
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-03.csv
+    wildcards: full_ver=True, pw=True, sn=03
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 9 with external jobid '22770472'.
+
+[Mon Jul 25 17:47:51 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-05.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-05.log
+    jobid: 15
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-05.csv
+    wildcards: full_ver=True, pw=True, sn=05
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 15 with external jobid '22770473'.
+
+[Mon Jul 25 17:47:51 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-01.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-01.log
+    jobid: 3
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-01.csv
+    wildcards: full_ver=True, pw=True, sn=01
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 3 with external jobid '22770474'.
+
+[Mon Jul 25 17:47:52 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-02.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-02.log
+    jobid: 6
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-02.csv
+    wildcards: full_ver=True, pw=True, sn=02
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 6 with external jobid '22770475'.
+
+[Mon Jul 25 17:47:52 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-08.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-08.log
+    jobid: 24
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-08.csv
+    wildcards: full_ver=True, pw=True, sn=08
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 24 with external jobid '22770476'.
+
+[Mon Jul 25 17:47:52 2022]
+rule generate_synthetic_data_subj:
+    input: /home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-04.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-04.log
+    jobid: 12
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-04.csv
+    wildcards: full_ver=True, pw=True, sn=04
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 12 with external jobid '22770477'.
+[Mon Jul 25 17:48:19 2022]
+Finished job 18.
+1 of 25 steps (4%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:19 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-06.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv
+    jobid: 17
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-06.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=06
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 17 with external jobid '22770524'.
+[Mon Jul 25 17:48:21 2022]
+Finished job 9.
+2 of 25 steps (8%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:21 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-03.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv
+    jobid: 8
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-03.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=03
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 8 with external jobid '22770525'.
+[Mon Jul 25 17:48:25 2022]
+Finished job 6.
+3 of 25 steps (12%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:25 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-02.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    jobid: 5
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-02.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=02
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 5 with external jobid '22770526'.
+[Mon Jul 25 17:48:26 2022]
+Finished job 24.
+4 of 25 steps (16%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:26 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-08.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv
+    jobid: 23
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-08.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=08
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 23 with external jobid '22770527'.
+[Mon Jul 25 17:48:27 2022]
+Finished job 12.
+5 of 25 steps (20%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:27 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-04.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv
+    jobid: 11
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-04.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=04
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 11 with external jobid '22770528'.
+[Mon Jul 25 17:48:42 2022]
+Finished job 21.
+6 of 25 steps (24%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:42 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-07.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv
+    jobid: 20
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-07.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=07
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 20 with external jobid '22770529'.
+[Mon Jul 25 17:48:44 2022]
+Finished job 15.
+7 of 25 steps (28%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:44 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-05.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv
+    jobid: 14
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-05.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=05
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 14 with external jobid '22770530'.
+[Mon Jul 25 17:48:45 2022]
+Finished job 3.
+8 of 25 steps (32%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:48:45 2022]
+rule generate_noisy_synthetic_data_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-01.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    jobid: 2
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/original_syn_data_2d_full_ver-True_pw-True_noise_mtpl-0_subj-01.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=01
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 2 with external jobid '22770531'.
+[Mon Jul 25 17:50:15 2022]
+Finished job 14.
+9 of 25 steps (36%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:15 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.log
+    jobid: 13
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=05, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 13 with external jobid '22770736'.
+[Mon Jul 25 17:50:17 2022]
+Finished job 17.
+10 of 25 steps (40%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:17 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.log
+    jobid: 16
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=06, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 16 with external jobid '22770737'.
+[Mon Jul 25 17:50:19 2022]
+Finished job 5.
+11 of 25 steps (44%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:19 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.log
+    jobid: 4
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=02, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 4 with external jobid '22770738'.
+[Mon Jul 25 17:50:20 2022]
+Finished job 23.
+12 of 25 steps (48%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:20 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.log
+    jobid: 22
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=08, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 22 with external jobid '22770739'.
+[Mon Jul 25 17:50:21 2022]
+Finished job 11.
+13 of 25 steps (52%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:21 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.log
+    jobid: 10
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=04, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 10 with external jobid '22770740'.
+[Mon Jul 25 17:50:37 2022]
+Finished job 20.
+14 of 25 steps (56%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:37 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.log
+    jobid: 19
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=07, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 19 with external jobid '22770741'.
+[Mon Jul 25 17:50:38 2022]
+Finished job 2.
+15 of 25 steps (60%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:38 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.log
+    jobid: 1
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=01, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 1 with external jobid '22770743'.
+[Mon Jul 25 17:50:39 2022]
+Finished job 8.
+16 of 25 steps (64%) done
+Select jobs to execute...
+
+[Mon Jul 25 17:50:39 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.log
+    jobid: 7
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=03, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 7 with external jobid '22770744'.
+[Wed Jul 27 05:52:15 2022]
+Error in rule run_simulation_subj:
+    jobid: 19
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770741
+
+Error executing rule run_simulation_subj on cluster (jobid: 19, external: 22770741, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.19.sh). For error details see the cluster log and the log files of the involved rule(s).
+Trying to restart job 19.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:15 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.log
+    jobid: 19
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-07_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-07.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=07, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+[Wed Jul 27 05:52:16 2022]
+Error in rule run_simulation_subj:
+    jobid: 1
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770743
+
+Error executing rule run_simulation_subj on cluster (jobid: 1, external: 22770743, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.1.sh). For error details see the cluster log and the log files of the involved rule(s).
+[Wed Jul 27 05:52:17 2022]
+Error in rule run_simulation_subj:
+    jobid: 7
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770744
+
+Error executing rule run_simulation_subj on cluster (jobid: 7, external: 22770744, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.7.sh). For error details see the cluster log and the log files of the involved rule(s).
+Submitted job 19 with external jobid '22851454'.
+Trying to restart job 1.
+Trying to restart job 7.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:18 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.log
+    jobid: 1
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=01, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+[Wed Jul 27 05:52:18 2022]
+Error in rule run_simulation_subj:
+    jobid: 13
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770736
+
+Error executing rule run_simulation_subj on cluster (jobid: 13, external: 22770736, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.13.sh). For error details see the cluster log and the log files of the involved rule(s).
+Submitted job 1 with external jobid '22851455'.
+
+[Wed Jul 27 05:52:18 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.log
+    jobid: 7
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-03_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-03.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=03, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 7 with external jobid '22851456'.
+Trying to restart job 13.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:18 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.log
+    jobid: 13
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-05_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-05.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=05, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 13 with external jobid '22851457'.
+[Wed Jul 27 05:52:19 2022]
+Error in rule run_simulation_subj:
+    jobid: 16
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770737
+
+Error executing rule run_simulation_subj on cluster (jobid: 16, external: 22770737, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.16.sh). For error details see the cluster log and the log files of the involved rule(s).
+Trying to restart job 16.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:19 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.log
+    jobid: 16
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-06_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-06.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=06, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 16 with external jobid '22851458'.
+[Wed Jul 27 05:52:20 2022]
+Error in rule run_simulation_subj:
+    jobid: 4
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770738
+
+Error executing rule run_simulation_subj on cluster (jobid: 4, external: 22770738, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.4.sh). For error details see the cluster log and the log files of the involved rule(s).
+Trying to restart job 4.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:20 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.log
+    jobid: 4
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=02, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 4 with external jobid '22851459'.
+[Wed Jul 27 05:52:21 2022]
+Error in rule run_simulation_subj:
+    jobid: 22
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770739
+
+Error executing rule run_simulation_subj on cluster (jobid: 22, external: 22770739, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.22.sh). For error details see the cluster log and the log files of the involved rule(s).
+Trying to restart job 22.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:21 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.log
+    jobid: 22
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-08_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-08.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=08, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 22 with external jobid '22851460'.
+[Wed Jul 27 05:52:22 2022]
+Error in rule run_simulation_subj:
+    jobid: 10
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.log (check log file(s) for error message)
+    cluster_jobid: 22770740
+
+Error executing rule run_simulation_subj on cluster (jobid: 10, external: 22770740, jobscript: /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/.snakemake/tmp.eqnbnc99/snakejob.run_simulation_subj.10.sh). For error details see the cluster log and the log files of the involved rule(s).
+Trying to restart job 10.
+Select jobs to execute...
+
+[Wed Jul 27 05:52:22 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.log
+    jobid: 10
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-04_lr-0.0005_eph-20000.csv; Input files updated by another job: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-04.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=04, lr=0.0005, max_epoch=20000
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 10 with external jobid '22851461'.
+Terminating processes on user request, this might take some time.
+No --cluster-cancel given. Will exit after finishing currently running jobs.
+Complete log: .snakemake/log/2022-07-25T174729.119312.snakemake.log

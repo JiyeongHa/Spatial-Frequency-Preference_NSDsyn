@@ -1,0 +1,38 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cluster nodes: 26
+Job stats:
+job                        count    min threads    max threads
+-----------------------  -------  -------------  -------------
+run_simulation_all_subj        1              1              1
+run_simulation_subj            2              1              1
+total                          3              1              1
+
+Select jobs to execute...
+
+[Mon Aug  8 04:56:43 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-02.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-3.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-3.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-3.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-3.log
+    jobid: 4
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-02_lr-0.0005_eph-3.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=02, lr=0.0005, max_epoch=3
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 4 with external jobid '23344213'.
+
+[Mon Aug  8 04:56:43 2022]
+rule run_simulation_subj:
+    input: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_subj-01.csv
+    output: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/model_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv, /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/losses_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv
+    log: /scratch/jh7685/sfp_nsd/derivatives_HPC/logs/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.log
+    jobid: 1
+    reason: Missing output files: /scratch/jh7685/sfp_nsd/derivatives_HPC/simulation/results_2D/loss_history_full_ver-True_pw-True_noise_mtpl-1_subj-01_lr-0.0005_eph-3.csv
+    wildcards: full_ver=True, pw=True, n_sd_mtpl=1, sn=01, lr=0.0005, max_epoch=3
+    resources: mem_mb=1000, disk_mb=1000, tmpdir=/tmp
+
+Submitted job 1 with external jobid '23344214'.
+Terminating processes on user request, this might take some time.
+No --cluster-cancel given. Will exit after finishing currently running jobs.
+Complete log: .snakemake/log/2022-08-08T045620.377898.snakemake.log
