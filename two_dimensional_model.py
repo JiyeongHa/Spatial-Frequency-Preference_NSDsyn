@@ -343,7 +343,7 @@ def loss_fn(sigma_v_info, prediction, target):
 
 
 
-def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100,
+def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, print_every=100,
               loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
@@ -368,7 +368,10 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
         if (t + 1) % print_every == 0 or t == 0:
-            print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
+            with open(log_file, "a") as file:
+                content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
+                file.write(content)
+                file.close()
 
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss

@@ -244,11 +244,12 @@ syn_df = syn_df.query('voxel < 5')
 
 
 syn_SFdatset_new = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
-syn_model_new = model.SpatialFrequencyModel(syn_SFdatset_new, full_ver=True)
+syn_model_new = model.SpatialFrequencyModel(full_ver=True)
 # my_parameters = [p for p in syn_model_new.parameters() if p.requires_grad]
 # optimizer = torch.optim.Adam(my_parameters, lr=0.005)
 # pred = syn_model_new.forward()
-loss_history, model_history, el_time, losses = model.fit_model(syn_model_new, syn_SFdatset_new, max_epoch=10)
+log_file='/Users/jh7685/Documents/test_log.txt'
+loss_history, model_history, el_time, losses = model.fit_model(syn_model_new, syn_SFdatset_new, log_file, max_epoch=10, print_every=2)
 
 my_betas = torch.tensor(syn_df.pivot('voxel','image_idx','betas').to_numpy())
 my_ori = torch.tensor(syn_df.pivot('voxel','image_idx','local_ori').to_numpy())
