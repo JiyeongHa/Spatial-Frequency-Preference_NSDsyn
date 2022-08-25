@@ -95,6 +95,11 @@ def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False)
     return normed
 
 
+def normalize_pivotStyle(betas):
+    """calculate L2 norm for each voxel and normalized using the L2 norm"""
+    return  betas / torch.linalg.norm(betas, ord=2, dim=1, keepdim=True)
+
+
 def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
               dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
               x_axis_label='Measured Betas', y_axis_label="Model estimation",
@@ -256,24 +261,18 @@ def count_nan_in_torch_vector(x):
 
 
 class SpatialFrequencyDataset:
+    """Tranform dataframes to pivot style. x axis represents voxel, y axis is class_idx."""
     def __init__(self, df, beta_col='avg_betas'):
-        self.tmp = df[['voxel', 'local_ori', 'angle', 'eccentricity', 'local_sf', beta_col, 'sigma_v_squared']]
-        self.my_tensor = torch.tensor(self.tmp.to_numpy())
-        self.voxel_info = self.my_tensor[:, 0]
-        self.target = self.my_tensor[:, 5]
-        self.sigma_v_squared = self.my_tensor[:, 6]
-
-    def df_to_numpy(self):
-        return self.tmp.to_numpy()
-
-    def df_to_tensor(self):
-        tmp = self.df_to_numpy()
-        self.my_tensor = torch.tensor(tmp)
-        return self.my_tensor
-
+        self.target = torch.tensor(df.pivot('voxel', 'class_idx', beta_col).to_numpy())
+        self.ori = torch.tensor(df.pivot('voxel', 'class_idx', 'local_ori').to_numpy())
+        self.angle = torch.tensor(df.pivot('voxel', 'class_idx', 'angle').to_numpy())
+        self.eccen = torch.tensor(df.pivot('voxel', 'class_idx', 'eccentricity').to_numpy())
+        self.sf = torch.tensor(df.pivot('voxel', 'class_idx', 'local_sf').to_numpy())
+        self.sigma_v_squared = torch.tensor(df.pivot('voxel', 'class_idx', 'sigma_v_squared').to_numpy())
+        self.voxel_info = df.pivot('voxel', 'class_idx', beta_col).index.astype(int).to_list()
 
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, subj_tensor, full_ver):
+    def __init__(self, full_ver):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.sigma = _cast_as_param(np.random.random(1))
@@ -289,79 +288,63 @@ class SpatialFrequencyModel(torch.nn.Module):
             self.A_2 = _cast_as_param(np.random.random(1))
             self.A_3 = 0
             self.A_4 = 0
-        self.subj_tensor = subj_tensor
-        self.voxel = self.subj_tensor[:, 0]
-        self.theta_l = self.subj_tensor[:, 1]
-        self.theta_v = self.subj_tensor[:, 2]
-        self.r_v = self.subj_tensor[:, 3]
-        self.w_l = self.subj_tensor[:, 4]
-        self.target = self.subj_tensor[:, 5]
-        self.sigma_v_squared = self.subj_tensor[:, 6]
-        # self.theta_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_ori'])
-        # self.theta_v = _cast_as_tensor(self.subj_df.iloc[0:]['angle'])
-        # self.r_v = _cast_as_tensor(self.subj_df.iloc[0:]['eccentricity'])  # voxel eccentricity (in degrees)
-        # self.w_l = _cast_as_tensor(self.subj_df.iloc[0:]['local_sf'])  # in cycles per degree
+        # self.target = SF_dataset.target
+        # self.theta_l = SF_dataset.ori
+        # self.w_l = SF_dataset.sf
+        # self.theta_v = SF_dataset.angle
+        # self.r_v = SF_dataset.eccen
+        # self.sigma_v_squared = SF_dataset.sigma_v_squared
 
-    def get_Av(self):
+    def get_Av(self, theta_l, theta_v):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         # theta_l = _cast_as_tensor(theta_l)
         # theta_v = _cast_as_tensor(theta_v)
         if self.full_ver is True:
-            Av = 1 + self.A_1 * torch.cos(2 * self.theta_l) + \
-                 self.A_2 * torch.cos(4 * self.theta_l) + \
-                 self.A_3 * torch.cos(2 * (self.theta_l - self.theta_v)) + \
-                 self.A_4 * torch.cos(4 * (self.theta_l - self.theta_v))
+            Av = 1 + self.A_1 * torch.cos(2 * theta_l) + \
+                 self.A_2 * torch.cos(4 * theta_l) + \
+                 self.A_3 * torch.cos(2 * (theta_l - theta_v)) + \
+                 self.A_4 * torch.cos(4 * (theta_l - theta_v))
         elif self.full_ver is False:
             Av = 1
         return Av
 
-    def get_Pv(self):
+    def get_Pv(self, theta_l, theta_v, r_v):
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
         # theta_l = _cast_as_tensor(theta_l)
         # theta_v = _cast_as_tensor(theta_v)
         # r_v = _cast_as_tensor(r_v)
-        ecc_dependency = self.slope * self.r_v + self.intercept
+        ecc_dependency = self.slope * r_v + self.intercept
         if self.full_ver is True:
-            Pv = ecc_dependency * (1 + self.p_1 * torch.cos(2 * self.theta_l) +
-                                   self.p_2 * torch.cos(4 * self.theta_l) +
-                                   self.p_3 * torch.cos(2 * (self.theta_l - self.theta_v)) +
-                                   self.p_4 * torch.cos(4 * (self.theta_l - self.theta_v)))
+            Pv = ecc_dependency * (1 + self.p_1 * torch.cos(2 * theta_l) +
+                                   self.p_2 * torch.cos(4 * theta_l) +
+                                   self.p_3 * torch.cos(2 * (theta_l - theta_v)) +
+                                   self.p_4 * torch.cos(4 * (theta_l - theta_v)))
         elif self.full_ver is False:
             Pv = ecc_dependency
         return Pv
 
-    def forward(self):
+    def forward(self, theta_l, theta_v, r_v, w_l):
         """ In the forward function we accept a Variable of input data and we must
         return a Variable of output data. Return predicted BOLD response
         in eccentricity (formula no. 5 in Broderick et al. (2022)) """
         # w_l = _cast_as_tensor(w_l)
 
-        Av = self.get_Av()
-        Pv = self.get_Pv()
-        pred = Av * torch.exp(-(torch.log2(self.w_l) + torch.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
+        Av = self.get_Av(theta_l, theta_v)
+        Pv = self.get_Pv(theta_l, theta_v, r_v)
+        pred = Av * torch.exp(-(torch.log2(w_l) + torch.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
         return pred
 
-    def get_pred_into_tensor_df(self, pred):
-        update_tensor = torch.cat((self.subj_tensor, pred.reshape((-1, 1))), 1)
-        return update_tensor
-
-
-def loss_fn(voxel_info, sigma_v_info, prediction, target, n_cond=28):
+def loss_fn(sigma_v_info, prediction, target):
     """"""
-    norm_pred = normalize(voxel_info=voxel_info, to_norm=prediction)
-    norm_measured = normalize(voxel_info=voxel_info, to_norm=target)
-    voxel_list = voxel_info.unique()
-    loss_all_voxels = torch.empty(voxel_list.shape, dtype=torch.float64)
-    for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
-        voxel_idx = voxel_info == idx
-        sigma_v_squared = sigma_v_info[voxel_idx]
-        loss_v = (1/n_cond) * torch.dot((1/sigma_v_squared), ((norm_pred[voxel_idx] - norm_measured[voxel_idx]) ** 2))
-        loss_all_voxels[i] = loss_v
+    norm_pred = normalize_pivotStyle(prediction)
+    norm_measured = normalize_pivotStyle(target)
+    loss_all_voxels = torch.mean((1/sigma_v_info) * (norm_pred - norm_measured)**2, dim=1)
     return loss_all_voxels
 
 
+
 def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100,
-              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8, n_cond=28):
+              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
@@ -376,9 +359,8 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
 
     for t in range(max_epoch):
 
-        pred = model.forward()  # predictions should be put in here
-        losses = loss_fn(dataset.voxel_info, dataset.sigma_v_squared, prediction=pred, target=dataset.target,
-                         n_cond=n_cond)  # loss should be returned here
+        pred = model.forward(theta_l=dataset.ori, theta_v=dataset.angle, r_v=dataset.eccen, w_l=dataset.sf)  # predictions should be put in here
+        losses = loss_fn(dataset.sigma_v_squared, pred, dataset.target) # loss should be returned here
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
@@ -397,7 +379,7 @@ def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=10
     params_col = [name for name, param in model.named_parameters() if param.requires_grad]
     print(f'**epoch no.{max_epoch}: Finished! final model params...\n{dict(zip(params_col, model_values))}')
     print(f'Elapsed time: {np.round(end - start, 2)} sec')
-    voxel_list = dataset.voxel_info.unique().numpy().astype(int).tolist()
+    voxel_list = dataset.voxel_info
 
     losses_history = pd.DataFrame(np.asarray(losses_history), columns=voxel_list).reset_index().rename(columns={'index': 'epoch'})
     loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
