@@ -306,7 +306,7 @@ class SpatialFrequencyModel(torch.nn.Module):
                  self.A_4 * torch.cos(4 * (theta_l - theta_v))
         elif self.full_ver is False:
             Av = 1
-        return Av
+        return torch.clamp(Av, min=1e-6)
 
     def get_Pv(self, theta_l, theta_v, r_v):
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
@@ -321,7 +321,7 @@ class SpatialFrequencyModel(torch.nn.Module):
                                    self.p_4 * torch.cos(4 * (theta_l - theta_v)))
         elif self.full_ver is False:
             Pv = ecc_dependency
-        return Pv
+        return torch.clamp(Pv, min=1e-6)
 
     def forward(self, theta_l, theta_v, r_v, w_l):
         """ In the forward function we accept a Variable of input data and we must
