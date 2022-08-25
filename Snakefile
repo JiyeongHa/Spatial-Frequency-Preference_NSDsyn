@@ -13,12 +13,12 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [20000]
+MAX_EPOCH = [2]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
-broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+broderick_sn_list = [7] #[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
 rule run_Broderick_all_subj:
@@ -209,13 +209,13 @@ rule run_Broderick_subj:
     benchmark:
         os.path.join(config['BD_DIR'],"benchmark","sfp_model","results_2D",'loss_history_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_benchmark.txt')
     resources:
-        cpus_per_task = 2,
-        mem = 80
+        cpus_per_task = 1,
+        mem_mb = 8000
     run:
         subj_df = pd.read_csv(input.input_path)
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
         subj_model = model.SpatialFrequencyModel(subj_dataset.my_tensor, full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, dset_name="broderick",
+        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset,
             learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2, anomaly_detection=False, amsgrad=False, eps=1e-8, n_cond=48)
         losses_history = model.shape_losses_history(losses, subj_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
