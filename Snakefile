@@ -216,7 +216,7 @@ rule run_Broderick_subj:
         subj_df = pd.read_csv(input.input_path)
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
         subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, input.log,
+        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
             learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=10, anomaly_detection=False, amsgrad=False, eps=1e-8)
         losses_history = model.shape_losses_history(losses, subj_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
