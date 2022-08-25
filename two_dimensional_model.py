@@ -385,11 +385,10 @@ def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, prin
         file.write(f'Elapsed time: {np.round(end - start, 2)} sec \n')
         file.close()
     voxel_list = dataset.voxel_info
-
-    losses_history = pd.DataFrame(np.asarray(losses_history), columns=voxel_list).reset_index().rename(columns={'index': 'epoch'})
     loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
     model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
-
+    if loss_all_voxels is True:
+        losses_history = pd.DataFrame(np.asarray(losses_history), columns=voxel_list).reset_index().rename(columns={'index': 'epoch'})
     return loss_history, model_history, elapsed_time, losses_history
 
 def shape_losses_history(losses_history, syn_df):
