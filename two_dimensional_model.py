@@ -47,6 +47,7 @@ class PredictBOLD2d():
         self.theta_v = self.subj_df['angle']
         self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
         self.w_l = self.subj_df['local_sf']  # in cycles per degree
+
     def get_Av(self, full_ver):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         if full_ver is True:
@@ -280,10 +281,10 @@ class SpatialFrequencyModel(torch.nn.Module):
         self.intercept = _cast_as_param(np.random.random(1))
         self.full_ver = full_ver
         if full_ver is True:
-            self.p_1 = _cast_as_param(np.random.random(1)/10)
-            self.p_2 = _cast_as_param(np.random.random(1)/10)
-            self.p_3 = _cast_as_param(np.random.random(1)/10)
-            self.p_4 = _cast_as_param(np.random.random(1)/10)
+            self.p_1 = _cast_as_param(np.random.random(1) / 10)
+            self.p_2 = _cast_as_param(np.random.random(1) / 10)
+            self.p_3 = _cast_as_param(np.random.random(1) / 10)
+            self.p_4 = _cast_as_param(np.random.random(1) / 10)
             self.A_1 = _cast_as_param(np.random.random(1))
             self.A_2 = _cast_as_param(np.random.random(1))
             self.A_3 = 0
@@ -345,16 +346,12 @@ class SpatialFrequencyModel(torch.nn.Module):
         return update_tensor
 
 
-def loss_fn(voxel_info, sigma_v_info, prediction, target, dataset="nsd"):
+def loss_fn(voxel_info, sigma_v_info, prediction, target, n_cond=28):
     """"""
     norm_pred = normalize(voxel_info=voxel_info, to_norm=prediction)
     norm_measured = normalize(voxel_info=voxel_info, to_norm=target)
     voxel_list = voxel_info.unique()
     loss_all_voxels = torch.empty(voxel_list.shape, dtype=torch.float64)
-    if dataset == "nsd":
-        n_cond = 28
-    elif dataset == "broderick":
-        n_cond = 48
     for i, idx in zip(range(voxel_list.shape[0]), voxel_list):
         voxel_idx = voxel_info == idx
         sigma_v_squared = sigma_v_info[voxel_idx]
@@ -362,8 +359,9 @@ def loss_fn(voxel_info, sigma_v_info, prediction, target, dataset="nsd"):
         loss_all_voxels[i] = loss_v
     return loss_all_voxels
 
-def fit_model(model, dataset, dset_name="nsd", learning_rate=1e-4, max_epoch=1000, print_every=100,
-              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
+
+def fit_model(model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100,
+              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8, n_cond=28):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
@@ -379,7 +377,8 @@ def fit_model(model, dataset, dset_name="nsd", learning_rate=1e-4, max_epoch=100
     for t in range(max_epoch):
 
         pred = model.forward()  # predictions should be put in here
-        losses = loss_fn(dataset.voxel_info, dataset.sigma_v_squared, prediction=pred, target=dataset.target, dataset=dset_name)  # loss should be returned here
+        losses = loss_fn(dataset.voxel_info, dataset.sigma_v_squared, prediction=pred, target=dataset.target,
+                         n_cond=n_cond)  # loss should be returned here
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
@@ -487,8 +486,8 @@ def _group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
 
 
 def plot_grouped_parameters(df, params, col_group,
-                               to_label="study_type", lgd_title="Study", label_order=None,
-                               save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+                            to_label="study_type", lgd_title="Study", label_order=None,
+                            save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     df = _group_params(df, params, col_group)
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Parameter"
@@ -513,10 +512,10 @@ def plot_grouped_parameters(df, params, col_group,
 
 
 def plot_param_history(df, params, group,
-                      to_label=None, label_order=None, ground_truth=True, to_col=None,
-                      lgd_title=None,
-                      save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                      ci=68, n_boot=100, log_y=True, sharey=True):
+                       to_label=None, label_order=None, ground_truth=True, to_col=None,
+                       lgd_title=None,
+                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
+                       ci=68, n_boot=100, log_y=True, sharey=True):
     df = _group_params(df, params, group)
     sns.set_context("notebook", font_scale=1.5)
     to_x = "epoch"
@@ -580,3 +579,29 @@ def plot_param_history_horizontal(df, params, group,
     if log_y is True:
         plt.semilogy()
     utils.save_fig(save_fig, save_path)
+
+
+def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, df_type):
+    all_history_df = pd.DataFrame()
+    subj_list = [utils.sub_number_to_string(x, "broderick") for x in sn_list]
+    for cur_ver, cur_subj, cur_lr, cur_epoch in itertools.product(full_ver, subj_list, lr_rate, max_epoch):
+        model_history_path = os.path.join(output_dir,
+                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}.csv')
+        tmp = pd.read_csv(model_history_path)
+        if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
+            tmp['lr_rate'] = cur_lr
+            tmp['max_epoch'] = cur_epoch
+            tmp['full_ver'] = cur_ver
+            tmp['subj'] = cur_subj
+        all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
+    return all_history_df
+
+
+def load_loss_and_model_history_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, losses=True):
+    loss_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "loss")
+    model_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "model")
+    if losses is True:
+        losses_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "losses")
+    else:
+        losses_history = []
+    return loss_history, model_history, losses_history

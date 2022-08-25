@@ -285,12 +285,12 @@ def select_voxels(subj, df, dv_to_group=['subj','voxel'], beta_col='betas',
         print(f'... {subj} dataframe_vs saved.')
     return vs_df
 
-def save_sigma_v_df(sn, beta_col='betas',
+def save_sigma_v_df(sn, beta_col='betas', columns=['normed_noise_SD', 'normed_sigma_v_squared'],
                     df_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
                     df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes/sigma_v'):
     subj = utils.sub_number_to_string(sn, dataset="broderick")
-    df = pd.read_csv(os.path.join(df_dir, f"{subj}_stim_voxel_info_df.csv"))
-    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1,2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel','subj'])
+    df = pd.read_csv(os.path.join(df_dir, f"{subj}_stim_voxel_info_df_vs.csv"))
+    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=columns, to_sd=beta_col, to_group=['voxel','subj'])
     # save the final output
     df_save_name = f"{subj}_sigma_v_{beta_col}.csv"
     if not os.path.exists(df_save_dir):
@@ -300,28 +300,29 @@ def save_sigma_v_df(sn, beta_col='betas',
     print(f'... {subj} sigma_v dataframe saved.')
     return sigma_v_df
 
-def save_sigma_v_df_all_subj(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121], beta_col='betas',
+def save_sigma_v_df_all_subj(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
+                             beta_col='betas', columns=['normed_noise_SD', 'normed_sigma_v_squared'],
                     df_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
                     df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes/sigma_v'):
     df = {}
     for sn in sn_list:
-        df[sn] = save_sigma_v_df(sn, beta_col, df_dir, df_save_dir)
+        df[sn] = save_sigma_v_df(sn, beta_col, columns, df_dir, df_save_dir)
     sigma_v_df = pd.concat(df, ignore_index=True)
     return sigma_v_df
 
 def modify_voxel_stim_info_df(sn, beta_col='betas',
                               df_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
-                              df_name='stim_voxel_info_df.csv',
-                              df_save_name='stim_voxel_info_df_vs.csv'):
+                              df_name='stim_voxel_info_df_vs.csv',
+                              df_save_name='stim_voxel_info_df_vs_md.csv'):
     subj = utils.sub_number_to_string(sn, dataset="broderick")
     df = pd.read_csv(os.path.join(df_dir, f"{subj}_{df_name}"))
-    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1,2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel','subj'])
+    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1,2], columns=['normed_noise_SD', 'normed_sigma_v_squared'], to_sd=beta_col, to_group=['voxel','subj'])
     df = df.merge(sigma_v_df, on=['voxel','subj'])
-    df = vs.drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=['subj', 'voxel'], beta_col=beta_col)
+    #df = vs.drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=['subj', 'voxel'], beta_col=beta_col)
     df.to_csv(os.path.join(df_dir, 'tmp', f"{subj}_stim_voxel_info_df_vs.csv"))
     fnl_df = df.groupby(['voxel', 'subj', 'names', 'freq_lvl', 'class_idx']).median().reset_index()
     fnl_df = fnl_df.drop(['bootstraps','phase'], axis=1)
-    fnl_df_save_path = os.path.join(df_dir, f"{subj}_stim_voxel_info_df_vs_md.csv")
+    fnl_df_save_path = os.path.join(df_dir, 'tmp', f"{subj}_{df_save_name}")
     fnl_df.to_csv(fnl_df_save_path, index=False)
     print(f'... {subj} df dataframe saved as {df_save_name}.')
     return fnl_df
