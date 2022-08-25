@@ -213,7 +213,7 @@ rule run_Broderick_subj:
         os.path.join(config['BD_DIR'],"benchmark","sfp_model","results_2D",'loss_history_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_benchmark.txt')
     resources:
         cpus_per_task = 1,
-        mem_mb = 8000
+        mem_mb = 4000
     run:
         subj_df = pd.read_csv(input.input_path)
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
