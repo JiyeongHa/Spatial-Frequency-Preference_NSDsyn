@@ -6,6 +6,8 @@ import simulation as sim
 import matplotlib
 import sfp_nsd_utils as utils
 import two_dimensional_model as model
+import pickle
+pickle.HIGHEST_PROTOCOL = 4
 
 configfile:
     "config.json"
@@ -13,7 +15,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [5000]
+MAX_EPOCH = [3]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
