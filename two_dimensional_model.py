@@ -380,8 +380,10 @@ def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, prin
     end = timer()
     elapsed_time = end - start
     params_col = [name for name, param in model.named_parameters() if param.requires_grad]
-    print(f'**epoch no.{max_epoch}: Finished! final model params...\n{dict(zip(params_col, model_values))}')
-    print(f'Elapsed time: {np.round(end - start, 2)} sec')
+    with open(log_file, "a") as file:
+        file.write(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, model_values))}\n')
+        file.write(f'Elapsed time: {np.round(end - start, 2)} sec \n')
+        file.close()
     voxel_list = dataset.voxel_info
 
     losses_history = pd.DataFrame(np.asarray(losses_history), columns=voxel_list).reset_index().rename(columns={'index': 'epoch'})

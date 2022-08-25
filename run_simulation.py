@@ -224,15 +224,52 @@ model_history, loss_history = sim.load_all_model_fitting_results(output_dir, ful
 
 output_dir = '/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/sfp_model/results_2D'
 loss_history, model_history, losses = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
-                                                                                       sn_list=[1], lr_rate=[0.0005],
-                                                                                       max_epoch=[3], losses=True)
-
+                                                                                       sn_list=[64], lr_rate=[0.0005],
+                                                                                       max_epoch=[1000], losses=True)
+f_name = 'sub-064_1000iter.png'
 model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
-                        to_label='noise_sd', to_col='lr_rate', lgd_title="Multiples of noise SD", to_row=None,
-                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss', f_name),
-                        ci="sd", n_boot=100, log_y=True, sharey=True)
+                        to_label='subj', to_col='lr_rate', lgd_title="Subject", to_row=None,
+                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss', f_name), ci="sd", n_boot=100, log_y=True, sharey=True)
 plt.show()
 
+model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
+f_name = 'sub-064_model_param_history_a.png'
+model.plot_param_history_horizontal(model_history, params=params_col[-2:], group=params_group[-2:],
+                         to_label='subj', label_order=None, ground_truth=True,
+                         lgd_title=None, save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
+                         ci="sd", n_boot=100, log_y=False)
+plt.show()
+
+
+
+df = model._group_params(model_history, params_col[0:3], params_group[0:3])
+sns.set_context("notebook", font_scale=1.5)
+to_x = "epoch"
+to_y = "value"
+x_label = "Epoch"
+y_label = "Parameter value"
+grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
+                     hue='subj',
+                     hue_order=None,
+                     col="params",
+                     col_wrap=4,
+                     height=5,
+                     palette=sns.color_palette("rocket"),
+                     legend_out=True,
+                     sharex=True, sharey=False)
+g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot="sd")
+if ground_truth is True:
+    for x_param, ax in g.axes_dict.items():
+        # ax.set_aspect('auto')
+        g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
+        ax.axhline(g_value, ls="--", linewidth=2, c="black")
+grid.set_axis_labels(x_label, y_label)
+if lgd_title is not None:
+    grid.add_legend(title=lgd_title)
+# grid.fig.suptitle(f'{title}', fontweight="bold")
+if log_y is True:
+    plt.semilogy()
+utils.save_fig(save_fig, save_path)
 
 syn_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_n_vox-100.csv')
 syn_df['class_idx'] = np.tile(np.arange(0, 28), 100)
