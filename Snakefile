@@ -23,7 +23,7 @@ SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_
 
 rule run_Broderick_all_subj:
     input:
-        expand(os.path.join(config['BD_DIR'], "sfp_model", "results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'), full_ver="True", subj=SUBJ, lr=LR_RATE, max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['BD_DIR'], "sfp_model", "results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5'), full_ver="True", subj=SUBJ, lr=LR_RATE, max_epoch=MAX_EPOCH)
 
 rule run_simulation_all_subj:
     input:
@@ -202,9 +202,9 @@ rule run_Broderick_subj:
         input_path = os.path.join(config['BD_DIR'],  "dataframes", "{subj}_stim_voxel_info_df_vs_md.csv")
     output:
         log_file = os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'log_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.txt'),
-        model_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'),
-        loss_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv'),
-        losses_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'losses_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.csv')
+        model_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5'),
+        loss_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5'),
+        losses_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'losses_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5')
     log:
         os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'loss_history_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.log')
     benchmark:
@@ -219,6 +219,10 @@ rule run_Broderick_subj:
         loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
             learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=10, anomaly_detection=False, amsgrad=False, eps=1e-8)
         losses_history = model.shape_losses_history(losses, subj_df)
-        utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
-        utils.save_df_to_csv(model_history, output.model_history, indexing=False)
-        utils.save_df_to_csv(loss_history, output.loss_history, indexing=False)
+        losses_history.to_hdf(output.losses_history, key='stage',mode='w')
+        model_history.to_hdf(output.model_history, key='stage',mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage',mode='w')
+        #
+        # utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
+        # utils.save_df_to_csv(model_history, output.model_history, indexing=False)
+        # utils.save_df_to_csv(loss_history, output.loss_history, indexing=False)
