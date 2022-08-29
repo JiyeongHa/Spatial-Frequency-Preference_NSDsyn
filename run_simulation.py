@@ -79,9 +79,9 @@ model.plot_param_history_horizontal(df, params=params_col[-2:], group=params_gro
                          ci="sd", n_boot=100, log_y=False)
 plt.show()
 
-df = model_history.query('(noise_sd in [1, "ground_truth"])')
+
 f_name = f'final_params_plot_p_full_ver-True_pw-False_n_mptl-1_n_vox-{n_voxel}_lr-0.01to0.0005_eph-25000.png'
-model.plot_grouped_parameters(df.query('epoch == 24999'), params_col, [1,2,3,4,4,4,4,5,5],
+model.plot_grouped_parameters(df, params_col, [1,2,3,4,4,4,4,5,5],
                               to_label="lr_rate", lgd_title="Learning rate", label_order=label_order,
                               save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
 plt.tight_layout()
@@ -222,54 +222,58 @@ plt.show()
 model_history, loss_history = sim.load_all_model_fitting_results(output_dir, full_ver, pw, noise_sd, n_voxel, lr_rate, max_epoch,
                                                                  ground_truth=params, id_val='ground_truth')
 
-output_dir = '/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/sfp_model/results_2D'
-loss_history, model_history, losses = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
-                                                                                       sn_list=[64], lr_rate=[0.0005],
-                                                                                       max_epoch=[1000], losses=True)
-f_name = 'sub-064_1000iter.png'
+output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/Broderick_dataset/sfp_model/results_2D'
+loss_history, model_history, _ = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
+                                                                                 sn_list=sn_list, lr_rate=[0.0005],
+                                                                                       max_epoch=[20000], losses=False)
+
+f_name = 'broderick_all_subj_all.png'
 model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
-                        to_label='subj', to_col='lr_rate', lgd_title="Subject", to_row=None,
-                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss', f_name), ci="sd", n_boot=100, log_y=True, sharey=True)
+                        to_label=None, to_col='lr_rate', lgd_title=None, to_row=None,
+                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss',
+                                                              f_name), ci=68, n_boot=100, log_y=True, sharey=True)
 plt.show()
 
 model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
-f_name = 'sub-064_model_param_history_a.png'
-model.plot_param_history_horizontal(model_history, params=params_col[-2:], group=params_group[-2:],
-                         to_label='subj', label_order=None, ground_truth=True,
+
+f_name = 'Broderick_all_subj_model_param_history_sab.png'
+model.plot_param_history_horizontal(model_history, params=params_col[0:3], group=params_group[0:3],
+                         to_label='params', label_order=None, ground_truth=True,
                          lgd_title=None, save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
-                         ci="sd", n_boot=100, log_y=False)
+                         ci=68, n_boot=100, log_y=False)
+plt.show()
+
+
+f_name = 'Broderick_all_subj_model_param_history_pterms.png'
+model.plot_param_history_horizontal(model_history, params=params_col[3:7], group=params_group[3:7],
+                         to_label='params', label_order=None, ground_truth=True,
+                         lgd_title=None, save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
+                         ci=68, n_boot=100, log_y=False)
+plt.show()
+
+
+f_name = 'Broderick_all_subj_model_param_history_Aterms.png'
+model.plot_param_history_horizontal(model_history, params=params_col[-2:], group=params_group[-2:],
+                         to_label='params', label_order=None, ground_truth=True,
+                         lgd_title=None, save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
+                         ci=68, n_boot=100, log_y=False)
+plt.show()
+ori_subj = model_history.subj.unique().tolist()
+new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
+subj_replace_dict = dict(zip(ori_subj, new_subj))
+model_history = model_history.replace({'subj': subj_replace_dict})
+final_df = model_history.query('epoch == 19999 & subj != "ground_truth"')
+to_label = 'subj'
+label_order = final_df[to_label].unique().tolist()
+f_name = 'Broderick_all_subj_final_params.png'
+
+model.plot_grouped_parameters_subj(final_df, params_col, [1,2,3,4,4,5,5,6,6],
+                              to_label="subj", lgd_title="Subj", label_order=label_order, height=9,
+                              save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
 plt.show()
 
 
 
-df = model._group_params(model_history, params_col[0:3], params_group[0:3])
-sns.set_context("notebook", font_scale=1.5)
-to_x = "epoch"
-to_y = "value"
-x_label = "Epoch"
-y_label = "Parameter value"
-grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
-                     hue='subj',
-                     hue_order=None,
-                     col="params",
-                     col_wrap=4,
-                     height=5,
-                     palette=sns.color_palette("rocket"),
-                     legend_out=True,
-                     sharex=True, sharey=False)
-g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot="sd")
-if ground_truth is True:
-    for x_param, ax in g.axes_dict.items():
-        # ax.set_aspect('auto')
-        g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
-        ax.axhline(g_value, ls="--", linewidth=2, c="black")
-grid.set_axis_labels(x_label, y_label)
-if lgd_title is not None:
-    grid.add_legend(title=lgd_title)
-# grid.fig.suptitle(f'{title}', fontweight="bold")
-if log_y is True:
-    plt.semilogy()
-utils.save_fig(save_fig, save_path)
 
 syn_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_n_vox-100.csv')
 syn_df['class_idx'] = np.tile(np.arange(0, 28), 100)
@@ -287,12 +291,3 @@ syn_model_new = model.SpatialFrequencyModel(full_ver=True)
 # pred = syn_model_new.forward()
 log_file='/Users/jh7685/Documents/test_log.txt'
 loss_history, model_history, el_time, losses = model.fit_model(syn_model_new, syn_SFdatset_new, log_file, max_epoch=10, print_every=2)
-
-my_betas = torch.tensor(syn_df.pivot('voxel','image_idx','betas').to_numpy())
-my_ori = torch.tensor(syn_df.pivot('voxel','image_idx','local_ori').to_numpy())
-my_angle = torch.tensor(syn_df.pivot('voxel','image_idx','angle').to_numpy())
-my_eccen = torch.tensor(syn_df.pivot('voxel','image_idx','eccentricity').to_numpy())
-my_sf = torch.tensor(syn_df.pivot('voxel','image_idx','local_sf').to_numpy())
-my_betas / torch.linalg.norm(my_betas, ord=2, dim=1, keepdim=True)
-
-e = voxel_info / torch.linalg.norm(voxel_info, ord=2, dim=1, keepdim=True)
