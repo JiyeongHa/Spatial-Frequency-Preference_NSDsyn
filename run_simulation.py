@@ -267,13 +267,63 @@ to_label = 'subj'
 label_order = final_df[to_label].unique().tolist()
 f_name = 'Broderick_all_subj_final_params.png'
 
+
+
+
+
 model.plot_grouped_parameters_subj(final_df, params_col, [1,2,3,4,4,5,5,6,6],
                               to_label="subj", lgd_title="Subj", label_order=label_order, height=9,
                               save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
 plt.show()
 
+df.to_csv(os.path.join(df_dir, 'tmp', f"{subj}_stim_voxel_info_df_vs.csv"))
+fnl_df = df.groupby(['voxel', 'subj', 'names', 'freq_lvl', 'class_idx']).median().reset_index()
 
+bd_df = pd.read_csv('/Users/jh7685/Documents/Github/spatial-frequency-preferences/data/tuning_2d_model/individual_subject_params.csv')
+bd_df = bd_df.rename(columns={'model_parameter': 'params', 'subject':'subj', 'fit_value':'value'})
+orig_col = ['sigma', 'abs_amplitude_cardinals', 'abs_amplitude_obliques',
+       'rel_amplitude_cardinals', 'rel_amplitude_obliques',
+       'abs_mode_cardinals', 'abs_mode_obliques', 'rel_mode_cardinals',
+       'rel_mode_obliques', 'sf_ecc_slope', 'sf_ecc_intercept']
+new_col = ['sigma','A_1','A_2','A_3','A_4','p_1','p_2','p_3','p_4','slope','intercept']
+param_replace_col = dict(zip(orig_col, new_col))
+bd_df = bd_df.replace({'params': param_replace_col, 'subj': subj_replace_dict})
+bd_df = bd_df.drop(columns=['fit_model_type'])
+bd_df_wide = bd_df.pivot(index=['subj','bootstrap_num'], columns='params', values='value').reset_index()
 
+f_name='broderick_data_median.png'
+model.plot_grouped_parameters_subj(bd_df_wide, params_col, np.arange(0,9),
+                              to_label="subj", lgd_title="Subj", label_order=label_order, height=9,
+                              save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
+plt.show()
+
+final_bd_df = bd_df.groupby(['subj', 'params']).median().reset_index()
+final_bd_df = final_bd_df.drop(columns='bootstrap_num')
+final_bd_df = final_bd_df.rename(columns={'value': 'Broderick_value'})
+final_bd_df = final_bd_df.query('params in @params_col')
+
+final_long_df = pd.melt(final_df, id_vars=['subj'], value_vars=params_col, var_name='params', value_name='My_value')
+df = final_bd_df.merge(final_long_df, on=['subj','params'])
+
+param_list = params_col
+f_name='scatter_comparison.png'
+grid = model.scatter_comparison(df.query('params in @param_list'),
+                                x="Broderick_value", y="My_value", col="params",
+                                col_order=param_list, label_order=label_order,
+                                to_label='subj', lgd_title="Subjects", height=5,
+                                save_fig=True, save_path=os.path.join(fig_dir, 'Broderick_value_vs_My_value', f_name))
+plt.show()
+grid = sns.FacetGrid(df,
+                     col="params",
+                     col_wrap=3,
+                     palette=pal,
+                     hue="subj",
+                     height=7,
+                     hue_order=label_order,
+                     legend_out=True,
+                     sharex=False, sharey=False)
+grid.map(sns.relplot, x="Broderick_value", y="My_value", kind="scatter")
+plt.show()
 
 syn_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/simulation/synthetic_data_2D/syn_data_2d_full_ver-True_pw-True_noise_mtpl-1_n_vox-100.csv')
 syn_df['class_idx'] = np.tile(np.arange(0, 28), 100)

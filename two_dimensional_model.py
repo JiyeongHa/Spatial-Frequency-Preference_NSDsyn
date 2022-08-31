@@ -402,7 +402,7 @@ def melt_history_df(history_df):
 
 
 def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
-                      to_label=None, label_order=None, to_row=None, to_col=None,
+                      to_label=None, label_order=None, to_row=None, to_col=None, height=5,
                       lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
                        ci=68, n_boot=100, log_y=True, sharey=False):
     sns.set_context("notebook", font_scale=1.5)
@@ -414,7 +414,7 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
                          hue_order=label_order,
                          row=to_row,
                          col=to_col,
-                         height=5,
+                         height=height,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=sharey)
@@ -473,6 +473,7 @@ def _group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
 
 def plot_grouped_parameters(df, params, col_group,
                             to_label="study_type", lgd_title="Study", label_order=None,
+                            height=7,
                             save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     df = _group_params(df, params, col_group)
     sns.set_context("notebook", font_scale=1.5)
@@ -483,7 +484,7 @@ def plot_grouped_parameters(df, params, col_group,
                          col_wrap=3,
                          palette=sns.color_palette("rocket", n_colors=df[to_label].nunique()),
                          hue=to_label,
-                         height=7,
+                         height=height,
                          hue_order=label_order,
                          legend_out=True,
                          sharex=False, sharey=False)
@@ -534,7 +535,7 @@ def plot_param_history(df, params, group,
 
 def plot_param_history_horizontal(df, params, group,
                                   to_label=None, label_order=None, ground_truth=True,
-                                  lgd_title=None,
+                                  lgd_title=None, height=5, col_wrap=3,
                                   save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
                                   ci=68, n_boot=100, log_y=True):
     df = _group_params(df, params, group)
@@ -547,8 +548,8 @@ def plot_param_history_horizontal(df, params, group,
                          hue=to_label,
                          hue_order=label_order,
                          col="params",
-                         col_wrap=4,
-                         height=5,
+                         col_wrap=col_wrap,
+                         height=height,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=False)
@@ -572,8 +573,8 @@ def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_e
     subj_list = [utils.sub_number_to_string(x, "broderick") for x in sn_list]
     for cur_ver, cur_subj, cur_lr, cur_epoch in itertools.product(full_ver, subj_list, lr_rate, max_epoch):
         model_history_path = os.path.join(output_dir,
-                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}.csv')
-        tmp = pd.read_csv(model_history_path)
+                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}.h5')
+        tmp = pd.read_hdf(model_history_path)
         if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
             tmp['lr_rate'] = cur_lr
             tmp['max_epoch'] = cur_epoch
@@ -591,3 +592,69 @@ def load_loss_and_model_history_Broderick_subj(output_dir, full_ver, sn_list, lr
     else:
         losses_history = []
     return loss_history, model_history, losses_history
+
+
+
+def plot_grouped_parameters_subj(df, params, col_group,
+                            to_label="study_type", lgd_title="Study", label_order=None,
+                            height=7,
+                            save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    df = _group_params(df, params, col_group)
+    sns.set_context("notebook", font_scale=1.5)
+    x_label = "Parameter"
+    y_label = "Value"
+    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+           (189, 189, 189)]
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    pal = sns.color_palette(np.array(pal) / 255, 12)
+    grid = sns.FacetGrid(df,
+                         col="group",
+                         col_wrap=3,
+                         palette=pal,
+                         hue=to_label,
+                         height=height,
+                         hue_order=label_order,
+                         legend_out=True,
+                         sharex=False, sharey=False)
+    grid.map(sns.pointplot, "params", "value", estimator=np.median, alpha=0.9, orient="v", ci=68, dodge=True, linestyle=None, scale=1.5)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+
+    grid.fig.legend(title=lgd_title, labels=label_order)
+    grid.set_axis_labels("", y_label)
+    #grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
+    #grid.fig.suptitle(f'{title}', fontweight="bold")
+    utils.save_fig(save_fig, save_path)
+
+
+def scatter_comparison(df, x, y, col, col_order,
+                       to_label="study_type", lgd_title="Study", label_order=None,
+                       height=7,
+                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=1.5)
+    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+           (189, 189, 189)]
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    pal = sns.color_palette(np.array(pal) / 255, 12)
+    grid = sns.relplot(data=df, x=x, y=y, kind="scatter",
+                       col=col, col_wrap=3, col_order=col_order,
+                       palette=pal, facet_kws={'sharey': False, 'sharex': False},
+                       hue=to_label, hue_order=label_order,
+                       height=height)
+    for _, ax in grid.axes_dict.items():
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        ax.set_xlim(xmin=min(x0, y0), xmax=max(x1, y1))
+        ax.set_ylim(ymin=min(x0, y0), ymax=max(x1, y1))
+        lims = [min(x0, y0), max(x1, y1)]
+        ax.plot(lims, lims, '--k', linewidth=2)
+    # grid.set_axis_labels("", y_label)
+    # grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
+    # grid.fig.suptitle(f'{title}', fontweight="bold")
+    utils.save_fig(save_fig, save_path)
+    return grid
+

@@ -3,7 +3,8 @@ import sys
 import numpy as np
 import pandas as pd
 import simulation as sim
-import matplotlib
+import matplotlib as mpl
+#mpl.use('svg', warn=False)
 import sfp_nsd_utils as utils
 import two_dimensional_model as model
 import pickle
@@ -12,7 +13,7 @@ pickle.HIGHEST_PROTOCOL = 4
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
+LR_RATE = [0.0001] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
 MAX_EPOCH = [20000]
@@ -22,6 +23,10 @@ PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
+
+rule plot_all_Broderick_avg:
+    input:
+        expand(os.path.join(config['BD_DIR'],"figures", "sfp_model","results_2D",'{df_type}_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'), df_type=["loss","model"], full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH)
 
 rule run_Broderick_all_subj:
     input:
@@ -230,3 +235,37 @@ rule run_Broderick_subj:
         # utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
         # utils.save_df_to_csv(model_history, output.model_history, indexing=False)
         # utils.save_df_to_csv(loss_history, output.loss_history, indexing=False)
+
+rule plot_avg_subj_parameter_history:
+    input:
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}.h5'),subj=SUBJ),
+        df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
+    output:
+        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'),
+    benchmark:
+        os.path.join(config['BD_DIR'],"benchmark","sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_benchmark.txt'),
+    run:
+        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
+        sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+        model_history = model.load_history_df_Broderick_subj(input.df_dir, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "model")
+        model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
+        params_col, params_group = sim.get_params_name_and_group(params,full_ver=(wildcards.full_ver=="True"))
+        model.plot_param_history_horizontal(model_history, params=params_col, group=params_group, to_label='params',
+            label_order=params_col, ground_truth=True, lgd_title=None, save_fig=True, save_path=output.history_fig,
+            height=8, col_wrap=3, ci=68, n_boot=100, log_y=False)
+
+
+rule plot_avg_subj_loss_history:
+    input:
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}.h5'), subj=SUBJ),
+        df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
+    output:
+        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'),
+    benchmark:
+        os.path.join(config['BD_DIR'],"benchmark","sfp_model", "results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_benchmark.txt'),
+    run:
+        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
+        sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+        loss_history = model.load_history_df_Broderick_subj(input.df_dir, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "loss")
+        model.plot_loss_history(loss_history,to_x="epoch",to_y="loss", to_label=None,to_col='lr_rate', height=5,
+            lgd_title=None,to_row=None, save_fig=True, save_path=output.history_fig, ci=68, n_boot=100, log_y=True, sharey=True)
