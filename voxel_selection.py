@@ -80,6 +80,10 @@ def pix_to_deg(size_in_pix=100, screen_height=39.29, n_pixel_height=1080, visual
 
     return deg_per_pix * size_in_pix
 
+def drop_voxels_near_border(df, inner_border=1, outer_border=12, groupby_col = ['voxel']):
+    df = df.groupby(groupby_col).filter(lambda x: (x.eccentricity + x.sigma <= outer_border).all())
+    df = df.groupby(groupby_col).filter(lambda x: (x.eccentricity - x.sigma >= inner_border).all())
+    return df
 
 def drop_voxels_outside_stim_range(df, in_pix=42.878, out_pix=714/2):
     #inner_radi = pix_to_deg(np.asarray([1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]))  # in pixels
