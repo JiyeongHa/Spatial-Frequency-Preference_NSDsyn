@@ -61,7 +61,7 @@ def _get_benson_atlas_rois(roi_index):
     return switcher.get(roi_index, "No Visual area")
 
 
-def masking(sn, vroi_range=["V1"], eroi_range=[0.98, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
+def masking(sn, vroi_range=["V1"], eroi_range=[1, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
     """create a mask using visual rois and eccentricity range."""
     mask = {}
     vroi_num = [_get_benson_atlas_rois(x) for x in vroi_range]
