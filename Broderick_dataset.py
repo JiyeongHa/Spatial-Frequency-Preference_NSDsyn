@@ -241,20 +241,22 @@ def sub_main(sn,
     df = calculate_local_orientation(df)
     df = calculate_local_sf(df)
     df['subj'] = subj
-    df = df.rename(columns={'eccen': 'eccentricity'})
     df['normed_betas'] = model.normalize(df, 'betas', ['subj', 'voxel', 'bootstraps'], phase_info=True)
     if save_df:
         # save the final output
-        df_save_name = "%s_%s" % (subj, "stim_voxel_info_df.csv")
+        df_save_name = "%s_%s" % (subj, "stim_voxel_info_df_vs.csv")
         if not os.path.exists(df_save_dir):
             os.makedirs(df_save_dir)
         df_save_path = os.path.join(df_save_dir, df_save_name)
         df.to_csv(df_save_path, index=False)
         print(f'... {subj} dataframe saved.')
-    if vs:
-        df = select_voxels(subj, df, dv_to_group=['subj', 'voxel'], beta_col='betas',
-                              df_save_dir=df_save_dir, save_df=save_df)
-    return df
+        groupby_col = df.drop(columns=['bootstraps', 'betas', 'normed_betas']).columns.tolist()
+        fnl_df = df.groupby(groupby_col).median().reset_index()
+        fnl_df = fnl_df.drop(['bootstraps'], axis=1)
+        fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs_md.csv")
+        fnl_df.to_csv(fnl_df_save_path, index=False)
+        print(f'... {subj} median dataframe dataframe saved.')
+    return fnl_df
 
 def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
                       stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
@@ -273,18 +275,10 @@ def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
     all_subj_df = pd.concat(df, ignore_index=True)
     return all_subj_df
 
-def select_voxels(subj, df, dv_to_group=['subj','voxel'], beta_col='betas',
-                  df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
-                  save_df=False):
+def select_voxels(df, inner_border, outer_border, dv_to_group=['voxel'], beta_col='betas', near_border=True):
+    if near_border is True:
+        df = vs.drop_voxels_near_border(df, inner_border, outer_border, dv_to_group)
     vs_df = vs.drop_voxels_with_mean_negative_amplitudes(df, dv_to_group, beta_col)
-    if save_df:
-        # save the final output
-        df_save_name = f"{subj}_stim_voxel_info_df_vs.csv"
-        if not os.path.exists(df_save_dir):
-            os.makedirs(df_save_dir)
-        df_save_path = os.path.join(df_save_dir, df_save_name)
-        df.to_csv(df_save_path, index=False)
-        print(f'... {subj} dataframe_vs saved.')
     return vs_df
 
 def save_sigma_v_df(sn, beta_col='betas', columns=['normed_noise_SD', 'normed_sigma_v_squared'],
