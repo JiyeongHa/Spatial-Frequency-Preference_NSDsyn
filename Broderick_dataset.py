@@ -210,7 +210,7 @@ def calculate_local_orientation(df):
 
 def calculate_local_sf(df):
     df['local_sf'] = np.sqrt((df.w_r ** 2 + df.w_a ** 2))
-    df['local_sf'] = df['local_sf'] / df['eccen']
+    df['local_sf'] = df['local_sf'] / df['eccentricity']
     df['local_sf'] = np.divide(df['local_sf'], 2 * np.pi)
     return df
 
@@ -221,7 +221,6 @@ def sub_main(sn,
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
-             results_names=['models'],
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
              df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
              save_df=False, vs=True):
@@ -229,11 +228,15 @@ def sub_main(sn,
     stim_df = load_stim_info(stim_description_path, save_copy=False)
     mask = masking(sn, vroi_range, eroi_range, mask_path)
     prf_mgzs = load_prf(sn, mask, prf_label_names, prf_dir)
-    betas = load_betas(sn, mask, results_names=results_names, beta_dir=beta_dir)
+    betas = load_betas(sn, mask, results_names=['models'], beta_dir=beta_dir)
     betas_df = melt_2D_betas_into_df(betas)
     prf_df = prf_mgzs_to_df(prf_mgzs)
     voxel_df = merge_prf_and_betas(betas_df, prf_df)
     df = concat_lh_and_rh_df(voxel_df)
+    df = df.rename(columns={'eccen': 'eccentricity'})
+    if vs:
+        df = select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'],
+                           beta_col='betas', near_border=True)
     df = add_stim_info_to_df(df, stim_df)
     df = calculate_local_orientation(df)
     df = calculate_local_sf(df)
