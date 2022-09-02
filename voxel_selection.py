@@ -59,17 +59,18 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
 
 
 
-def drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas'):
+def drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=["voxel"], beta_col='avg_betas'):
     """drop all voxels that have an average negative amplitude across 28 conditions
         """
-    if dv_to_group is None:
-        dv_to_group = ["subj", "voxel"]
-    tmp = df.groupby(dv_to_group)[beta_col].mean().reset_index()
-    to_drop = tmp[tmp[beta_col] < 0].rename(columns={beta_col: 'negative_betas'})
-    new_df = df.merge(to_drop, on=["subj", "voxel"], how='left', indicator=True)
-    new_df = new_df[new_df._merge == "left_only"].drop(columns=['negative_betas', '_merge'])
-
-    return new_df
+    tmp = df.copy()
+    if 'bootstraps' in tmp.columns:
+        tmp = tmp.groupby(tmp.drop(columns=['bootstraps',  beta_col]).columns.tolist()).median().reset_index()
+        tmp = tmp.drop(columns=['bootstraps'])
+    mean_tmp = tmp.groupby(dv_to_group)[beta_col].mean().reset_index()
+    mean_tmp = mean_tmp.groupby(dv_to_group).filter(lambda x: (x[beta_col] >= 0).all())
+    voxels = mean_tmp.voxel.unique()
+    df = df.query('voxel in @voxels')
+    return df
 
 
 def pix_to_deg(size_in_pix=100, screen_height=39.29, n_pixel_height=1080, visual_distance=176.5):
