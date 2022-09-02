@@ -262,7 +262,6 @@ def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
-             results_names=['models'],
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
              df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
              save_df=False, vs=True):
@@ -270,7 +269,7 @@ def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
     for sn in sn_list:
         df[sn] = sub_main(sn, stim_description_path,
                       vroi_range, eroi_range,
-                      mask_path, prf_label_names, prf_dir, results_names, beta_dir, df_save_dir, save_df, vs=vs)
+                      mask_path, prf_label_names, prf_dir, beta_dir, df_save_dir, save_df, vs=vs)
     all_subj_df = pd.concat(df, ignore_index=True)
     return all_subj_df
 
