@@ -209,7 +209,7 @@ def count_nan_in_torch_vector(x):
 
 class SpatialFrequencyDataset:
     """Tranform dataframes to pivot style. x axis represents voxel, y axis is class_idx."""
-    def __init__(self, df, beta_col='avg_betas'):
+    def __init__(self, df, beta_col='betas'):
         self.target = torch.tensor(df.pivot('voxel', 'class_idx', beta_col).to_numpy())
         self.ori = torch.tensor(df.pivot('voxel', 'class_idx', 'local_ori').to_numpy())
         self.angle = torch.tensor(df.pivot('voxel', 'class_idx', 'angle').to_numpy())
@@ -235,12 +235,6 @@ class SpatialFrequencyModel(torch.nn.Module):
             self.A_2 = _cast_as_param(np.random.random(1))
             self.A_3 = 0
             self.A_4 = 0
-        # self.target = SF_dataset.target
-        # self.theta_l = SF_dataset.ori
-        # self.w_l = SF_dataset.sf
-        # self.theta_v = SF_dataset.angle
-        # self.r_v = SF_dataset.eccen
-        # self.sigma_v_squared = SF_dataset.sigma_v_squared
 
     def get_Av(self, theta_l, theta_v):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
@@ -287,8 +281,6 @@ def loss_fn(sigma_v_info, prediction, target):
     norm_measured = normalize_pivotStyle(target)
     loss_all_voxels = torch.mean((1/sigma_v_info) * (norm_pred - norm_measured)**2, dim=1)
     return loss_all_voxels
-
-
 
 def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, print_every=100,
               loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
