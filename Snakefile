@@ -240,7 +240,7 @@ rule run_Broderick_subj:
 
 rule plot_avg_subj_parameter_history:
     input:
-        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'),subj=SUBJ),
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=SUBJ),
         df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
         history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'),
@@ -263,7 +263,7 @@ rule plot_avg_subj_parameter_history:
 
 rule plot_avg_subj_loss_history:
     input:
-        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'), subj=SUBJ),
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=SUBJ),
         df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
         history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'),
@@ -280,7 +280,7 @@ rule plot_avg_subj_loss_history:
 rule plot_scatterplot:
     input:
         bd_file = os.path.join(config['BD_DIR'], 'dataframes','Broderick_individual_subject_params_median_across_bootstraps.csv'),
-        my_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'), subj=SUBJ),
+        my_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=SUBJ),
         df_dir= os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
         scatter_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'scatterplot_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
