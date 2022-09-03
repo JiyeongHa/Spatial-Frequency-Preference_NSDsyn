@@ -11,5 +11,9 @@
 	"error": "{log}-%j",
 	"mail_type": "FAIL",
 	"mail_user": "jiyeong.ha@nyu.edu"
+    },
+    "run_Broderick_subj":
+    {
+	    "mem": "{resources.mem_mb}MB"
     }
 }
