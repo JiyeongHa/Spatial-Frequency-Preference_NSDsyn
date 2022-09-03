@@ -21,7 +21,7 @@ N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
-broderick_sn_list = [62]#[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
 rule plot_all_Broderick_avg:
