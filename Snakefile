@@ -249,11 +249,15 @@ rule plot_avg_subj_parameter_history:
         params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
         sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
         model_history = model.load_history_df_Broderick_subj(input.df_dir, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "model")
+        orig_subj = [utils.sub_number_to_string(x,"broderick") for x in sn_list]
+        new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
+        subj_replace_dict = dict(zip(orig_subj,new_subj))
+        model_history = model_history.replace({'subj': subj_replace_dict})
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params,full_ver=(wildcards.full_ver=="True"))
-        model.plot_param_history_horizontal(model_history, params=params_col, group=params_group, to_label='params',
-            label_order=params_col, ground_truth=True, lgd_title=None, save_fig=True, save_path=output.history_fig,
-            height=8, col_wrap=3, ci=68, n_boot=100, log_y=False)
+        model.plot_param_history_horizontal(model_history, params=params_col, group=params_group, to_label='subj',
+            label_order=params_col, ground_truth=True, lgd_title="Subjects", save_fig=True, save_path=output.history_fig,
+            height=8, col_wrap=3, ci="sd", n_boot=100, log_y=False)
 
 
 rule plot_avg_subj_loss_history:
