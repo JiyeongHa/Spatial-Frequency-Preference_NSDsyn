@@ -221,6 +221,7 @@ rule run_Broderick_subj:
         mem_mb = 4000
     run:
         subj_df = pd.read_csv(input.input_path)
+        subj_df['angle'] = np.deg2rad(subj_df['angle'])
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
         subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
         loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
