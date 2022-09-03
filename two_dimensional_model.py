@@ -25,59 +25,6 @@ def break_down_phase(df):
 
     return df
 
-
-class PredictBOLD2d():
-    """ Define parameters used in forward model"""
-
-    def __init__(self, params, params_idx, subj_df):
-        self.params_df = params.iloc[params_idx]
-        self.sigma = self.params_df['sigma']
-        self.amp = self.params_df['slope']
-        self.intercept = self.params_df['intercept']
-        self.p_1 = self.params_df['p_1']
-        self.p_2 = self.params_df['p_2']
-        self.p_3 = self.params_df['p_3']
-        self.p_4 = self.params_df['p_4']
-        self.A_1 = self.params_df['A_1']
-        self.A_2 = self.params_df['A_2']
-        self.A_3 = self.params_df['A_3']
-        self.A_4 = self.params_df['A_4']
-        self.subj_df = subj_df.copy()
-        self.theta_l = self.subj_df['local_ori']
-        self.theta_v = self.subj_df['angle']
-        self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
-        self.w_l = self.subj_df['local_sf']  # in cycles per degree
-
-    def get_Av(self, full_ver):
-        """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
-        if full_ver is True:
-            Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
-                 self.A_2 * np.cos(4 * self.theta_l) + \
-                 self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) + \
-                 self.A_4 * np.cos(4 * (self.theta_l - self.theta_v))
-        elif full_ver is False:
-            Av = 1
-        return Av
-
-    def get_Pv(self, full_ver):
-        """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
-        ecc_dependency = self.amp * self.r_v + self.intercept
-        if full_ver is True:
-            Pv = ecc_dependency * (1 + self.p_1 * np.cos(2 * self.theta_l) +
-                                   self.p_2 * np.cos(4 * self.theta_l) +
-                                   self.p_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
-                                   self.p_4 * np.cos(4 * (self.theta_l - self.theta_v)))
-        elif full_ver is False:
-            Pv = ecc_dependency
-        return Pv
-
-    def forward(self, full_ver=True):
-        """ Return predicted BOLD response in eccentricity (formula no. 5 in Broderick et al. (2022)) """
-        Av = self.get_Av(full_ver=full_ver)
-        Pv = self.get_Pv(full_ver=full_ver)
-        return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
-
-
 def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
@@ -262,7 +209,7 @@ def count_nan_in_torch_vector(x):
 
 class SpatialFrequencyDataset:
     """Tranform dataframes to pivot style. x axis represents voxel, y axis is class_idx."""
-    def __init__(self, df, beta_col='avg_betas'):
+    def __init__(self, df, beta_col='betas'):
         self.target = torch.tensor(df.pivot('voxel', 'class_idx', beta_col).to_numpy())
         self.ori = torch.tensor(df.pivot('voxel', 'class_idx', 'local_ori').to_numpy())
         self.angle = torch.tensor(df.pivot('voxel', 'class_idx', 'angle').to_numpy())
@@ -288,12 +235,6 @@ class SpatialFrequencyModel(torch.nn.Module):
             self.A_2 = _cast_as_param(np.random.random(1))
             self.A_3 = 0
             self.A_4 = 0
-        # self.target = SF_dataset.target
-        # self.theta_l = SF_dataset.ori
-        # self.w_l = SF_dataset.sf
-        # self.theta_v = SF_dataset.angle
-        # self.r_v = SF_dataset.eccen
-        # self.sigma_v_squared = SF_dataset.sigma_v_squared
 
     def get_Av(self, theta_l, theta_v):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
@@ -340,8 +281,6 @@ def loss_fn(sigma_v_info, prediction, target):
     norm_measured = normalize_pivotStyle(target)
     loss_all_voxels = torch.mean((1/sigma_v_info) * (norm_pred - norm_measured)**2, dim=1)
     return loss_all_voxels
-
-
 
 def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, print_every=100,
               loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
