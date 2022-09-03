@@ -65,7 +65,7 @@ model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
 plt.show()
 
 
-to_label = 'lr_rate'
+to_label = 'type'
 params_col, params_group = sim.get_params_name_and_group(params, True)
 label_order = model_history[to_label].unique().tolist()
 label_order.insert(0, label_order.pop())
@@ -225,23 +225,23 @@ model_history, loss_history = sim.load_all_model_fitting_results(output_dir, ful
                                                                  ground_truth=params, id_val='ground_truth')
 
 output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/Broderick_dataset/sfp_model/results_2D'
-loss_history, model_history, _ = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
-                                                                                 sn_list=sn_list, lr_rate=[0.0005, 0.001],
-                                                                                       max_epoch=[20000], losses=False)
+subj_loss_history, subj_model_history, _ = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
+                                                                                 sn_list=[62], lr_rate=[0.001],
+                                                                                       max_epoch=[15000], losses=False)
 
 f_name = 'broderick_all_subj_0.0005_vs_0.001.png'
-model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
-                        to_label='lr_rate', to_col=None, lgd_title='Learning rate', to_row=None,
-                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss',
+model.plot_loss_history(subj_loss_history, to_x="epoch", to_y="loss",
+                        to_label='subj', to_col=None, lgd_title='subj', to_row=None,
+                        save_fig=False, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss',
                                                               f_name), ci=68, n_boot=100, log_y=True, sharey=True)
 plt.show()
 
-model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
+model_history = sim.add_ground_truth_to_df(params, subj_model_history, id_val='ground_truth')
 
 f_name = 'Broderick_all_subj_model_param_history_sab.png'
-model.plot_param_history_horizontal(model_history, params=params_col[0:3], group=params_group[0:3],
+model.plot_param_history_horizontal(model_history, params=params_col, group=params_group,
                          to_label='params', label_order=None, ground_truth=True,
-                         lgd_title=None, save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
+                         lgd_title=None, save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
                          ci=68, n_boot=100, log_y=False)
 plt.show()
 
@@ -294,6 +294,11 @@ new_col = ['sigma','A_1','A_2','A_3','A_4','p_1','p_2','p_3','p_4','slope','inte
 param_replace_col = dict(zip(orig_col, new_col))
 bd_df = bd_df.replace({'params': param_replace_col, 'subj': subj_replace_dict})
 bd_df = bd_df.drop(columns=['fit_model_type'])
+bd_df = bd_df.groupby(['subj', 'params']).median().reset_index()
+bd_df = bd_df.drop(columns='bootstrap_num')
+bd_df = bd_df.rename(columns={'value': 'Broderick_value'})
+bd_df = bd_df.query('params in @params_col')
+
 bd_df_wide = bd_df.pivot(index=['subj','bootstrap_num'], columns='params', values='value').reset_index()
 
 f_name='broderick_data_median.png'
@@ -301,11 +306,6 @@ model.plot_grouped_parameters_subj(bd_df_wide, params_col, np.arange(0,9),
                               to_label="subj", lgd_title="Subj", label_order=label_order, height=9,
                               save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
 plt.show()
-
-final_bd_df = bd_df.groupby(['subj', 'params']).median().reset_index()
-final_bd_df = final_bd_df.drop(columns='bootstrap_num')
-final_bd_df = final_bd_df.rename(columns={'value': 'Broderick_value'})
-final_bd_df = final_bd_df.query('params in @params_col')
 
 final_long_df = pd.melt(final_df, id_vars=['subj'], value_vars=params_col, var_name='params', value_name='My_value')
 df = final_bd_df.merge(final_long_df, on=['subj','params'])
@@ -371,7 +371,7 @@ angle_plot = subj_dataset.angle.numpy()
 theta_l_theta_v= ori_plot-angle_plot
 
 n_bins = 100
-x = theta_l_theta_v
+x = angle_plot
 plt.hist(x, n_bins, density=True,
          histtype='bar')
 plt.title('l-v after torch\n\n',
@@ -390,7 +390,6 @@ model_history = []
 start = timer()
 
 for t in range(max_epoch):
-    subj_model.get_Pv()
     pred = subj_model.forward(theta_l=subj_dataset.ori, theta_v=subj_dataset.angle, r_v=subj_dataset.eccen, w_l=subj_dataset.sf)  # predictions should be put in here
     losses = model.loss_fn(subj_dataset.sigma_v_squared, pred, subj_dataset.target) # loss should be returned here
     loss = torch.mean(losses)
@@ -436,3 +435,45 @@ vs.plot_num_of_voxels(voxel_df, to_hue='type', legend_title='type',
                       x_axis='type', x_axis_label='Type',
                       save_fig=True, save_file_name='n_voxels_border_removal.png')
 plt.show()
+
+
+
+output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/Broderick_dataset/sfp_model/results_2D'
+loss_history, model_history, _ = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
+                                                                                 sn_list=sn_list, lr_rate=[0.001],
+                                                                                       max_epoch=[20000], losses=False)
+
+
+output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/Broderick_dataset/sfp_model/results_2D'
+loss_history, model_history, _ = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
+                                                                                 sn_list=sn_list, lr_rate=[0.001],
+                                                                                       max_epoch=[20000], losses=False)
+
+loss_history['type'] = 'with voxels near border'
+loss_history_test['type'] = 'without voxels near border'
+model_history['type'] = 'with voxels near border'
+model_history_test['type'] = 'without voxels near border'
+
+total_loss_history = pd.concat((loss_history, loss_history_test), axis=0)
+total_model_history = pd.concat((model_history, model_history_test), axis=0)
+
+f_name = 'broderick_all_subj_with_border_vs_without_border.png'
+model.plot_loss_history(total_loss_history, to_x="epoch", to_y="loss",
+                        to_label='type', to_col=None, lgd_title='Voxel selection', to_row=None,
+                        save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss',
+                                                              f_name), ci=68, n_boot=100, log_y=True, sharey=True)
+plt.show()
+
+model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
+
+f_name = 'Broderick_all_subj_model_param_history_with_border_vs_without_border.png'
+model.plot_param_history_horizontal(model_history, params=params_col, group=params_group,
+                         to_label='subj', label_order=None, ground_truth=False,
+                         lgd_title='subj', save_fig=False, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
+                         ci="sd", n_boot=100, log_y=False)
+plt.show()
+
+
+tmp = total_model_history.query('type == "with voxels near border" & epoch == 19999')
+params.merge(tmp[params_col])
+model.PredictBOLD2d(params, 0, )

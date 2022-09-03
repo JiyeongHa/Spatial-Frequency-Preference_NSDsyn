@@ -25,6 +25,59 @@ def break_down_phase(df):
 
     return df
 
+
+class PredictBOLD2d():
+    """ Define parameters used in forward model"""
+
+    def __init__(self, params, params_idx, subj_df):
+        self.params_df = params.iloc[params_idx]
+        self.sigma = self.params_df['sigma']
+        self.amp = self.params_df['slope']
+        self.intercept = self.params_df['intercept']
+        self.p_1 = self.params_df['p_1']
+        self.p_2 = self.params_df['p_2']
+        self.p_3 = self.params_df['p_3']
+        self.p_4 = self.params_df['p_4']
+        self.A_1 = self.params_df['A_1']
+        self.A_2 = self.params_df['A_2']
+        self.A_3 = self.params_df['A_3']
+        self.A_4 = self.params_df['A_4']
+        self.subj_df = subj_df.copy()
+        self.theta_l = self.subj_df['local_ori']
+        self.theta_v = self.subj_df['angle']
+        self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
+        self.w_l = self.subj_df['local_sf']  # in cycles per degree
+
+    def get_Av(self, full_ver):
+        """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
+        if full_ver is True:
+            Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
+                 self.A_2 * np.cos(4 * self.theta_l) + \
+                 self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) + \
+                 self.A_4 * np.cos(4 * (self.theta_l - self.theta_v))
+        elif full_ver is False:
+            Av = 1
+        return Av
+
+    def get_Pv(self, full_ver):
+        """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
+        ecc_dependency = self.amp * self.r_v + self.intercept
+        if full_ver is True:
+            Pv = ecc_dependency * (1 + self.p_1 * np.cos(2 * self.theta_l) +
+                                   self.p_2 * np.cos(4 * self.theta_l) +
+                                   self.p_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
+                                   self.p_4 * np.cos(4 * (self.theta_l - self.theta_v)))
+        elif full_ver is False:
+            Pv = ecc_dependency
+        return Pv
+
+    def forward(self, full_ver=True):
+        """ Return predicted BOLD response in eccentricity (formula no. 5 in Broderick et al. (2022)) """
+        Av = self.get_Av(full_ver=full_ver)
+        Pv = self.get_Pv(full_ver=full_ver)
+        return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
+
+
 def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
@@ -483,13 +536,19 @@ def plot_param_history_horizontal(df, params, group,
     to_y = "value"
     x_label = "Epoch"
     y_label = "Parameter value"
+    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+           (189, 189, 189)]
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    pal = sns.color_palette(np.array(pal) / 255, 12)
     grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
                          hue=to_label,
                          hue_order=label_order,
                          col="params",
                          col_wrap=col_wrap,
                          height=height,
-                         palette=sns.color_palette("rocket"),
+                         palette=pal,
                          legend_out=True,
                          sharex=True, sharey=False)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
@@ -507,25 +566,26 @@ def plot_param_history_horizontal(df, params, group,
     utils.save_fig(save_fig, save_path)
 
 
-def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, df_type):
+def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, df_type, roi):
     all_history_df = pd.DataFrame()
     subj_list = [utils.sub_number_to_string(x, "broderick") for x in sn_list]
-    for cur_ver, cur_subj, cur_lr, cur_epoch in itertools.product(full_ver, subj_list, lr_rate, max_epoch):
+    for cur_ver, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(full_ver, subj_list, lr_rate, max_epoch, roi):
         model_history_path = os.path.join(output_dir,
-                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}.h5')
+                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}_{cur_roi}.h5')
         tmp = pd.read_hdf(model_history_path)
         if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
             tmp['lr_rate'] = cur_lr
             tmp['max_epoch'] = cur_epoch
             tmp['full_ver'] = cur_ver
             tmp['subj'] = cur_subj
+            tmp['roi'] = cur_roi
         all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
     return all_history_df
 
 
-def load_loss_and_model_history_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, losses=True):
-    loss_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "loss")
-    model_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "model")
+def load_loss_and_model_history_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, roi, losses=True):
+    loss_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "loss", roi)
+    model_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "model", roi)
     if losses is True:
         losses_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "losses")
     else:
