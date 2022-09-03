@@ -27,7 +27,7 @@ SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_
 rule plot_all_Broderick_avg:
     input:
         expand(os.path.join(config['BD_DIR'],"figures", "sfp_model","results_2D",'{df_type}_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss","model"], full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
-        os.path.join(config['BD_DIR'],"figures","sfp_model","results_2D",'scatterplot_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png')
+        expand(os.path.join(config['BD_DIR'],"figures","sfp_model","results_2D",'scatterplot_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'),full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH)
 
 rule run_Broderick_all_subj:
     input:
