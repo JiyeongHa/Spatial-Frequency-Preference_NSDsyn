@@ -284,6 +284,9 @@ rule plot_scatterplot:
         df_dir= os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
         scatter_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'scatterplot_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
+    log:
+
+os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'scatterplot_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
     run:
         bd_df = pd.read_csv(input.bd_file)
         sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
