@@ -26,11 +26,11 @@ SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_
 
 rule plot_all_Broderick_avg:
     input:
-        expand(os.path.join(config['BD_DIR'],"figures", "sfp_model","results_2D",'{df_type}_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_test.png'), df_type=["loss","model"], full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['BD_DIR'],"figures", "sfp_model","results_2D",'{df_type}_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'), df_type=["loss","model"], full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH)
 
 rule run_Broderick_all_subj:
     input:
-        expand(os.path.join(config['BD_DIR'], "sfp_model", "results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_test.h5'), full_ver="True", subj=SUBJ, lr=LR_RATE, max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['BD_DIR'], "sfp_model", "results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5'), full_ver="True", subj=SUBJ, lr=LR_RATE, max_epoch=MAX_EPOCH)
 
 rule run_simulation_all_subj:
     input:
@@ -206,11 +206,11 @@ rule run_simulation_subj:
 
 rule run_Broderick_subj:
     input:
-        input_path = os.path.join(config['BD_DIR'],  "dataframes", "diff_vs_test_md", "{subj}_stim_voxel_info_df_vs_md.csv")
+        input_path = os.path.join(config['BD_DIR'],  "dataframes", "{subj}_stim_voxel_info_df_vs_md.csv")
     output:
-        log_file = os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'log_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_test.txt'),
-        model_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_test.h5'),
-        loss_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_test.h5'),
+        log_file = os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'log_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.txt'),
+        model_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5'),
+        loss_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5'),
 #        losses_history = os.path.join(config['BD_DIR'],"sfp_model","results_2D",'losses_history_dset-Broderick_bts-md_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.h5')
     log:
         os.path.join(config['BD_DIR'],"logs","sfp_model","results_2D",'loss_history_dset-Broderick_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}.log')
@@ -239,10 +239,10 @@ rule run_Broderick_subj:
 
 rule plot_avg_subj_parameter_history:
     input:
-        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_test.h5'),subj=SUBJ),
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}.h5'),subj=SUBJ),
         df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
-        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_test.png'),
+        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'),
     benchmark:
         os.path.join(config['BD_DIR'],"benchmark","sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_benchmark.txt'),
     run:
@@ -258,10 +258,10 @@ rule plot_avg_subj_parameter_history:
 
 rule plot_avg_subj_loss_history:
     input:
-        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_test.h5'), subj=SUBJ),
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D", 'loss_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}.h5'), subj=SUBJ),
         df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
-        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_test.png'),
+        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'),
     benchmark:
         os.path.join(config['BD_DIR'],"benchmark","sfp_model", "results_2D",'loss_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_benchmark.txt'),
     run:
