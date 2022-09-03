@@ -14,15 +14,7 @@
     },
     "run_Broderick_subj":
     {
-	"nodes": 1,
-	"tasks_per_node": 1,
 	"mem": "{resources.mem_mb}MB",
-	"time": "3-12:00:00",
-	"job_name": "{rule}.{wildcards}",
-	"cpus_per_task": "{resources.cpus_per_task}",
-	"output": "{log}-%j",
-	"error": "{log}-%j",
-	"mail_type": "FAIL",
-	"mail_user": "jiyeong.ha@nyu.edu",
+	"cpus_per_task": "{resources.cpus_per_task}"
     }
 }
