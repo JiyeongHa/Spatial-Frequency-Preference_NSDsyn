@@ -239,12 +239,12 @@ rule run_Broderick_subj:
 
 rule plot_avg_subj_parameter_history:
     input:
-        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}.h5'),subj=SUBJ),
+        subj_files = expand(os.path.join(config['BD_DIR'],"sfp_model","results_2D",'model_history_dset-Broderick_bts-md_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_test.h5'),subj=SUBJ),
         df_dir = os.path.join(config['BD_DIR'],"sfp_model","results_2D")
     output:
-        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}.png'),
+        history_fig = os.path.join(config['BD_DIR'],"figures", "sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_test.png'),
     benchmark:
-        os.path.join(config['BD_DIR'],"benchmark","sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_benchmark.txt'),
+        os.path.join(config['BD_DIR'],"benchmark","sfp_model", "results_2D",'model_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_benchmark_test.txt'),
     run:
         params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
         sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
