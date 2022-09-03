@@ -12,6 +12,8 @@ from importlib import reload
 from itertools import product
 from inspect import getfullargspec
 import voxel_selection as vs
+import seaborn as sns
+
 
 params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -224,12 +226,12 @@ model_history, loss_history = sim.load_all_model_fitting_results(output_dir, ful
 
 output_dir = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/derivatives_HPC/Broderick_dataset/sfp_model/results_2D'
 loss_history, model_history, _ = model.load_loss_and_model_history_Broderick_subj(output_dir, full_ver=[True],
-                                                                                 sn_list=sn_list, lr_rate=[0.0005],
+                                                                                 sn_list=sn_list, lr_rate=[0.0005, 0.001],
                                                                                        max_epoch=[20000], losses=False)
 
-f_name = 'broderick_all_subj_all.png'
+f_name = 'broderick_all_subj_0.0005_vs_0.001.png'
 model.plot_loss_history(loss_history, to_x="epoch", to_y="loss",
-                        to_label=None, to_col='lr_rate', lgd_title=None, to_row=None,
+                        to_label='lr_rate', to_col=None, lgd_title='Learning rate', to_row=None,
                         save_fig=True, save_path=os.path.join(fig_dir, "simulation", "results_2D", 'Epoch_vs_Loss',
                                                               f_name), ci=68, n_boot=100, log_y=True, sharey=True)
 plt.show()
@@ -252,9 +254,9 @@ model.plot_param_history_horizontal(model_history, params=params_col[3:7], group
 plt.show()
 
 
-f_name = 'Broderick_all_subj_model_param_history_Aterms.png'
-model.plot_param_history_horizontal(model_history, params=params_col[-2:], group=params_group[-2:],
-                         to_label='params', label_order=None, ground_truth=True,
+f_name = 'Broderick_all_subj_model_param_history_lr_rate_0.0005_vs_0.001.png'
+model.plot_param_history_horizontal(model_history, params=params_col, group=np.arange(0,9),
+                         to_label='lr_rate', label_order=label_order, ground_truth=False,
                          lgd_title=None, save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name),
                          ci=68, n_boot=100, log_y=False)
 plt.show()
@@ -263,16 +265,19 @@ new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
 subj_replace_dict = dict(zip(ori_subj, new_subj))
 model_history = model_history.replace({'subj': subj_replace_dict})
 final_df = model_history.query('epoch == 19999 & subj != "ground_truth"')
-to_label = 'subj'
+to_label = 'lr_rate'
 label_order = final_df[to_label].unique().tolist()
-f_name = 'Broderick_all_subj_final_params.png'
+f_name = 'Broderick_all_subj_final_params_lr_0.0005_vs_0.001.png'
 
 
 
+model.plot_grouped_parameters(final_df, params_col, [1,2,3,4,4,5,5,6,6],
+                              to_label="lr_rate", lgd_title="Learning rate", label_order=label_order, height=9,
+                              save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
+plt.show()
 
-
-model.plot_grouped_parameters_subj(final_df, params_col, [1,2,3,4,4,5,5,6,6],
-                              to_label="subj", lgd_title="Subj", label_order=label_order, height=9,
+model.plot_grouped_parameters_subj(final_df, params_col, np.arange(0,9),
+                              to_label="lr_rate", lgd_title="Learning rate", label_order=label_order, height=9,
                               save_fig=True, save_path=os.path.join(fig_dir, 'Epoch_vs_ParamValues', f_name))
 plt.show()
 
@@ -333,11 +338,101 @@ syn_df = syn_df.query('voxel < 5')
 # syn_model = model.SpatialFrequencyModel(syn_SFdataset.my_tensor, full_ver=True)
 # loss_history, model_history, el_time, losses = model.fit_model(syn_model, syn_SFdataset, max_epoch=10)
 
+from torch.utils import data as torchdata
 
 syn_SFdatset_new = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
 syn_model_new = model.SpatialFrequencyModel(full_ver=True)
+dataloader = torchdata.DataLoader(syn_SFdatset_new, 10)
 # my_parameters = [p for p in syn_model_new.parameters() if p.requires_grad]
 # optimizer = torch.optim.Adam(my_parameters, lr=0.005)
 # pred = syn_model_new.forward()
 log_file='/Users/jh7685/Documents/test_log.txt'
 loss_history, model_history, el_time, losses = model.fit_model(syn_model_new, syn_SFdatset_new, log_file, max_epoch=10, print_every=2)
+
+
+#
+sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+all_subj_df = utils.load_all_subj_df(sn_list, df_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
+                                 df_name='stim_voxel_info_df_vs_md.csv', dataset="broderick")
+sns.histplot(data = all_subj_df, x = "angle", stat = "probability", hue="subj")
+utils.save_fig(True, os.path.join(fig_dir, 'theta_v_histogram.png'))
+plt.show()
+
+sns.histplot(data = all_subj_df, x = "local_ori", stat = "probability", hue="subj")
+utils.save_fig(True, os.path.join(fig_dir, 'theta_l_histogram.png'))
+plt.show()
+
+
+subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
+subj_model = model.SpatialFrequencyModel(full_ver=True)
+ori_plot = subj_dataset.ori.numpy()
+angle_plot = subj_dataset.angle.numpy()
+
+theta_l_theta_v= ori_plot-angle_plot
+
+n_bins = 100
+x = theta_l_theta_v
+plt.hist(x, n_bins, density=True,
+         histtype='bar')
+plt.title('l-v after torch\n\n',
+          fontweight="bold")
+plt.tight_layout()
+plt.show()
+
+torch.autograd.set_detect_anomaly(False)
+# [sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
+my_parameters = [p for p in subj_model.parameters() if p.requires_grad]
+
+optimizer = torch.optim.Adam(my_parameters, lr=0.0005, amsgrad=False, eps=1e-8)
+losses_history = []
+loss_history = []
+model_history = []
+start = timer()
+
+for t in range(max_epoch):
+    subj_model.get_Pv()
+    pred = subj_model.forward(theta_l=subj_dataset.ori, theta_v=subj_dataset.angle, r_v=subj_dataset.eccen, w_l=subj_dataset.sf)  # predictions should be put in here
+    losses = model.loss_fn(subj_dataset.sigma_v_squared, pred, subj_dataset.target) # loss should be returned here
+    loss = torch.mean(losses)
+    model_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]  # output needs to be put in there
+    loss_history.append(loss.item())
+    model_history.append(model_values)  # more than one item here
+    if (t + 1) % print_every == 0 or t == 0:
+        with open(log_file, "a") as file:
+            content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
+            file.write(content)
+            file.close()
+
+    optimizer.zero_grad()  # clear previous gradients
+    loss.backward()  # compute gradients of all variables wrt loss
+    optimizer.step()  # perform updates using calculated gradients
+    model.eval()
+end = timer()
+elapsed_time = end - start
+params_col = [name for name, param in model.named_parameters() if param.requires_grad]
+with open(log_file, "a") as file:
+    file.write(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, model_values))}\n')
+    file.write(f'Elapsed time: {np.round(end - start, 2)} sec \n')
+    file.close()
+voxel_list = dataset.voxel_info
+loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
+
+loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
+    learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch),
+    print_every=100, loss_all_voxels=False,
+    anomaly_detection=False, amsgrad=False, eps=1e-8)
+
+orig_n_voxels = vs.count_voxels(all_subj_df, dv_to_group=['subj'], count_beta_sign=False)
+new_df = vs.drop_voxels_near_border(all_subj_df, groupby_col=['subj','voxel'])
+new_n_voxels = vs.count_voxels(new_df, dv_to_group=['subj'], count_beta_sign=False)
+
+
+orig_n_voxels['type'] = 'before border removal'
+new_n_voxels['type'] = 'after border removal'
+voxel_df = pd.concat((orig_n_voxels, new_n_voxels), axis=0)
+
+vs.plot_num_of_voxels(voxel_df, to_hue='type', legend_title='type',
+                      x_axis='type', x_axis_label='Type',
+                      save_fig=True, save_file_name='n_voxels_border_removal.png')
+plt.show()
