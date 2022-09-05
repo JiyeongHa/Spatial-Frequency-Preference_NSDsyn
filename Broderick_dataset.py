@@ -241,6 +241,10 @@ def sub_main(sn,
     df = calculate_local_orientation(df)
     df = calculate_local_sf(df)
     df['subj'] = subj
+    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas',
+                                           to_group=['voxel', 'subj'])
+    df = df.merge(sigma_v_df, on=['voxel', 'subj'])
+    df['angle'] = np.deg2rad(df['angle'])
     df['normed_betas'] = model.normalize(df, 'betas', ['subj', 'voxel', 'bootstraps'], phase_info=True)
     if save_df:
         # save the final output
