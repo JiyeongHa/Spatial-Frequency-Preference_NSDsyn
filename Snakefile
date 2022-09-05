@@ -256,8 +256,8 @@ rule plot_avg_subj_parameter_history:
         model_history = model_history.replace({'subj': subj_replace_dict})
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params,full_ver=(wildcards.full_ver=="True"))
-        model.plot_param_history_horizontal(model_history, params=params_col, group=params_group, to_label='subj',
-            label_order=params_col, ground_truth=True, lgd_title="Subjects", save_fig=True, save_path=output.history_fig,
+        model.plot_param_history_horizontal(model_history, params=params_col, group=np.arange(0,9), to_label='subj',
+            label_order=new_subj, ground_truth=True, lgd_title="Subjects", save_fig=True, save_path=output.history_fig,
             height=8, col_wrap=3, ci="sd", n_boot=100, log_y=False)
 
 
@@ -300,7 +300,7 @@ rule plot_scatterplot:
         fnl_df = pd.melt(fnl_df,id_vars=['subj'],value_vars=params_col,var_name='params',value_name='My_value')
         df = fnl_df.merge(bd_df, on=['subj','params'])
         f_name = 'scatter_comparison.png'
-        grid = model.scatter_comparison(df.query('params in @param_col'),
+        grid = model.scatter_comparison(df.query('params in @params_col'),
             x="Broderick_value", y="My_value", col="params",
             col_order=params_col,label_order=new_subj,
             to_label='subj',lgd_title="Subjects",height=7,
