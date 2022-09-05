@@ -341,6 +341,12 @@ def main(sn_list,
         df = sub_main(sn=sn, df_save_dir=df_save_dir, save_df=save_df)
     return df
 
-
-if __name__ == '__main__':
-    main(sn_list)
+def add_class_idx_to_stim_df(save=True):
+    nsd_stim_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv')
+    tmp_nsd_stim_df = nsd_stim_df.query('phase == 0')
+    tmp_nsd_stim_df['class_idx'] = np.arange(0, 28)
+    tmp_nsd_stim_df = tmp_nsd_stim_df[['names', 'w_a', 'w_r', 'class_idx']]
+    nsd_stim_df = nsd_stim_df.merge(tmp_nsd_stim_df, on=['names', 'w_a', 'w_r'])
+    if save:
+        nsd_stim_df.to_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv')
+    return nsd_stim_df
