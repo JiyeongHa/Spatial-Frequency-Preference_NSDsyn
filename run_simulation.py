@@ -473,7 +473,38 @@ model.plot_param_history_horizontal(model_history, params=params_col, group=para
                          ci="sd", n_boot=100, log_y=False)
 plt.show()
 
+df_dir='/Volumes/server/Projects/sfp_nsd/derivatives'
+stim_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv')
+stim_df = stim_df.query('phase == 0')[['w_a','w_r','class_idx','names']]
 
-tmp = total_model_history.query('type == "with voxels near border" & epoch == 19999')
-params.merge(tmp[params_col])
-model.PredictBOLD2d(params, 0, )
+for sn in np.arange(1,9):
+    subj = utils.sub_number_to_string(sn, dataset="nsd")
+    df = pd.read_csv(os.path.join(df_dir, "nsdsyn", f'{subj}_stim_voxel_info_df_vs.csv'))
+    if 'Unnamed: 0' in df.columns:
+        df = df.drop(columns=['Unnamed: 0'])
+    df = df.drop(columns=['avg_betas'])
+    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas',
+                                           to_group=['voxel', 'subj'])
+    df = df.merge(sigma_v_df, on=['voxel', 'subj'])
+    df.to_csv(os.path.join(df_dir, "nsdsyn", f'{subj}_stim_voxel_info_df_vs_V1.csv'), index=False)
+    fnl_df = df.groupby(['voxel', 'class_idx']).mean().reset_index()
+    fnl_df = fnl_df.drop(['stim_idx', 'phase', 'phase_idx'], axis=1)
+    fnl_df_save_path = os.path.join(df_dir, "nsdsyn", f"{subj}_stim_voxel_info_df_vs_V1_mean.csv")
+    fnl_df.to_csv(fnl_df_save_path, index=False)
+
+
+
+sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+
+
+for sn in sn_list[1:]:
+    subj = utils.sub_number_to_string(sn, dataset="broderick")
+    df = pd.read_csv(os.path.join(df_dir, "broderick", f'{subj}_stim_voxel_info_df_vs.csv'))
+    if 'Unnamed: 0' in df.columns:
+        df = df.drop(columns=['Unnamed: 0'])
+    df.to_csv(os.path.join(df_dir, "broderick", f'{subj}_stim_voxel_info_df_vs_V1.csv'), index=False)
+    fnl_df = df.groupby(['voxel', 'class_idx']).median().reset_index()
+    fnl_df = fnl_df.drop(['bootstraps','phase'], axis=1)
+    fnl_df_save_path = os.path.join(df_dir, "broderick", f"{subj}_stim_voxel_info_df_vs_V1_median.csv")
+    fnl_df.to_csv(fnl_df_save_path, index=False)
+    print(f'{subj} done')
