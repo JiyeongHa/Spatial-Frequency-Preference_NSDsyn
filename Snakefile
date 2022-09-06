@@ -25,14 +25,24 @@ broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 DATASET=['nsdsyn']
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
+
+
+def get_sn_list(dset):
+    if dset == "broderick":
+        sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+    elif dset == "nsdsyn":
+        sn_list = np.arange(1,9)
+    print(sn_list)
+    return sn_list
+
 def make_subj_list(wildcards):
-    if wildcards.dset == "broderick":
-        SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
-    elif wildcards.dset == "nsdsyn":
-        SUBJ = [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+    SUBJ = [utils.sub_number_to_string(sn, wildcards.dset) for sn in get_sn_list(wildcards.dset)]
+    # if wildcards.dset == "broderick":
+    #     SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
+    # elif wildcards.dset == "nsdsyn":
+    #     SUBJ = [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in np.arange(1,9)]
     print(SUBJ)
     return SUBJ
-
 
 def _make_subj_list(dset):
     if dset == "broderick":
@@ -42,8 +52,9 @@ def _make_subj_list(dset):
 
 rule plot_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss","model"], stat=["mean"], dset=DATASET, full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
-        expand(os.path.join(config['OUTPUT_DIR'], "figures","sfp_model","results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'),dset=DATASET, stat=["mean"], full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss","model"], stat=["median"], dset="broderick", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'),df_type=["loss", "model"], stat=["mean"],dset="nsdsyn",full_ver=FULL_VER,lr=LR_RATE,max_epoch=MAX_EPOCH),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_dset-broderick_bts-median_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss", "model"], full_ver=FULL_VER,lr=LR_RATE,max_epoch=MAX_EPOCH)
 
 rule run_all_subj:
     input:
@@ -284,53 +295,50 @@ rule run_model:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-def get_df_type_and_subj_list(wildcards):
-    if wildcards.dset == "broderick":
+def get_df_type_and_subj_list(dset):
+    if dset == "broderick":
         stat = "median"
         subj_list = [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
-    elif wildcards.dset == "nsdsyn":
+    elif dset == "nsdsyn":
         stat = "mean"
         subj_list = [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
-    file_name = [f'{wildcards.df_type}_dset-{wildcards.dset}_bts-{stat}_full_ver-{wildcards.full_ver}_{subj}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_{wildcards.roi}.h5' for subj in subj_list]
-    return os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", file_name)
+    #file_name = [f'{wildcards.df_type}_dset-{wildcards.dset}_bts-{stat}_full_ver-{wildcards.full_ver}_{subj}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_{wildcards.roi}.h5' for subj in subj_list]
+    return stat, subj_list
+
 
 rule plot_avg_subj_parameter_history:
     input:
-        sn_list = make_subj_list,
-        subj_files = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list),
+        subj_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list(wildcards)),
         df_dir = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
         history_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'model_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     run:
         params = pd.read_csv(os.path.join(config['INPUT_DIR'], "dataframes", config['PARAMS']))
-        model_history = model.load_history_df_subj(input.df_dir, [wildcards.dset], wildcards.stat, [wildcards.full_ver], wildcards.sn_list, [float(wildcards.lr)],[
-            int(wildcards.max_epoch)],"model",[wildcards.roi])
+        sn_list = get_sn_list(wildcards.dset)
+        model_history = model.load_history_df_subj(input.df_dir, wildcards.dset, wildcards.stat, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "model", [wildcards.roi])
+        subj_list = [utils.sub_number_to_string(sn, dataset=wildcards.dset) for sn in sn_list]
         if wildcards.dset == "broderick":
-            orig_subj = [utils.sub_number_to_string(x,"broderick") for x in sn_list]
             new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
-            subj_replace_dict = dict(zip(orig_subj,new_subj))
+            subj_replace_dict = dict(zip(subj_list, new_subj))
             model_history = model_history.replace({'subj': subj_replace_dict})
-        else:
-            new_subj = input.sn_list
+            subj_list = new_subj
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params,full_ver=(wildcards.full_ver=="True"))
         model.plot_param_history_horizontal(model_history, params=params_col, group=np.arange(0,9), to_label='subj',
-            label_order=new_subj, ground_truth=True, lgd_title="Subjects", save_fig=True, save_path=output.history_fig,
+            label_order=subj_list, ground_truth=True, lgd_title="Subjects", save_fig=True, save_path=output.history_fig,
             height=8, col_wrap=3, ci="sd", n_boot=100, log_y=False)
 
 
 rule plot_avg_subj_loss_history:
     input:
-        subj_files = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", 'loss_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list),
+        subj_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'loss_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list(wildcards)),
         df_dir = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
-        history_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.png')
+        history_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     run:
-        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
-        sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
-        loss_history = model.load_history_df_subj(input.df_dir,[wildcards.full_ver],sn_list,[float(wildcards.lr)],[
-            int(wildcards.max_epoch)],"loss",[wildcards.roi])
-        model.plot_loss_history(loss_history,to_x="epoch",to_y="loss", to_label=None,to_col='lr_rate', height=5,
+        sn_list = get_sn_list(wildcards.dset)
+        loss_history = model.load_history_df_subj(input.df_dir, wildcards.dset, wildcards.stat, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "loss", [wildcards.roi])
+        model.plot_loss_history(loss_history,to_x="epoch",to_y="loss", to_label=None, to_col='lr_rate', height=5,
             lgd_title=None,to_row=None, save_fig=True, save_path=output.history_fig, ci=68, n_boot=100, log_y=True, sharey=True)
 
 
@@ -340,20 +348,20 @@ rule plot_scatterplot:
         my_files = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list),
         df_dir= os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
-        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.png')
+        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs","sfp_model","results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs","sfp_model","results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
     run:
         bd_df = pd.read_csv(input.bd_file)
-        sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
-        model_history = model.load_history_df_subj(input.df_dir,[wildcards.full_ver],sn_list,[float(wildcards.lr)],[
-            int(wildcards.max_epoch)],"model",[wildcards.roi])
+        sn_list = get_sn_list(wildcards.dset)
+        model_history = model.load_history_df_subj(input.df_dir, wildcards.dset, wildcards.stat, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "model", [wildcards.roi])
         max_epoch = model_history.epoch.max()
         fnl_df = model_history.query('epoch == @max_epoch')
-        orig_subj = [utils.sub_number_to_string(x,"broderick") for x in sn_list]
-        new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
-        subj_replace_dict = dict(zip(orig_subj,new_subj))
-        fnl_df = fnl_df.replace({'subj': subj_replace_dict})
+        subj_list = [utils.sub_number_to_string(sn, dataset=wildcards.dset) for sn in sn_list]
+        if wildcards.dset == "broderick":
+            new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
+            subj_replace_dict = dict(zip(subj_list, new_subj))
+            fnl_df = fnl_df.replace({'subj': subj_replace_dict})
         params_col = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
         fnl_df = pd.melt(fnl_df,id_vars=['subj'],value_vars=params_col,var_name='params',value_name='My_value')
         df = fnl_df.merge(bd_df, on=['subj','params'])
