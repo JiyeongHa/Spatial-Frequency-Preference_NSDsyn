@@ -345,7 +345,7 @@ rule plot_avg_subj_loss_history:
 rule plot_scatterplot:
     input:
         bd_file = os.path.join(config['INPUT_DIR'], 'dataframes','Broderick_individual_subject_params_median_across_bootstraps.csv'),
-        my_files = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list),
+        my_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list(wildcards)),
         df_dir= os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
         scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
