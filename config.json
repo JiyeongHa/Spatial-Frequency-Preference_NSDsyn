@@ -1,8 +1,7 @@
 {
-  "STIM_INFO_DIR": "/home/jh7685/sfp_nsd/natural-scenes-dataset",
-  "DF_DIR": "/home/jh7685/sfp_nsd/natural-scenes-dataset/derivatives/dataframes",
-  "OUTPUT_DIR": "/scratch/jh7685/sfp_nsd/derivatives_HPC",
-  "BD_DIR": "/scratch/jh7685/sfp_nsd/derivatives_HPC/Broderick_dataset",
-  "FIG_DIR": "/scratch/jh7685/sfp_nsd/derivatives_HPC/figures",
-  "PARAMS" : "Broderick_params.csv"
+  "STIM_INFO_DIR": "/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset",
+  "BD_DIR": "/Volumes/server/Projects/sfp_nsd/Broderick-dataset",
+  "PARAMS" : "Broderick_params.csv",
+  "INPUT_DIR": "/Volumes/server/Projects/sfp_nsd/derivatives/",
+  "OUTPUT_DIR": "/Volumes/server/Projects/sfp_nsd/derivatives/"
 }
