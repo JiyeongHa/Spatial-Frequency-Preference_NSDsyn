@@ -22,9 +22,23 @@ FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
-SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
+DATASET=['nsdsyn']
+SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 
-rule plot_all_Broderick_avg:
+def make_subj_list(wildcards):
+    if wildcards.dset == "broderick":
+        return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
+    elif wildcards.dset == "nsdsyn":
+        return [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+
+
+def make_subj_list_(dset):
+    if dset == "broderick":
+        return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
+    elif dset == "nsdsyn":
+        return [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+
+rule plot_all:
     input:
         expand(os.path.join(config['BD_DIR'],"figures", "sfp_model","results_2D",'{df_type}_history_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss","model"], full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
         expand(os.path.join(config['BD_DIR'],"figures","sfp_model","results_2D",'scatterplot_dset-Broderick_bts-md_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'),full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH)

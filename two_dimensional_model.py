@@ -566,14 +566,15 @@ def plot_param_history_horizontal(df, params, group,
     utils.save_fig(save_fig, save_path)
 
 
-def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, df_type, roi):
+def load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, df_type, roi):
     all_history_df = pd.DataFrame()
-    subj_list = [utils.sub_number_to_string(x, "broderick") for x in sn_list]
-    for cur_ver, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(full_ver, subj_list, lr_rate, max_epoch, roi):
+    subj_list = [utils.sub_number_to_string(x, dataset) for x in sn_list]
+    for cur_dataset, cur_ver, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(dataset, full_ver, subj_list, lr_rate, max_epoch, roi):
         model_history_path = os.path.join(output_dir,
-                                          f'{df_type}_history_dset-Broderick_bts-md_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}_{cur_roi}.h5')
+                                          f'{df_type}_history_dset-{dataset}_bts-{stat}_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}_{cur_roi}.h5')
         tmp = pd.read_hdf(model_history_path)
         if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
+            tmp['dset'] = cur_dataset
             tmp['lr_rate'] = cur_lr
             tmp['max_epoch'] = cur_epoch
             tmp['full_ver'] = cur_ver
@@ -583,11 +584,11 @@ def load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_e
     return all_history_df
 
 
-def load_loss_and_model_history_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, roi, losses=True):
-    loss_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "loss", roi)
-    model_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "model", roi)
+def load_loss_and_model_history_Broderick_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, roi, losses=True):
+    loss_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "loss", roi)
+    model_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "model", roi)
     if losses is True:
-        losses_history = load_history_df_Broderick_subj(output_dir, full_ver, sn_list, lr_rate, max_epoch, "losses")
+        losses_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "losses", )
     else:
         losses_history = []
     return loss_history, model_history, losses_history
