@@ -16,7 +16,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [1]
+MAX_EPOCH = [20000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -27,12 +27,14 @@ SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broder
 
 def make_subj_list(wildcards):
     if wildcards.dset == "broderick":
-        return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
+        SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
     elif wildcards.dset == "nsdsyn":
-        return [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+        SUBJ = [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+    print(SUBJ)
+    return SUBJ
 
 
-def make_subj_list_(dset):
+def _make_subj_list(dset):
     if dset == "broderick":
         return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
     elif dset == "nsdsyn":
@@ -45,8 +47,8 @@ rule plot_all:
 
 rule run_all_subj:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_V1.h5'), dset="broderick", stat="median", full_ver="True", subj=make_subj_list_("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_V1.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=make_subj_list_("nsdsyn"), lr=LR_RATE,max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_V1.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH),
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_V1.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=_make_subj_list("nsdsyn"), lr=LR_RATE,max_epoch=MAX_EPOCH)
 
 rule run_simulation_all_subj:
     input:
@@ -198,6 +200,10 @@ rule generate_noisy_synthetic_data_subj:
         noisy_df_2d = sim.copy_df_and_add_noise(subj_syn_df, beta_col="normed_betas", noise_mean=0, noise_sd=subj_syn_df['noise_SD']*float(wildcards.n_sd_mtpl))
         noisy_df_2d.to_csv(output[0])
 
+rule test:
+    input:
+        s = make_subj_list
+
 
 rule run_simulation_subj:
     input:
@@ -286,7 +292,7 @@ def get_df_type_and_subj_list(wildcards):
         stat = "mean"
         subj_list = [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
     file_name = [f'{wildcards.df_type}_dset-{wildcards.dset}_bts-{stat}_full_ver-{wildcards.full_ver}_{subj}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_{wildcards.roi}.h5' for subj in subj_list]
-    return os.path.join(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", file_name))
+    return os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", file_name)
 
 rule plot_avg_subj_parameter_history:
     input:
@@ -294,7 +300,7 @@ rule plot_avg_subj_parameter_history:
         subj_files = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list),
         df_dir = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
-        history_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'model_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.png')
+        history_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'model_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     run:
         params = pd.read_csv(os.path.join(config['INPUT_DIR'], "dataframes", config['PARAMS']))
         model_history = model.load_history_df_subj(input.df_dir, [wildcards.dset], wildcards.stat, [wildcards.full_ver], wildcards.sn_list, [float(wildcards.lr)],[
