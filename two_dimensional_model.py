@@ -540,8 +540,9 @@ def plot_param_history_horizontal(df, params, group,
            (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
            (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
            (189, 189, 189)]
+    n_labels = df[to_label].nunique()
     # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    pal = sns.color_palette(np.array(pal) / 255, 12)
+    pal = sns.color_palette(np.array(pal) / 255, n_labels)
     grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
                          hue=to_label,
                          hue_order=label_order,
@@ -569,12 +570,12 @@ def plot_param_history_horizontal(df, params, group,
 def load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, df_type, roi):
     all_history_df = pd.DataFrame()
     subj_list = [utils.sub_number_to_string(x, dataset) for x in sn_list]
-    for cur_dataset, cur_ver, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(dataset, full_ver, subj_list, lr_rate, max_epoch, roi):
+    for cur_ver, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(full_ver, subj_list, lr_rate, max_epoch, roi):
         model_history_path = os.path.join(output_dir,
                                           f'{df_type}_history_dset-{dataset}_bts-{stat}_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}_{cur_roi}.h5')
         tmp = pd.read_hdf(model_history_path)
         if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
-            tmp['dset'] = cur_dataset
+            tmp['dset'] = dataset
             tmp['lr_rate'] = cur_lr
             tmp['max_epoch'] = cur_epoch
             tmp['full_ver'] = cur_ver
@@ -607,8 +608,9 @@ def plot_grouped_parameters_subj(df, params, col_group,
            (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
            (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
            (189, 189, 189)]
+    n_labels = df[to_label].nunique()
     # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    pal = sns.color_palette(np.array(pal) / 255, 12)
+    pal = sns.color_palette(np.array(pal) / 255, n_labels)
     grid = sns.FacetGrid(df,
                          col="group",
                          col_wrap=3,
@@ -638,8 +640,9 @@ def scatter_comparison(df, x, y, col, col_order,
            (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
            (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
            (189, 189, 189)]
+    n_labels = df[to_label].nunique()
     # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    pal = sns.color_palette(np.array(pal) / 255, 12)
+    pal = sns.color_palette(np.array(pal) / 255, n_labels)
     grid = sns.relplot(data=df, x=x, y=y, kind="scatter",
                        col=col, col_wrap=3, col_order=col_order,
                        palette=pal, facet_kws={'sharey': False, 'sharex': False},
