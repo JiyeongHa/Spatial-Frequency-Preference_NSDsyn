@@ -12,7 +12,7 @@
 	"mail_type": "FAIL",
 	"mail_user": "jiyeong.ha@nyu.edu"
     },
-    "run_Broderick_subj":
+    "run_model":
     {
 	"mem": "{resources.mem_mb}MB",
 	"cpus_per_task": "{resources.cpus_per_task}"
