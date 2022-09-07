@@ -59,7 +59,7 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
 
 
 
-def drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=["voxel"], beta_col='avg_betas'):
+def drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=["voxel"], beta_col='betas'):
     """drop all voxels that have an average negative amplitude across 28 conditions
         """
     tmp = df.copy()
