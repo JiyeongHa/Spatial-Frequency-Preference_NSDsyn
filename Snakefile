@@ -342,13 +342,13 @@ rule plot_avg_subj_loss_history:
             lgd_title=None,to_row=None, save_fig=True, save_path=output.history_fig, ci=68, n_boot=100, log_y=True, sharey=True)
 
 
-rule plot_scatterplot:
+rule plot_scatterplot_subj:
     input:
         bd_file = os.path.join(config['INPUT_DIR'], 'dataframes','Broderick_individual_subject_params_median_across_bootstraps.csv'),
         my_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list(wildcards)),
         df_dir= os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
-        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
+        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     log:
         os.path.join(config['OUTPUT_DIR'], "logs","sfp_model","results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
     run:
@@ -371,3 +371,26 @@ rule plot_scatterplot:
             col_order=params_col,label_order=new_subj,
             to_label='subj',lgd_title="Subjects",height=7,
             save_fig=True, save_path=output.scatter_fig)
+
+rule plot_scatterplot_avgparams:
+    input:
+        bd_file = os.path.join(config['INPUT_DIR'],'dataframes','Broderick_individual_subject_params_allbootstraps.csv'),
+        my_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
+        df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D")
+    output:
+        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
+    run:
+        bd_df = pd.read_csv(input.bd_file)
+        bd_fnl_df = bd_df.groupby(['subj', 'params']).median().reset_index()
+        m_bd_fnl_df = model.get_mean_and_std_for_each_param(bd_fnl_df)
+        sn_list = get_sn_list(wildcards.dset)
+        model_history = model.load_history_df_subj(input.df_dir,wildcards.dset,wildcards.stat,[
+            wildcards.full_ver],sn_list,[float(wildcards.lr)],[int(wildcards.max_epoch)],"model",[wildcards.roi])
+        m_epoch = model_history.epoch.max()
+        params_col = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+        params_group = [0,1,1,2,2,2,2,3,3]
+        fnl_df = model_history.query('epoch == @m_epoch')[params_col]
+        m_fnl_df = model.get_mean_and_std_for_each_param(fnl_df)
+        model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, wildcards.dset, save_fig=True, save_path=output.scatter_fig)
+
+
