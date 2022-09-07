@@ -5,19 +5,11 @@ import seaborn as sns
 import sfp_nsd_utils as utils
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import time
 import torch
-import warnings
-import argparse
 import itertools
-import re
-import functools
-from scipy import stats
-from torch.utils import data as torchdata
-import binning_eccen as binning
 from timeit import default_timer as timer
-
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 def break_down_phase(df):
     dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi']
@@ -660,4 +652,68 @@ def scatter_comparison(df, x, y, col, col_order,
     # grid.fig.suptitle(f'{title}', fontweight="bold")
     utils.save_fig(save_fig, save_path)
     return grid
+
+def scatterplot_with_errorbars(x, y, xerr, yerr):
+
+
+    plt.scatter(x, y)
+    plt.errorbar(x, y, xerr, yerr, fmt="o")
+
+
+def _get_common_lim(axes):
+    xlim = axes.get_xlim()
+    ylim = axes.get_ylim()
+    return [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
+
+def get_mean_and_std_for_each_param(df):
+    if 'params' not in df.columns:
+        value_vars = ['sigma','slope','intercept','p_1','p_2','p_3','p_4','A_1','A_2']
+        id_vars = [x for x in df.columns.to_list() if not x in value_vars]
+        df = pd.melt(df, id_vars, value_vars, var_name='params', value_name='value')
+    val_name = [col for col in df.columns if 'value' in col][0]
+    m_df = df.groupby(['params'])[val_name].mean().reset_index().rename(columns={val_name: 'mean_value'})
+    std_df = df.groupby(['params'])[val_name].std().reset_index().rename(columns={val_name: 'std_value'})
+    return m_df.merge(std_df, on='params')
+
+def control_fontsize(small, medium, large):
+    plt.rc('font', size=small)  # controls default text sizes
+    plt.rc('axes', titlesize=small, labelsize=medium)
+    plt.rc('xtick', labelsize=small)  # fontsize of the tick labels
+    plt.rc('ytick', labelsize=small)  # fontsize of the tick labels
+    plt.rc('legend', fontsize=small)  # legend fontsize
+    plt.rc('figure', titlesize=large)  # fontsize of the figure title
+
+
+def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, dset,
+                               save_fig=False, save_path='/Volumes/server/Projects/sfp_nsd/derivatives/figures/sfp_model/results_2D/scatterplot.png'):
+    params_order = np.arange(0, len(params_list))
+    colors = mpl.cm.tab10(np.linspace(0, 1, len(params_list)))
+    n_subplots = len(set(params_group))
+    fig, axes = plt.subplots(1, n_subplots, figsize=(20, 5), dpi=300)
+    for g in range(n_subplots):
+        tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
+        tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
+        for p, c in zip(tmp_params_list, tmp_params_order):
+            x = x_df.query('params == @p')['mean_value']
+            y = y_df.query('params == @p')['mean_value']
+            xerr = x_df.query('params == @p')['std_value']
+            yerr = y_df.query('params == @p')['std_value']
+            axes[g].errorbar(x, y, xerr, yerr, fmt="o", color=colors[c], ecolor=colors[c], label=p)
+            axes[g].legend(loc='upper right', ncol=1)
+        axes[g].axis('scaled')
+        newlim = _get_common_lim(axes[g])
+        axes[g].set_xlim(newlim[0], newlim[1])
+        axes[g].set_ylim(newlim[0], newlim[1])
+        axes[g].set_xticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
+        axes[g].set_yticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
+        control_fontsize(14, 20, 15)
+
+    # common axis labels
+    fig.supxlabel('Broderick et al.(2022) values', fontsize=20)
+    fig.supylabel(f'My values: \n{dset} dataset', fontsize=20)
+    plt.tight_layout(w_pad=2)
+    fig.subplots_adjust(left=.09, bottom=0.15)
+    utils.save_fig(save_fig, save_path)
+
+
 
