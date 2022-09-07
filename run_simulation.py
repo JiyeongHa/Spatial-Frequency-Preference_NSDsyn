@@ -298,6 +298,7 @@ bd_df = bd_df.groupby(['subj', 'params']).median().reset_index()
 bd_df = bd_df.drop(columns='bootstrap_num')
 bd_df = bd_df.rename(columns={'value': 'Broderick_value'})
 bd_df = bd_df.query('params in @params_col')
+bd_df.to_csv('/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/Broderick_individual_subject_params_allbootstraps.csv', index=False)
 
 bd_df_wide = bd_df.pivot(index=['subj','bootstrap_num'], columns='params', values='value').reset_index()
 
@@ -508,3 +509,68 @@ for sn in sn_list[1:]:
     fnl_df_save_path = os.path.join(df_dir, "broderick", f"{subj}_stim_voxel_info_df_vs_V1_median.csv")
     fnl_df.to_csv(fnl_df_save_path, index=False)
     print(f'{subj} done')
+
+output_dir = '/Volumes/server/Projects/sfp_nsd/derivatives/sfp_model/results_2D'
+
+max_epoch = [20000]
+lr_rate = [0.0005]
+full_ver = [True]
+sn_list = np.arange(1,9)
+df_type="model"
+roi=["V1"]
+
+model_history = model.load_history_df_subj(output_dir, "nsdsyn", "mean", full_ver, sn_list, lr_rate, max_epoch, df_type, roi)
+m_epoch = model_history.epoch.max()
+fnl_df = model_history.query('epoch == @m_epoch')[['sigma','slope','intercept','p_1','p_2','p_3','p_4','A_1','A_2']]
+m_fnl_df = fnl_df.mean()
+std_fnl_df = fnl_df.std()
+bd_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/Broderick_individual_subject_params_allbootstraps.csv')
+bd_fnl_df = bd_df.groupby(['subj', 'params']).median().reset_index()
+m_bd_fnl_df = model.get_mean_and_std_for_each_param(bd_fnl_df)
+m_fnl_df = model.get_mean_and_std_for_each_param(fnl_df)
+m_bd_fnl_df['type'] = 'Broderick_et_al'
+m_fnl_df['type'] = 'NSD_synthetic'
+#pd.concat((m_bd_fnl_df, m_fnl_df), axis=0)
+
+params_list = ['sigma','slope','intercept','p_1','p_2','p_3','p_4','A_1','A_2']
+params_group = [0,1,1,2,2,2,2,3,3]
+params_order = np.arange(0,9)
+colors = mpl.cm.tab10(np.linspace(0, 1, len(params_list)))
+
+model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_list, params_group)
+
+fig, axes = plt.subplots(1, params_group[-1]+1, figsize=(12, 4), dpi=300)
+for g in range(params_group[-1]+1):
+    tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
+    tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
+    for p,c in zip(tmp_params_list, tmp_params_order):
+        print(p)
+        print(c)
+        x = m_bd_fnl_df.query('params == @p')['mean_value']
+        y = m_fnl_df.query('params == @p')['mean_value']
+        xerr = m_bd_fnl_df.query('params == @p')['std_value']
+        yerr = m_fnl_df.query('params == @p')['std_value']
+        #axes[g].scatter(x, y, color=colors[c])
+        axes[g].errorbar(x, y, xerr, yerr, fmt="o", color=colors[c], ecolor=colors[c], label=p)
+        #axes[g].legend(bbox_to_anchor=(0, 1), loc='upper left', ncol=1)
+    axes[g].axis('scaled')
+    xlim = axes[g].get_xlim()
+    ylim = axes[g].get_ylim()
+    newlim = (min(xlim[0], ylim[0]), max(xlim[1], ylim[1]))
+    axes[g].set_xlim(newlim[0], newlim[1])
+    axes[g].set_ylim(newlim[0], newlim[1])
+    axes[g].set_xticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
+    axes[g].set_yticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
+
+
+    # axes[g, 0].set(xlim=(-3, 3), ylim=(-3, 3))
+
+# common axis labels
+lines, labels = plt.gca().get_legend_handles_labels()
+plt.legend(lines, labels, loc = 'lower center', bbox_to_anchor = (0, -0.1, 1, 1),
+           bbox_transform = plt.gcf().transFigure)
+fig.supxlabel('Broderick et al.(2022) values')
+fig.supylabel(f'My values: {dset}')
+plt.show()
+
+
