@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from pathlib import Path
 
-def sub_number_to_string(sub_number, dataset="nsd"):
+def sub_number_to_string(sub_number, dataset="nsdsyn"):
     """ Return number (1,2,3,..) to "subj0x" form """
     if dataset == "nsdsyn":
         return "subj%02d" % sub_number
