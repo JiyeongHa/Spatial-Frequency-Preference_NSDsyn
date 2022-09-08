@@ -688,7 +688,7 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, dset,
             y = y_df.query('params == @p')['mean_value']
             yerr = y_df.query('params == @p')['std_value']
             axes[g].errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", color=colors[c], ecolor=colors[c], label=p)
-            axes[g].legend(loc='upper right', ncol=1)
+            axes[g].legend(loc='best', ncol=1)
         axes[g].axis('scaled')
         newlim = _get_common_lim(axes[g])
         axes[g].set_xlim(newlim[0], newlim[1])
