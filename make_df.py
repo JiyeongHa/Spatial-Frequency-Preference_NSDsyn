@@ -9,12 +9,16 @@ import h5py
 import itertools
 import pandas as pd
 from scipy.io import loadmat
-
+import voxel_selection as vs
+import sfp_nsd_utils as utils
+import bootstrap as bts
+import two_dimensional_model as model
 
 def cart2pol(xramp, yramp):
     R = np.sqrt(xramp ** 2 + yramp ** 2)
     TH = np.arctan2(yramp, xramp)
     return (R, TH)
+
 def _masking(freesurfer_dir, subj, visroi_range, eccroi_range, mask_type):
     """ Make a mask. Mask_type input should be an array."""
     mask = {}
@@ -100,16 +104,15 @@ def _get_beta_folder_name(beta_version):
     return switcher.get(beta_version, "Not available beta type")
 
 
-def _load_exp_design_mat(design_mat_dir, design_mat_file):
-    mat_file = os.path.join(design_mat_dir, design_mat_file)
-    mat_file = loadmat(mat_file)
+def _load_exp_design_mat(design_mat_path):
+    mat_file = loadmat(design_mat_path)
     trial_orders = mat_file['masterordering'].reshape(-1)
 
     return trial_orders
 
 
-def _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df):
-    trial_orders = _load_exp_design_mat(design_mat_dir, design_mat_file)
+def _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df):
+    trial_orders = _load_exp_design_mat(design_mat_path)
     spiral_index = stim_df[['image_idx']].copy()
     spiral_index['fixation_task'] = np.nan
     spiral_index['memory_task'] = np.nan
@@ -147,7 +150,7 @@ def _average_two_task_betas(betas, hemi):
     return avg_betas
 
 
-def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", beta_average=True, mask=None,
+def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", mask=None,
                 apply_mask=True):
     """Check the directory carefully. There are three different types of beta in NSD synthetic dataset: b1, b2, or b3.
     b2 (folder: betas_fithrf) is results of GLM in which the HRF is estimated for each voxel.
@@ -183,12 +186,7 @@ def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", be
             task_betas = np.float32(task_betas) / 300
             k = "%s-%s" % (hemi, task_name + '_betas')
             betas[k] = task_betas.T
-        if task_from == 'both' and beta_average:
-            avg_k = "%s-%s" % (hemi, 'avg' + '_betas')
-            betas[avg_k] = _average_two_task_betas(betas, hemi)
 
-    # add beta values to mgzs
-    # mgzs.update(betas)
     return betas
 
 
@@ -209,9 +207,10 @@ def _melt_2D_beta_mgzs_into_df(beta_mgzs):
             # mgz_key = '%s-%s' % (hemi, 'betas')
             tmp_df = pd.DataFrame(beta_mgzs[mgz_key])
             tmp_df = pd.melt(tmp_df.reset_index(), id_vars='index')
-            tmp_df = tmp_df.rename(
-                columns={'index': 'voxel', 'variable': 'stim_idx', 'value': mgz_key.replace(hemi + "-", "")})
+            tmp_df = tmp_df.rename(columns={'index': 'voxel', 'variable': 'stim_idx', 'value': mgz_key.replace(hemi + "-", "")})
             df[hemi] = df[hemi].merge(tmp_df, how='outer')
+        df[hemi] = pd.melt(df[hemi], id_vars=['voxel','stim_idx'], value_vars=['fixation_task_betas','memory_task_betas'], var_name='task', value_name='betas')
+        df[hemi] = df[hemi].replace({'task': {'fixation_task_betas': 'fixation', 'memory_task_betas': 'memory'}})
         df[hemi]['hemi'] = hemi
     return df
 
@@ -225,7 +224,7 @@ def _label_Vareas(row):
     elif result == 5 or result == 6:
         return 'V3'
     elif result == 0:
-        return 'V4v'
+        return 'h4v'
 
 
 def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
@@ -289,64 +288,82 @@ def sub_main(sn,
              freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
              betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
              beta_version=3,
-             stim_description_path='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
-             design_mat_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic',
-             design_mat_file='nsdsynthetic_expdesign.mat',
+             stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
+             design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
              task_from="both",
-             beta_average=True,
              prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
              vroi_range=[1, 2, 3, 4, 5, 6, 7],
              eroi_range=[1, 2, 3, 4, 5],
              mask_type=['visroi', 'eccroi'],
-             df_save_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
-             save_df=False):
-    subj = f"subj{str(sn).zfill(2)}"
+             df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
+             save_df=True):
+    subj = utils.sub_number_to_string(sn, dataset="nsdsyn")
     print(f'*** creating a dataframe for subject no.{sn} ***')
     mask = _masking(freesurfer_dir=freesurfer_dir, subj=subj,
                     visroi_range=vroi_range, eccroi_range=eroi_range, mask_type=mask_type)
     mgzs = _load_prf_properties(freesurfer_dir=freesurfer_dir, subj=subj, prf_label_names=prf_label_list, mask=mask,
                                 apply_mask=True)
     stim_df = _load_stim_info(stim_description_path=stim_description_path)
-    stim_df = _find_beta_index_for_spiral_stimuli(design_mat_dir, design_mat_file, stim_df=stim_df)
-    beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from,
-                            beta_average=beta_average, sf_stim_df=stim_df, mask=mask)
+    stim_df = _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df=stim_df)
+    beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from, sf_stim_df=stim_df, mask=mask)
     df = _melt_2D_beta_mgzs_into_df(beta_mgzs=beta_mgzs)
     df = _add_prf_columns_to_df(prf_mgzs=mgzs, df=df, prf_label_names=prf_label_list)
     df = _concat_lh_rh_df(df=df)
+    df['angle'] = np.deg2rad(df['angle'])
+    df = df.rename(columns={'size': 'sigma'})
     df = _add_stim_info_to_df(df=df, stim_description_df=stim_df)
+    df = vs.select_voxels(df, vs.pix_to_deg(42.878), vs.pix_to_deg(714/2), ['voxel'], 'betas', near_border=True)
+    df['subj'] = subj
+    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel'])
+    df = df.merge(sigma_v_df, on=['voxel'])
     df = _calculate_local_orientation(df=df)
     df = _calculate_local_sf(df=df)
+    fnl_df = df.groupby(['voxel', 'class_idx']).mean().reset_index()
+    fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
+    fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
     if save_df:
-        # save the final output
-        df_save_name = "%s_%s" % (subj, "stim_voxel_info_df.csv")
-        df_save_dir = df_save_dir
         if not os.path.exists(df_save_dir):
             os.makedirs(df_save_dir)
-        df_save_path = os.path.join(df_save_dir, df_save_name)
-        df.to_csv(df_save_path, index=False)
-        print(f'... {subj} dataframe saved.')
+        for roi in df.vroinames.unique():
+            df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs_{roi}.csv')
+            df.to_csv(df_save_path, index=False)
+            print(f'... {subj} {roi} dataframe saved.')
+            fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs_{roi}_mean.csv")
+            fnl_df.to_csv(fnl_df_save_path, index=False)
+            print(f'... {subj} {roi} mean dataframe dataframe saved.')
+    return fnl_df
 
-    return df
 
-
-def main(sn_list,
-         df_save_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/subj_dataframes',
+def main(sn_list, freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
+         betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
+         beta_version=3,
+         stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
+         design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
+         task_from="both",
+         prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
+         vroi_range=[1, 2, 3, 4, 5, 6, 7],
+         eroi_range=[1, 2, 3, 4, 5],
+         mask_type=['visroi', 'eccroi'],
+         df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
          save_df=True):
     print(f'*** subject list: {sn_list} ***')
     if save_df:
         print(f'save mode: on')
         print(f'.... Each dataframe will be saved in dir=\n{df_save_dir}.')
     print(f'\n')
+    df = {}
     for sn in sn_list:
-        df = sub_main(sn=sn, df_save_dir=df_save_dir, save_df=save_df)
-    return df
+        df[sn] = sub_main(sn, freesurfer_dir, betas_dir, beta_version, stim_description_path, design_mat_path,
+                          task_from, prf_label_list, vroi_range, eroi_range, mask_type, df_save_dir, save_df)
+    all_subj = pd.concat(df, ignore_index=True)
+    return all_subj
 
 def add_class_idx_to_stim_df(save=True):
-    nsd_stim_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv')
+    nsd_stim_df = pd.read_csv('/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/nsddata/stimuli/nsdsynthetic/nsdsynthetic_sf_stim_description.csv')
     tmp_nsd_stim_df = nsd_stim_df.query('phase == 0')
     tmp_nsd_stim_df['class_idx'] = np.arange(0, 28)
     tmp_nsd_stim_df = tmp_nsd_stim_df[['names', 'w_a', 'w_r', 'class_idx']]
     nsd_stim_df = nsd_stim_df.merge(tmp_nsd_stim_df, on=['names', 'w_a', 'w_r'])
     if save:
-        nsd_stim_df.to_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv')
+        nsd_stim_df.to_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv', index=False)
     return nsd_stim_df
