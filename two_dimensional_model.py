@@ -615,13 +615,11 @@ def plot_grouped_parameters_subj(df, params, col_group,
     grid.map(sns.pointplot, "params", "value", estimator=np.median, alpha=0.9, orient="v", ci=68, dodge=True, linestyle=None, scale=1.5)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
-
     grid.fig.legend(title=lgd_title, labels=label_order)
     grid.set_axis_labels("", y_label)
     #grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
     #grid.fig.suptitle(f'{title}', fontweight="bold")
     utils.save_fig(save_fig, save_path)
-
 
 def scatter_comparison(df, x, y, col, col_order,
                        to_label="study_type", lgd_title="Study", label_order=None,
@@ -647,18 +645,9 @@ def scatter_comparison(df, x, y, col, col_order,
         ax.set_ylim(ymin=min(x0, y0), ymax=max(x1, y1))
         lims = [min(x0, y0), max(x1, y1)]
         ax.plot(lims, lims, '--k', linewidth=2)
-    # grid.set_axis_labels("", y_label)
-    # grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
-    # grid.fig.suptitle(f'{title}', fontweight="bold")
+    grid.set_axis_labels("Broderick et al.(2022)", "My value")
     utils.save_fig(save_fig, save_path)
     return grid
-
-def scatterplot_with_errorbars(x, y, xerr, yerr):
-
-
-    plt.scatter(x, y)
-    plt.errorbar(x, y, xerr, yerr, fmt="o")
-
 
 def _get_common_lim(axes):
     xlim = axes.get_xlim()
