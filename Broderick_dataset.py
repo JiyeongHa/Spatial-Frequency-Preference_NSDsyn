@@ -217,7 +217,7 @@ def calculate_local_sf(df):
 
 def sub_main(sn,
              stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
-             vroi_range=["V1"], eroi_range=[1, 12],
+             vroi_range=["V2","V3"], eroi_range=[1, 12],
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
