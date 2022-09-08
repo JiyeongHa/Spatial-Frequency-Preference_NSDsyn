@@ -16,8 +16,8 @@ def count_voxels(tmp, dv_to_group=["subj", "vroinames"], count_beta_sign=True):
 
 
     if count_beta_sign is True:
-        tmp = tmp.groupby(dv_to_group + ["voxel"])['avg_betas'].mean().reset_index()
-        tmp['beta_sign'] = np.sign(tmp['avg_betas'])
+        tmp = tmp.groupby(dv_to_group + ["voxel"])['betas'].mean().reset_index()
+        tmp['beta_sign'] = np.sign(tmp['betas'])
         tmp['beta_sign'] = tmp['beta_sign'].map({-1.0: "negative", 1.0: "positive"})
         dv_to_group += ["beta_sign"]
 
@@ -34,7 +34,7 @@ def plot_num_of_voxels(n_voxel_df, graph_type='bar',
                        save_fig=False, save_file_name='n_voxels_ROI_beta_sign.png',
                        save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                        super_title=None):
-    sns.set_context("notebook")
+    sns.set_context("notebook", font_scale=1.5)
     grid = sns.catplot(data=n_voxel_df,
                        x=x_axis, y=y_axis,
                        hue=to_hue,
@@ -151,3 +151,9 @@ def drop_voxels(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas', in_pix=
 
     return df
 
+
+def select_voxels(df, inner_border, outer_border, dv_to_group=['voxel'], beta_col='betas', near_border=True):
+    if near_border is True:
+        df = drop_voxels_near_border(df, inner_border, outer_border, dv_to_group)
+    vs_df = drop_voxels_with_mean_negative_amplitudes(df, dv_to_group, beta_col)
+    return vs_df
