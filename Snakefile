@@ -22,9 +22,8 @@ FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
-DATASET=['nsdsyn']
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
-
+ROIS = ["V2", "V3"]
 
 
 def get_sn_list(dset):
@@ -36,13 +35,7 @@ def get_sn_list(dset):
     return sn_list
 
 def make_subj_list(wildcards):
-    SUBJ = [utils.sub_number_to_string(sn, wildcards.dset) for sn in get_sn_list(wildcards.dset)]
-    # if wildcards.dset == "broderick":
-    #     SUBJ = [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
-    # elif wildcards.dset == "nsdsyn":
-    #     SUBJ = [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in np.arange(1,9)]
-    print(SUBJ)
-    return SUBJ
+    return [utils.sub_number_to_string(sn, wildcards.dset) for sn in get_sn_list(wildcards.dset)]
 
 def _make_subj_list(dset):
     if dset == "broderick":
@@ -52,9 +45,11 @@ def _make_subj_list(dset):
 
 rule plot_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss","model"], stat=["median"], dset="broderick", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'),df_type=["loss", "model"], stat=["mean"],dset="nsdsyn",full_ver=FULL_VER,lr=LR_RATE,max_epoch=MAX_EPOCH),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_dset-broderick_bts-median_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss", "model"], full_ver=FULL_VER,lr=LR_RATE,max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), df_type=["loss","model"],  dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_subj_dset-broderick_bts-median_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), full_ver=FULL_VER,lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
+        # expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss", "model"], dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
+        # expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'),dset="nsdsyn", stat="mean", full_ver=FULL_VER,lr=LR_RATE,max_epoch=MAX_EPOCH,roi=ROIS)
 
 rule run_all_subj:
     input:
@@ -350,7 +345,7 @@ rule plot_scatterplot_subj:
     output:
         scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs","sfp_model","results_2D",'scatterplot_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs","sfp_model","results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
     run:
         bd_df = pd.read_csv(input.bd_file)
         sn_list = get_sn_list(wildcards.dset)
