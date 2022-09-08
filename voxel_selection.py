@@ -64,8 +64,9 @@ def drop_voxels_with_mean_negative_amplitudes(df, dv_to_group=["voxel"], beta_co
         """
     tmp = df.copy()
     if 'bootstraps' in tmp.columns:
-        tmp = tmp.groupby(tmp.drop(columns=['bootstraps',  beta_col]).columns.tolist()).median().reset_index()
-        tmp = tmp.drop(columns=['bootstraps'])
+        tmp = tmp.groupby(['voxel', 'class_idx']).median().reset_index()
+    if 'task' in tmp.columns:
+        tmp = tmp.groupby(['voxel', 'class_idx']).mean().reset_index()
     mean_tmp = tmp.groupby(dv_to_group)[beta_col].mean().reset_index()
     mean_tmp = mean_tmp.groupby(dv_to_group).filter(lambda x: (x[beta_col] >= 0).all())
     voxels = mean_tmp.voxel.unique()
