@@ -61,10 +61,10 @@ def _get_benson_atlas_rois(roi_index):
     return switcher.get(roi_index, "No Visual area")
 
 
-def masking(sn, vroi_range=["V1"], eroi_range=[1, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
+def masking(sn, roi="V1", eroi_range=[1, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
     """create a mask using visual rois and eccentricity range."""
     mask = {}
-    vroi_num = [_get_benson_atlas_rois(x) for x in vroi_range]
+    vroi_num = [_get_benson_atlas_rois(roi)]
     for hemi in ['lh', 'rh']:
         varea_name = f"{hemi}.inferred_varea.mgz"
         varea_path = os.path.join(mask_path, "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', varea_name)
@@ -222,54 +222,54 @@ def sub_main(sn,
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
-             df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
+             df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick',
              save_df=False, vs=True):
-    subj = utils.sub_number_to_string(sn, dataset="broderick")
-    stim_df = load_stim_info(stim_description_path, save_copy=False)
-    mask = masking(sn, vroi_range, eroi_range, mask_path)
-    prf_mgzs = load_prf(sn, mask, prf_label_names, prf_dir)
-    betas = load_betas(sn, mask, results_names=['models'], beta_dir=beta_dir)
-    betas_df = melt_2D_betas_into_df(betas)
-    prf_df = prf_mgzs_to_df(prf_mgzs)
-    voxel_df = merge_prf_and_betas(betas_df, prf_df)
-    df = concat_lh_and_rh_df(voxel_df)
-    df = df.rename(columns={'eccen': 'eccentricity'})
-    if vs:
-        df = select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'],
-                           beta_col='betas', near_border=True)
-    df = add_stim_info_to_df(df, stim_df)
-    df = calculate_local_orientation(df)
-    df = calculate_local_sf(df)
-    df['subj'] = subj
-    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas',
-                                           to_group=['voxel', 'subj'])
-    df = df.merge(sigma_v_df, on=['voxel', 'subj'])
-    df['angle'] = np.deg2rad(df['angle'])
-    df['normed_betas'] = model.normalize(df, 'betas', ['subj', 'voxel', 'bootstraps'], phase_info=True)
-    if save_df:
-        # save the final output
-        df_save_name = "%s_%s" % (subj, "stim_voxel_info_df_vs.csv")
-        if not os.path.exists(df_save_dir):
-            os.makedirs(df_save_dir)
-        df_save_path = os.path.join(df_save_dir, df_save_name)
-        df.to_csv(df_save_path, index=False)
-        print(f'... {subj} dataframe saved.')
-        groupby_col = df.drop(columns=['bootstraps', 'betas', 'normed_betas']).columns.tolist()
-        fnl_df = df.groupby(groupby_col).median().reset_index()
-        fnl_df = fnl_df.drop(['bootstraps'], axis=1)
-        fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs_md.csv")
-        fnl_df.to_csv(fnl_df_save_path, index=False)
-        print(f'... {subj} median dataframe dataframe saved.')
+    for roi in vroi_range:
+        print(f'**{roi}**')
+        subj = utils.sub_number_to_string(sn, dataset="broderick")
+        stim_df = load_stim_info(stim_description_path, save_copy=False)
+        mask = masking(sn, roi, eroi_range, mask_path)
+        prf_mgzs = load_prf(sn, mask, prf_label_names, prf_dir)
+        betas = load_betas(sn, mask, results_names=['models'], beta_dir=beta_dir)
+        betas_df = melt_2D_betas_into_df(betas)
+        prf_df = prf_mgzs_to_df(prf_mgzs)
+        voxel_df = merge_prf_and_betas(betas_df, prf_df)
+        df = concat_lh_and_rh_df(voxel_df)
+        df = df.rename(columns={'eccen': 'eccentricity'})
+        if vs:
+            df = select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'],
+                               beta_col='betas', near_border=True)
+        df = add_stim_info_to_df(df, stim_df)
+        df = calculate_local_orientation(df)
+        df = calculate_local_sf(df)
+        df['subj'] = subj
+        sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas',
+                                               to_group=['voxel', 'subj'])
+        df = df.merge(sigma_v_df, on=['voxel', 'subj'])
+        df['angle'] = np.deg2rad(df['angle'])
+        df['normed_betas'] = model.normalize(df, 'betas', ['subj', 'voxel', 'bootstraps'], phase_info=True)
+        if save_df:
+            # save the final output
+            if not os.path.exists(df_save_dir):
+                os.makedirs(df_save_dir)
+            df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs_{roi}.csv")
+            df.to_csv(df_save_path, index=False)
+            print(f'... {subj} dataframe saved.')
+            fnl_df = df.groupby(['voxel', 'class_idx']).median().reset_index()
+            fnl_df = fnl_df.drop(['bootstraps', 'phase'], axis=1)
+            fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs_{roi}_median.csv")
+            fnl_df.to_csv(fnl_df_save_path, index=False)
+            print(f'... {subj} median dataframe dataframe saved.')
     return fnl_df
 
 def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
                       stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
-             vroi_range=["V1"], eroi_range=[1, 12],
+             vroi_range=["V2","V3"], eroi_range=[1, 12],
              mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
-             df_save_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/dataframes',
+             df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick',
              save_df=False, vs=True):
     df = {}
     for sn in sn_list:
