@@ -684,10 +684,10 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, dset,
         tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
         for p, c in zip(tmp_params_list, tmp_params_order):
             x = x_df.query('params == @p')['mean_value']
-            y = y_df.query('params == @p')['mean_value']
             xerr = x_df.query('params == @p')['std_value']
+            y = y_df.query('params == @p')['mean_value']
             yerr = y_df.query('params == @p')['std_value']
-            axes[g].errorbar(x, y, xerr, yerr, fmt="o", color=colors[c], ecolor=colors[c], label=p)
+            axes[g].errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", color=colors[c], ecolor=colors[c], label=p)
             axes[g].legend(loc='upper right', ncol=1)
         axes[g].axis('scaled')
         newlim = _get_common_lim(axes[g])
