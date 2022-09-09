@@ -44,16 +44,16 @@ def _make_subj_list(dset):
 
 rule plot_all:
     input:
-        # expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), df_type=["loss","model"],  dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
-        # expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_subj_dset-broderick_bts-median_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), full_ver=FULL_VER,lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
-        # expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1.png'), df_type=["loss", "model"], dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'),dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
+        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), df_type=["loss","model"],  dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_subj_dset-broderick_bts-median_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), full_ver=FULL_VER,lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), df_type=["loss", "model"], dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
 
 rule run_all_subj:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_V1.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_V1.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=_make_subj_list("nsdsyn"), lr=LR_RATE,max_epoch=MAX_EPOCH)
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=_make_subj_list("nsdsyn"), lr=LR_RATE,max_epoch=MAX_EPOCH, roi=ROIS)
 
 rule run_simulation_all_subj:
     input:
@@ -204,10 +204,6 @@ rule generate_noisy_synthetic_data_subj:
         subj_syn_df = pd.read_csv(input.subj_syn_df_2d)
         noisy_df_2d = sim.copy_df_and_add_noise(subj_syn_df, beta_col="normed_betas", noise_mean=0, noise_sd=subj_syn_df['noise_SD']*float(wildcards.n_sd_mtpl))
         noisy_df_2d.to_csv(output[0])
-
-rule test:
-    input:
-        s = make_subj_list
 
 
 rule run_simulation_subj:
