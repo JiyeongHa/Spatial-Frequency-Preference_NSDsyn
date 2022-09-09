@@ -512,14 +512,15 @@ for sn in sn_list[1:]:
 
 output_dir = '/Volumes/server/Projects/sfp_nsd/derivatives/sfp_model/results_2D'
 
-max_epoch = [20000]
-lr_rate = [0.0005]
+max_epoch = [30000]
+lr_rate = [0.001]
 full_ver = [True]
-sn_list = np.arange(1,9)
+sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+#sn_list = np.arange(1,9)
 df_type="model"
-roi=["V1"]
+roi=["V3"]
 
-model_history = model.load_history_df_subj(output_dir, "nsdsyn", "mean", full_ver, sn_list, lr_rate, max_epoch, df_type, roi)
+model_history = model.load_history_df_subj(output_dir, "broderick", "median", full_ver, sn_list, lr_rate, max_epoch, df_type, roi)
 m_epoch = model_history.epoch.max()
 fnl_df = model_history.query('epoch == @m_epoch')[['sigma','slope','intercept','p_1','p_2','p_3','p_4','A_1','A_2']]
 m_fnl_df = fnl_df.mean()
@@ -537,8 +538,8 @@ params_group = [0,1,1,2,2,2,2,3,3]
 params_order = np.arange(0,9)
 colors = mpl.cm.tab10(np.linspace(0, 1, len(params_list)))
 
-model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_list, params_group)
-
+model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_list, params_group, dset="broderick")
+plt.show()
 fig, axes = plt.subplots(1, params_group[-1]+1, figsize=(12, 4), dpi=300)
 for g in range(params_group[-1]+1):
     tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
