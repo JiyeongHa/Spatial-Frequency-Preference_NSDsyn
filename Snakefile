@@ -23,7 +23,7 @@ PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
-ROIS = ["V2", "V3"]
+ROIS = ["V1"]
 
 
 def get_sn_list(dset):
