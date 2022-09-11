@@ -572,7 +572,7 @@ def load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, 
             tmp['max_epoch'] = cur_epoch
             tmp['full_ver'] = cur_ver
             tmp['subj'] = cur_subj
-            tmp['roi'] = cur_roi
+            tmp['vroinames'] = cur_roi
         all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
     return all_history_df
 
@@ -673,7 +673,8 @@ def control_fontsize(small, medium, large):
     plt.rc('figure', titlesize=large)  # fontsize of the figure title
 
 
-def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, dset,
+def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='Broderick et al.(2022) values',
+                               y_label = 'My values',
                                save_fig=False, save_path='/Volumes/server/Projects/sfp_nsd/derivatives/figures/sfp_model/results_2D/scatterplot.png'):
     params_order = np.arange(0, len(params_list))
     colors = mpl.cm.tab10(np.linspace(0, 1, len(params_list)))
@@ -693,13 +694,16 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, dset,
         newlim = _get_common_lim(axes[g])
         axes[g].set_xlim(newlim[0], newlim[1])
         axes[g].set_ylim(newlim[0], newlim[1])
+        axes[g].plot(newlim, newlim, '--k', linewidth=2)
         axes[g].set_xticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
         axes[g].set_yticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
         control_fontsize(14, 20, 15)
+    axes[2].axvline(x=0, color='gray', linestyle='--')
+    axes[2].axhline(y=0, color='gray', linestyle='--')
 
     # common axis labels
-    fig.supxlabel('Broderick et al.(2022) values', fontsize=20)
-    fig.supylabel(f'My values: \n{dset} dataset', fontsize=20)
+    fig.supxlabel(x_label, fontsize=20)
+    fig.supylabel(y_label, fontsize=20)
     plt.tight_layout(w_pad=2)
     fig.subplots_adjust(left=.09, bottom=0.15)
     utils.save_fig(save_fig, save_path)
