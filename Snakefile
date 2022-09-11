@@ -383,7 +383,7 @@ rule plot_scatterplot_avgparams:
         params_group = [0,1,1,2,2,2,2,3,3]
         fnl_df = model_history.query('epoch == @m_epoch')[params_col]
         m_fnl_df = model.get_mean_and_std_for_each_param(fnl_df)
-        model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, x_label='Broderick et al.(2022) values', y_label=f'My values: {dset}', save_fig=True, save_path=output.scatter_fig)
+        model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, x_label='Broderick et al.(2022) values', y_label=f'My values: {wildcards.dset}', save_fig=True, save_path=output.scatter_fig)
 
 
 
