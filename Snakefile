@@ -381,6 +381,28 @@ rule plot_scatterplot_avgparams:
         params_group = [0,1,1,2,2,2,2,3,3]
         fnl_df = model_history.query('epoch == @m_epoch')[params_col]
         m_fnl_df = model.get_mean_and_std_for_each_param(fnl_df)
-        model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, wildcards.dset, save_fig=True, save_path=output.scatter_fig)
+        model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, x_label='Broderick et al.(2022) values', y_label=f'My values: {dset}', save_fig=True, save_path=output.scatter_fig)
+
+
+
+rule plot_scatterplot_avgparams_betweenVareas:
+    input:
+        roi_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
+        df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D")
+    output:
+        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1-vs-{roi}.png')
+    run:
+        sn_list = get_sn_list(wildcards.dset)
+        model_history = model.load_history_df_subj(input.df_dir,wildcards.dset,wildcards.stat,[
+            wildcards.full_ver],sn_list,[float(wildcards.lr)],[int(wildcards.max_epoch)],"model",["V1", wildcards.roi])
+        m_epoch = model_history.epoch.max()
+        params_col = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+        params_group = [0,1,1,2,2,2,2,3,3]
+        V1_df = model_history.query('epoch == @m_epoch & vroinames == "V1"')[params_col]
+        roi_df = model_history.query('epoch == @m_epoch & vroinames == @wildcards.roi')[params_col]
+
+        fnl_V1_df = model.get_mean_and_std_for_each_param(V1_df)
+        fnl_roi_df = model.get_mean_and_std_for_each_param(roi_df)
+        model.scatterplot_two_avg_params(fnl_V1_df, fnl_roi_df, params_col, params_group, x_label=f'{wildcards.dset}: V1', y_label=f'{wildcards.dset}: {wildcards.roi}', save_fig=True, save_path=output.scatter_fig)
 
 
