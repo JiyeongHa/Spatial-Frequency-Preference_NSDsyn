@@ -318,18 +318,20 @@ def sub_main(sn,
     df = df.merge(sigma_v_df, on=['voxel'])
     df = _calculate_local_orientation(df=df)
     df = _calculate_local_sf(df=df)
-    fnl_df = df.groupby(['voxel', 'class_idx']).mean().reset_index()
+    fnl_df = df.groupby(['voxel', 'class_idx', 'vroinames']).mean().reset_index()
     fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
     fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
     if save_df:
         if not os.path.exists(df_save_dir):
             os.makedirs(df_save_dir)
         for roi in df.vroinames.unique():
+            roi_df = df.query('vroinames == @roi')
+            roi_fnl_df = fnl_df.query('vroinames == @roi')
             df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs_{roi}.csv')
-            df.to_csv(df_save_path, index=False)
+            roi_df.to_csv(df_save_path, index=False)
             print(f'... {subj} {roi} dataframe saved.')
             fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs_{roi}_mean.csv")
-            fnl_df.to_csv(fnl_df_save_path, index=False)
+            roi_fnl_df.to_csv(fnl_df_save_path, index=False)
             print(f'... {subj} {roi} mean dataframe dataframe saved.')
     return fnl_df
 
