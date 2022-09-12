@@ -442,7 +442,8 @@ rule fit_tuning_curves_for_each_bin:
         mem_mb = 4000
     run:
         subj_df = pd.read_csv(input.input_path)
-        subj_df = subj_df.query('names == @wildcards.stim_type').dropna()
+        stim_type = wildcards.stim_type.replace('-', ' ')
+        subj_df = subj_df.query('names == @stim_type').dropna()
         bin_labels = subj_df.ecc_bin.unique()
         loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels, subj_df, float(wildcards.lr), int(wildcards.max_epoch), 200)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
