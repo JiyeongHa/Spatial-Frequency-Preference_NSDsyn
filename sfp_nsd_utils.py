@@ -45,7 +45,7 @@ def load_df(sn, df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/
     return df
 
 def load_all_subj_df(subj_to_run,
-                     df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
+                     df_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/',
                      df_name='results_1D_model.csv', dataset="nsd"):
     all_subj_df = []
     for sn in subj_to_run:
