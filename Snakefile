@@ -46,7 +46,7 @@ def _make_subj_list(dset):
 
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-broderick_bts-median_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e1-11_nbin-10.h5'), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"), stim_type=['pinwheel','annulus','forward spiral', 'reverse spiral'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-broderick_bts-median_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e1-11_nbin-10.h5'), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"), stim_type=['pinwheel','annulus','forward-spiral', 'reverse-spiral'])
 
 rule plot_all:
     input:
