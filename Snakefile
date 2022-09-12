@@ -419,7 +419,7 @@ rule binning:
     output:
         output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'],"dataframes","binned","{dset}","binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
+        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "binned", "{dset}","binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
     run:
         df = pd.read_csv(input.input_path)
         df = df.query('names in ["pinwheel", "annulus", "forward spiral", "reverse spiral"]')
@@ -435,7 +435,7 @@ rule fit_tuning_curves_for_each_bin:
         model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.h5'),
         loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.h5'),
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.log')
     benchmark:
         os.path.join(config['OUTPUT_DIR'],"benchmark","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.txt')
     resources:
