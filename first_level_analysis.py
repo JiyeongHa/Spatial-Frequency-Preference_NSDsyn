@@ -1,5 +1,4 @@
 import sys
-
 sys.path.append('../../')
 import os
 import numpy as np
@@ -8,6 +7,7 @@ import pandas as pd
 import torch
 import sfp_nsd_utils as utils
 from timeit import default_timer as timer
+import two_dimensional_model as model
 
 
 def torch_log_norm_pdf(x, slope, mode, sigma):
@@ -138,40 +138,6 @@ def run_1D_model(df, sn_list, stim_class_list, varea_list, ecc_bins="bins", n_pr
 
     return model_history_df, loss_history_df
 
-#
-# def fit_1D_model_all_subj(input_df, subj_list=None,
-#                           vroi_list=None, eroi_list=None, initial_val=[1, 1, 1], epoch=5000, alpha=0.025,
-#                           save_output_df=False,
-#                           output_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis',
-#                           output_df_name='1D_model_results.csv',
-#                           save_loss_df=False,
-#                           loss_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/first_level_analysis/loss_track',
-#                           loss_df_name='1D_model_loss.csv'):
-#     if subj_list is None:
-#         subj_list = utils.remove_subj_strings(input_df['subj'])
-#     if vroi_list is None:
-#         vroi_list = utils.sort_a_df_column(input_df['vroinames'])
-#     if eroi_list is None:
-#         eroi_list = utils.sort_a_df_column(input_df['eccrois'])
-#
-#     # Initialize output df
-#     output_cols = ['subj', 'vroinames', 'eccrois', 'slope', 'mode', 'sigma']
-#     output_df = utils.create_empty_df(output_cols)
-#
-#     loss_cols = ["subj", "vroinames", "eccrois", "alpha", "n_epoch", "start_loss", "final_loss"]
-#     loss_df = utils.create_empty_df(col_list=loss_cols)
-#
-#     for sn in subj_list:
-#         output_single_df, loss_single_df = fit_1D_model(df=input_df, sn=sn, vroi_list=vroi_list, eroi_list=eroi_list,
-#                                                         initial_val=initial_val, epoch=epoch, lr=alpha,
-#                                                         save_output_df=save_output_df, output_df_dir=output_df_dir,
-#                                                         output_df_name=output_df_name, save_loss_df=save_loss_df,
-#                                                         loss_df_dir=loss_df_dir, loss_df_name=loss_df_name)
-#         output_df = pd.concat([output_df, output_single_df], ignore_index=True)
-#         loss_df = pd.concat([loss_df, loss_single_df], ignore_index=True)
-#
-#     return output_df, loss_df
-
 def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
                  initial_val="random", epoch=5000, lr=1e-3):
 
@@ -220,3 +186,96 @@ def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
         columns={'level_0': "bins", 'level_1': "epoch"})
     loss_history_df['lr'] = lr
     return model_history_df, loss_history_df, elapsed_time
+
+def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
+    if bin_labels is None:
+        bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    df['ecc_bin'] = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
+    return df
+
+
+def summary_stat_for_ecc_bin(df, to_bin=["betas", "local_sf"], central_tendency="mode"):
+
+    group = ['ecc_bin', 'freq_lvl', 'names', 'vroinames']
+    if central_tendency == "mode":
+        c_df = df.groupby(group)[to_bin].agg(lambda x: pd.Series.mode(x)[0]).reset_index()
+    else:
+        c_df = df.groupby(group)[to_bin].agg(central_tendency).reset_index()
+    # this should be fixed for cases where there are more than two central tendencies.
+    return c_df
+
+
+class LogGaussianTuningDataset:
+    """Tranform dataframes to pivot style. x axis represents ecc_bin, y axis is freq_lvl."""
+    def __init__(self, df):
+        self.target = torch.tensor(df.pivot('ecc_bin', 'freq_lvl', 'betas').to_numpy())
+        self.sf = torch.tensor(df.pivot('ecc_bin', 'freq_lvl', 'local_sf').to_numpy())
+
+
+class LogGaussianTuningModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.slope = model._cast_as_param(np.random.random(1))
+        self.mode = model._cast_as_param(np.random.random(1))
+        self.sigma = model._cast_as_param(np.random.random(1))
+
+    def forward(self, x):
+        """the pdf of the log normal distribution, with a scale factor
+        """
+        # note that mode here is the actual mode, for us, the peak spatial frequency. this differs from
+        # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is the inverse of
+        # the preferred period, the inverse of the mode / the peak spatial frequency.
+        pdf = self.slope * torch.exp(-(torch.log2(x) - torch.log2(self.mode)) ** 2 / (2 * self.sigma ** 2))
+        return pdf
+
+
+def fit_tuning_curves(model, dataset, learning_rate=1e-4, max_epoch=5000, print_every=100,
+                      anomaly_detection=True, amsgrad=False, eps=1e-8):
+    """Fit log normal Gaussian tuning curves.
+    This function will allow you to run a for loop for N times set as max_epoch,
+    and return the output of the training; loss history, model history."""
+    torch.autograd.set_detect_anomaly(anomaly_detection)
+    my_parameters = [p for p in model.parameters() if p.requires_grad]
+    params_col = [name for name, param in model.named_parameters() if param.requires_grad]
+    optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, amsgrad=amsgrad, eps=eps)
+    loss_fn = torch.nn.MSELoss()
+    loss_history = []
+    model_history = []
+    start = timer()
+    for t in range(3):
+        pred = model.forward(x=dataset.sf)
+        loss = loss_fn(pred, dataset.target)
+        param_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]
+        loss_history.append(loss.item())
+        model_history.append(param_values)  # more than one item here
+        optimizer.zero_grad()  # clear previous gradients
+        loss.backward()  # compute gradients of all variables wrt loss
+        optimizer.step()  # perform updates using calculated gradients
+        model.eval()
+        if (t + 1) % print_every == 0 or t == 0:
+            content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
+            print(content)
+
+    elapsed_time = timer() - start
+    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, param_values))}\n')
+    print(f'Elapsed time: {np.round(elapsed_time, 2)} sec \n')
+    loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+    model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
+    return loss_history, model_history
+
+
+def fit_tuning_curves_for_each_bin(bin_labels, df, learning_rate=1e-4, max_epoch=5000, print_every=100,
+                                   anomaly_detection=True, amsgrad=False, eps=1e-8):
+    loss_history = {}
+    model_history = {}
+    for bin in bin_labels:
+        c_df = df.query('ecc_bin == @bin')
+        dataset = LogGaussianTuningDataset(c_df)
+        model = LogGaussianTuningModel()
+        loss_history[bin], model_history[bin] = fit_tuning_curves(model, dataset, learning_rate, max_epoch, print_every,
+                                                        anomaly_detection, amsgrad, eps)
+    loss_history = pd.concat(loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
+    model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
+    return loss_history, model_history
+
+
