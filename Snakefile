@@ -8,6 +8,8 @@ import matplotlib as mpl
 import sfp_nsd_utils as utils
 import two_dimensional_model as model
 import pickle
+from itertools import product
+import first_level_analysis as tuning
 pickle.HIGHEST_PROTOCOL = 4
 
 configfile:
@@ -16,7 +18,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [30000]
+MAX_EPOCH = [10000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -41,6 +43,10 @@ def _make_subj_list(dset):
         return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
     elif dset == "nsdsyn":
         return [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+
+rule fit_tuning_curves_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-broderick_bts-median_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e1-11_nbin-10.h5'), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"), stim_type=['pinwheel','annulus','forward spiral', 'reverse spiral'])
 
 rule plot_all:
     input:
@@ -407,4 +413,45 @@ rule plot_scatterplot_avgparams_betweenVareas:
         fnl_roi_df = model.get_mean_and_std_for_each_param(roi_df)
         model.scatterplot_two_avg_params(fnl_V1_df, fnl_roi_df, params_col, params_group, x_label=f'{wildcards.dset}: V1', y_label=f'{wildcards.dset}: {wildcards.roi}', save_fig=True, save_path=output.scatter_fig)
 
+rule binning:
+    input:
+        input_path = os.path.join(config['INPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+    output:
+        output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+    run:
+        df = pd.read_csv(input.input_path)
+        df = df.query('names in ["pinwheel", "annulus", "forward spiral", "reverse spiral"]')
+        bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
+        print(bin_list)
+        df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=None)
+        c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mode')
+        c_df.to_csv(output.output_path, index=False)
 
+rule fit_tuning_curves_for_each_bin:
+    input:
+        input_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.h5'),
+    log:
+        os.path.join(config['OUTPUT_DIR'],"logs","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.log')
+    benchmark:
+        os.path.join(config['OUTPUT_DIR'],"benchmark","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.txt')
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
+    run:
+        subj_df = pd.read_csv(input.input_path)
+        subj_df = subj_df.query('names == @wildcards.stim_type').dropna()
+        bin_labels = subj_df.ecc_bin.unique()
+        loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels, subj_df, float(wildcards.lr), int(wildcards.max_epoch), 200)
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+rule plot_tuning_curves:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{{dset}}_bts-{{stat}}_{{subj}}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}_{stim_type}_e{{e1}}-{{e2}}_nbin-{{enum}}.h5'), stim_type=['pinwheel','annulus','forward spiral', 'reverse spiral'])
+    output:
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'model_history_dset-{dset}_bts-{stat}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}_e{e1}-{e2}_nbin-{enum}.h5')
+    run:
+        df = pd.read_csv(input[0])
