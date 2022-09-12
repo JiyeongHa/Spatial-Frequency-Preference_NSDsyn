@@ -13,7 +13,7 @@ from itertools import product
 from inspect import getfullargspec
 import voxel_selection as vs
 import seaborn as sns
-
+import first_level_analysis as tuning
 
 params = pd.DataFrame({'sigma': [2.2], 'slope': [0.12], 'intercept': [0.35],
                        'p_1': [0.06], 'p_2': [-0.03], 'p_3': [0.07], 'p_4': [0.005],
@@ -574,4 +574,14 @@ fig.supxlabel('Broderick et al.(2022) values')
 fig.supylabel(f'My values: {dset}')
 plt.show()
 
+sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+all_subj_df = utils.load_all_subj_df(sn_list, df_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick',
+                       df_name='stim_voxel_info_df_vs_V1_median.csv', dataset="broderick")
 
+
+df = tuning.bin_ecc(df, np.arange(1,13), to_bin='eccentricity', bin_labels=None)
+c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mode')
+c_df = c_df.query('vroinames == "V1" & names == "annulus" & ecc_bin == "2-3 deg"')
+my_dataset = tuning.LogGaussianTuningDataset(c_df)
+my_model = tuning.LogGaussianTuningModel()
+loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset, max_epoch=10)
