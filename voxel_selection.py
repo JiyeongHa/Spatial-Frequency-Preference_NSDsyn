@@ -156,5 +156,7 @@ def drop_voxels(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas', in_pix=
 def select_voxels(df, inner_border, outer_border, dv_to_group=['voxel'], beta_col='betas', near_border=True):
     if near_border is True:
         df = drop_voxels_near_border(df, inner_border, outer_border, dv_to_group)
+    else:
+        df = df.query('@inner_border < eccentricity < @outer_border')
     vs_df = drop_voxels_with_mean_negative_amplitudes(df, dv_to_group, beta_col)
     return vs_df
