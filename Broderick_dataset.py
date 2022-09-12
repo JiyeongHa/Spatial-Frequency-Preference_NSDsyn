@@ -223,7 +223,7 @@ def sub_main(sn,
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
              df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick',
-             save_df=False, voxel_selection=True):
+             save_df=False, voxel_criteria='pRFcenter'):
     for roi in vroi_range:
         print(f'**{roi}**')
         subj = utils.sub_number_to_string(sn, dataset="broderick")
@@ -236,7 +236,9 @@ def sub_main(sn,
         voxel_df = merge_prf_and_betas(betas_df, prf_df)
         df = concat_lh_and_rh_df(voxel_df)
         df = df.rename(columns={'eccen': 'eccentricity'})
-        if voxel_selection:
+        if voxel_criteria == 'pRFcenter':
+            df = vs.select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'], beta_col='betas', near_border=False)
+        elif voxel_criteria == 'pRFsigma':
             df = vs.select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'], beta_col='betas', near_border=True)
         df = add_stim_info_to_df(df, stim_df)
         df = calculate_local_orientation(df)
@@ -250,14 +252,13 @@ def sub_main(sn,
             # save the final output
             if not os.path.exists(df_save_dir):
                 os.makedirs(df_save_dir)
-            df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs_{roi}.csv")
+            df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv")
             df.to_csv(df_save_path, index=False)
             print(f'... {subj} dataframe saved.')
-            df = pd.read_csv(os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs_{roi}.csv"))
             fnl_df = df.groupby(['voxel', 'class_idx', 'vroinames', 'names']).median().reset_index()
             fnl_df = fnl_df.drop(['bootstraps', 'phase'], axis=1)
             fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=True)
-            fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs_{roi}_median.csv")
+            fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_median.csv")
             fnl_df.to_csv(fnl_df_save_path, index=False)
             print(f'... {subj} median dataframe dataframe saved.')
     return fnl_df
@@ -270,12 +271,12 @@ def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
              prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
              beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
              df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick',
-             save_df=True, voxel_selection=True):
+             save_df=True, voxel_criteria='pRFcenter'):
     df = {}
     for sn in sn_list:
         df[sn] = sub_main(sn, stim_description_path,
                       vroi_range, eroi_range,
-                      mask_path, prf_label_names, prf_dir, beta_dir, df_save_dir, save_df, voxel_selection)
+                      mask_path, prf_label_names, prf_dir, beta_dir, df_save_dir, save_df, voxel_criteria)
     all_subj_df = pd.concat(df, ignore_index=True)
     return all_subj_df
 
