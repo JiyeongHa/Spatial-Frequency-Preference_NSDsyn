@@ -418,11 +418,12 @@ rule binning:
         input_path = os.path.join(config['INPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
     output:
         output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+    log:
+        os.path.join(config['OUTPUT_DIR'],"dataframes","binned","{dset}","binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
     run:
         df = pd.read_csv(input.input_path)
         df = df.query('names in ["pinwheel", "annulus", "forward spiral", "reverse spiral"]')
         bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
-        print(bin_list)
         df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=None)
         c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mode')
         c_df.to_csv(output.output_path, index=False)
