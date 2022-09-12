@@ -16,5 +16,10 @@
     {
 	"mem": "{resources.mem_mb}MB",
 	"cpus_per_task": "{resources.cpus_per_task}"
-    }
+    },
+	"fit_tuning_curves_for_each_bin":
+	{
+	"mem": "{resources.mem_mb}MB",
+	"cpus_per_task": "{resources.cpus_per_task}"
+	}
 }
