@@ -419,7 +419,7 @@ rule binning:
     output:
         output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "binned", "{dset}","binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
+        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
     run:
         df = pd.read_csv(input.input_path)
         df = df.query('names in ["pinwheel", "annulus", "forward spiral", "reverse spiral"]')
