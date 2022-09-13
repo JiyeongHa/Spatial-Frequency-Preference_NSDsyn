@@ -422,11 +422,17 @@ rule binning:
         os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
     run:
         df = pd.read_csv(input.input_path)
-        df = df.query('names in ["pinwheel", "annulus", "forward spiral", "reverse spiral"]')
+        df = df.replace({'names': {'forward spiral': 'forward-spiral', 'reverse spiral': 'reverse-spiral'}})
+        df = df.query('names in @stim_list')
         bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
         df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=None)
-        c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mode')
+        c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mean')
         c_df.to_csv(output.output_path, index=False)
+
+def get_ecc_bin_list(wildcards):
+    bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), wildcards.nbin)
+    bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    return bin_list, bin_labels
 
 rule fit_tuning_curves_for_each_bin:
     input:
@@ -436,15 +442,12 @@ rule fit_tuning_curves_for_each_bin:
         loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
     log:
         os.path.join(config['OUTPUT_DIR'],"logs", "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
-    benchmark:
-        os.path.join(config['OUTPUT_DIR'],"benchmark","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.txt')
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
     run:
         subj_df = pd.read_csv(input.input_path)
-        stim_type = wildcards.stim_type.replace('-', ' ')
-        subj_df = subj_df.query('names == @stim_type').dropna()
+        subj_df = subj_df.query('names == @wildcards.stim_type').dropna()
         bin_labels = subj_df.ecc_bin.unique()
         loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels, subj_df, float(wildcards.lr), int(wildcards.max_epoch), 200)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
@@ -468,7 +471,7 @@ rule combine_all_stim:
     output:
         allstim = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5')
     log:
-        os.path.join(config['OUTPUT_DIR'],"log", "sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
     run:
         all_df = pd.DataFrame({})
         for stim, f in zip(stim_list, input.file_names):
@@ -479,5 +482,3 @@ rule combine_all_stim:
         all_df.to_hdf(output.allstim, key='stage', mode='w')
         for f in input.file_names:
             os.remove(f)
-
-rule plot_model_history:
