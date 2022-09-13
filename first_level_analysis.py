@@ -198,7 +198,7 @@ def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
 
 def summary_stat_for_ecc_bin(df, to_bin=["betas", "local_sf"], central_tendency="mode"):
 
-    group = ['ecc_bin', 'freq_lvl', 'names', 'vroinames']
+    group = ['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames']
     if central_tendency == "mode":
         c_df = df.groupby(group)[to_bin].agg(lambda x: pd.Series.mode(x)[0]).reset_index()
     else:
