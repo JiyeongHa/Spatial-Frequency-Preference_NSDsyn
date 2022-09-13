@@ -255,7 +255,7 @@ def sub_main(sn,
             df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv")
             df.to_csv(df_save_path, index=False)
             print(f'... {subj} dataframe saved.')
-            fnl_df = df.groupby(['voxel', 'class_idx', 'vroinames', 'names']).median().reset_index()
+            fnl_df = df.groupby(['subj', 'voxel', 'class_idx', 'vroinames', 'names']).median().reset_index()
             fnl_df = fnl_df.drop(['bootstraps', 'phase'], axis=1)
             fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=True)
             fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_median.csv")
