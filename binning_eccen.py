@@ -276,11 +276,8 @@ def lineplot_2D(mean_df,
 
 def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
     if bin_labels is None:
-        bin_labels = [f'{str(a)}-{str(b)}' for a, b in zip(bin_list[:-1], bin_list[1:])]
-
-    bins = pd.cut(df[to_bin], bins=bin_list, include_lowest=True,
-                        labels=bin_labels)
-
+        bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    bins = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
     return bins
 
 

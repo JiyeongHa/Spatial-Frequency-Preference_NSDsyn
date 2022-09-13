@@ -26,7 +26,7 @@ SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 ROIS = ["V1", "V2", "V3"]
-
+stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 
 def get_sn_list(dset):
     if dset == "broderick":
@@ -46,7 +46,7 @@ def _make_subj_list(dset):
 
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-broderick_bts-median_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e1-11_nbin-10.h5'), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"), stim_type=['pinwheel','annulus','forward-spiral', 'reverse-spiral'])
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
 
 rule plot_all:
     input:
@@ -450,10 +450,34 @@ rule fit_tuning_curves_for_each_bin:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-rule plot_tuning_curves:
+def make_file_name_list(wildcards, stim_list):
+    f_names = [f'{wildcards.df_type}_history_dset-{wildcards.dset}_bts-{wildcards.stat}_{wildcards.subj}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_{wildcards.roi}_{stim}_vs-pRFcenter_e{wildcards.e1}-{wildcards.e2}_nbin-{wildcards.enum}.h5' for stim in stim_list]
+    return f_names
+
+def make_info_columns(wildcards, df):
+    df['dset'] = wildcards.dset
+    df['subj'] = wildcards.subj
+    df['vroinames'] = wildcards.roi
+    df['lr_rate'] = float(wildcards.lr)
+    df['max_epoch'] = int(wildcards.max_epoch)
+    return df
+
+rule combine_all_stim:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{{dset}}_bts-{{stat}}_{{subj}}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}_{stim_type}_vs-pRFcenter_e{{e1}}-{{e2}}_nbin-{{enum}}.h5'), stim_type=['pinwheel','annulus','forward spiral', 'reverse spiral'])
+        file_names = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{f_name}"), f_name=make_file_name_list(wildcards, stim_list))
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'model_history_dset-{dset}_bts-{stat}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5')
+        allstim = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5')
+    log:
+        os.path.join(config['OUTPUT_DIR'],"log", "sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
     run:
-        df = pd.read_csv(input[0])
+        all_df = pd.DataFrame({})
+        for stim, f in zip(stim_list, input.file_names):
+            df = pd.read_hdf(f)
+            df['names'] = stim
+            df = make_info_columns(wildcards, df)
+            all_df = pd.concat((all_df, df), axis=0)
+        all_df.to_hdf(output.allstim, key='stage', mode='w')
+        for f in input.file_names:
+            os.remove(f)
+
+rule plot_model_history:
