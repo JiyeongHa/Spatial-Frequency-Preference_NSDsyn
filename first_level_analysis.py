@@ -8,7 +8,9 @@ import torch
 import sfp_nsd_utils as utils
 from timeit import default_timer as timer
 import two_dimensional_model as model
-
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 def torch_log_norm_pdf(x, slope, mode, sigma):
     """the pdf of the log normal distribution, with a scale factor
@@ -277,5 +279,99 @@ def fit_tuning_curves_for_each_bin(bin_labels, df, learning_rate=1e-4, max_epoch
     loss_history = pd.concat(loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
     model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
     return loss_history, model_history
+
+def load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, df_dir):
+    subj = utils.sub_number_to_string(sn, dataset=dset)
+    f_name = f'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr_rate}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{nbin}.h5'
+    return pd.read_hdf(os.path.join(df_dir, f_name))
+
+def load_history_1D_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, df_dir):
+    df = pd.DataFrame({})
+    for sn in sn_list:
+        tmp = load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, df_dir)
+        df = pd.concat((df, tmp), axis=0)
+    return df
+
+def load_binned_df_1D(sn, dset, stat, roi, e1, e2, nbin, df_dir):
+    subj = utils.sub_number_to_string(sn, dataset=dset)
+    f_name = f'binned_e{e1}-{e2}_nbin-{nbin}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv'
+    df = pd.read_csv(os.path.join(df_dir, f_name))
+    if 'subj' not in df.columns.tolist():
+        df['subj'] = subj
+    return df
+
+def load_binned_df_1D_all_subj(sn_list, dset, stat, roi, e1, e2, nbin, df_dir):
+    df = pd.DataFrame({})
+    for sn in sn_list:
+        tmp = load_binned_df_1D(sn, dset, stat, roi, e1, e2, nbin, df_dir)
+        df = pd.concat((df, tmp), axis=0)
+    return df
+
+def _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=["subj","vroinames", "ecc_bin", 'names']):
+    max_epoch = model_history.epoch.max()
+    model_history = model_history.query('epoch == @max_epoch')
+    merged_df = binned_df.merge(model_history, on=merge_on)
+    return merged_df
+
+def load_and_merge_1D_df(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, input_dir, output_dir):
+    model_history = load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, output_dir)
+    binned_df = load_binned_df_1D(sn, dset, stat, roi, e1, e2, nbin, input_dir)
+    return _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=['ecc_bin','names'])
+
+def load_and_merge_1D_df_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, input_dir, output_dir):
+    model_history = load_history_1D_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, output_dir)
+    binned_df = load_binned_df_1D_all_subj(sn_list, dset, stat, roi, e1, e2, nbin, input_dir)
+    return _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=['subj', 'vroinames', 'ecc_bin','names'])
+
+
+
+def tuning_plot(df, col='names', hue='ecc_bin', lgd_title='Eccentricity',
+                save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/1D_results.png'):
+    col_order = utils.sort_a_df_column(df[col])
+    sns.set_context("notebook", font_scale=1.5)
+    grid = sns.FacetGrid(df,
+                         col=col,
+                         hue=hue,
+                         hue_order=df[hue].unique(),
+                         palette=sns.color_palette("rocket"),
+                         col_wrap=4,
+                         sharex=True, sharey=True)
+    g = grid.map(sns.scatterplot, 'local_sf', 'betas')
+    grid.map(sns.lineplot, 'local_sf', 'y_lg_pdf')
+    for subplot_title, ax in grid.axes_dict.items():
+        print(ax)
+    grid.set_axis_labels('Spatial Frequency', 'Beta')
+    grid.fig.legend(title=lgd_title, labels=[x.replace('-', ' ') for x in df.names.unique()])
+    plt.xscale('log')
+    #utils.save_fig(save_fig, save_path)
+    return grid
+
+def _get_x_and_y_prediction(min, max, fnl_param_df):
+    x = np.linspace(min, max, 30)
+    y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for k in x]
+    return x, y
+
+def tuning_plot_new(df, fnl_param_df, col='names'):
+    subplot_list = df[col].unique()
+    fig, axes = plt.subplots(1, len(subplot_list), figsize=(20, 5), dpi=300, sharex=True, sharey=True)
+    ecc_list = df['ecc_bin'].unique()
+    colors = mpl.cm.viridis(np.linspace(0, 1, len(ecc_list)+5))
+
+    for g in range(len(subplot_list)):
+        for ecc in range(len(ecc_list)):
+            tmp = df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
+            x = tmp['local_sf']
+            y = tmp['betas']
+            axes[g].scatter(x, y, s=20, c=colors[ecc+1], alpha=0.9, label=ecc_list[ecc])
+            tmp_history = fnl_param_df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
+            pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
+            axes[g].plot(pred_x, pred_y, c=colors[ecc+1], linewidth=2)
+            plt.xscale('log')
+            model.control_fontsize(14, 20, 15)
+    axes[len(subplot_list)-1].legend(loc='best', ncol=1)
+    fig.supxlabel('Spatial Frequency', fontsize=20)
+    fig.supylabel('Beta', fontsize=20)
+    plt.tight_layout(w_pad=2)
+    fig.subplots_adjust(left=.09, bottom=0.15)
 
 
