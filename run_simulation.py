@@ -585,3 +585,28 @@ c_df = c_df.query('vroinames == "V1" & names == "annulus" & ecc_bin == "2-3 deg"
 my_dataset = tuning.LogGaussianTuningDataset(c_df)
 my_model = tuning.LogGaussianTuningModel()
 loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset, max_epoch=10)
+
+df = tuning.load_and_merge_1D_df_all_subj(sn_list=[1], dset='broderick', stat='median', df_type='model', roi='V1',
+                                          lr_rate='0.0005', max_epoch='2', e1='1', e2='12', nbin='11',
+                                          input_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/binned/broderick/',
+                                          output_dir='/Volumes/server/Projects/sfp_nsd/derivatives/sfp_model/results_1D')
+
+bin_df = tuning.load_binned_df_1D(1, dset='broderick', stat='median', roi='V1', e1='1', e2=12, nbin=11,
+                         df_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/binned/broderick/')
+history_df = tuning.load_history_df_1D(1, dset='broderick', stat='median', df_type='model', roi='V1',
+                          lr_rate='0.0005', max_epoch='1000', e1='1', e2='12', nbin='11',
+                          df_dir='/Volumes/server/Projects/sfp_nsd/derivatives/sfp_model/results_1D')
+fnl_param_df = history_df.query('epoch == 999')
+df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick/sub-wlsubj001_stim_voxel_info_df_vs-pRFcenter_V1_median.csv')
+
+
+m_df = merge_pdf_values(fnl_param_df, subj_df=df, merge_on_cols=["subj", "vroinames", 'names', "ecc_bin"], merge_output_df=True)
+
+b_df = tuning.bin_ecc(df, bin_list=np.arange(1,12), to_bin='eccentricity', bin_labels=None)
+c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='median')
+grid = tuning.tuning_plot(c_df.query('names != "mixtures"'))
+grid.map(sns.lineplot, data=history_df, x='sigma', y='slope')
+plt.show()
+
+df=c_df
+fnl_param_df=history_df.query('epoch == 1')
