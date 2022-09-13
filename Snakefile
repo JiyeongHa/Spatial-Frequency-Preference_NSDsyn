@@ -25,7 +25,7 @@ PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
-ROIS = ["V1"]
+ROIS = ["V1", "V2", "V3"]
 stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 
 def get_sn_list(dset):
@@ -46,7 +46,7 @@ def _make_subj_list(dset):
 
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick")[0])
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
 
 rule plot_all:
     input:
