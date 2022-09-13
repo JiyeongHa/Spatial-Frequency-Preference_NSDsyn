@@ -242,7 +242,7 @@ def fit_tuning_curves(model, dataset, learning_rate=1e-4, max_epoch=5000, print_
     loss_history = []
     model_history = []
     start = timer()
-    for t in range(3):
+    for t in range(max_epoch):
         pred = model.forward(x=dataset.sf)
         loss = loss_fn(pred, dataset.target)
         param_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]
