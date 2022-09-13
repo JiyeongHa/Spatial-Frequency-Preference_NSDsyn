@@ -46,7 +46,7 @@ def _make_subj_list(dset):
 
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-broderick_bts-median_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e1-11_nbin-10.h5'), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"), stim_type=['pinwheel','annulus','forward-spiral', 'reverse-spiral'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-broderick_bts-median_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e1-11_nbin-10.h5'), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"), stim_type=['pinwheel','annulus','forward-spiral', 'reverse-spiral'])
 
 rule plot_all:
     input:
@@ -415,9 +415,9 @@ rule plot_scatterplot_avgparams_betweenVareas:
 
 rule binning:
     input:
-        input_path = os.path.join(config['INPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+        input_path = os.path.join(config['INPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     output:
-        output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+        output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     log:
         os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
     run:
@@ -430,14 +430,14 @@ rule binning:
 
 rule fit_tuning_curves_for_each_bin:
     input:
-        input_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+        input_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.h5'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
     benchmark:
-        os.path.join(config['OUTPUT_DIR'],"benchmark","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_e{e1}-{e2}_nbin-{enum}.txt')
+        os.path.join(config['OUTPUT_DIR'],"benchmark","sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.txt')
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
@@ -452,8 +452,8 @@ rule fit_tuning_curves_for_each_bin:
 
 rule plot_tuning_curves:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{{dset}}_bts-{{stat}}_{{subj}}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}_{stim_type}_e{{e1}}-{{e2}}_nbin-{{enum}}.h5'), stim_type=['pinwheel','annulus','forward spiral', 'reverse spiral'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{{dset}}_bts-{{stat}}_{{subj}}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}_{stim_type}_vs-pRFcenter_e{{e1}}-{{e2}}_nbin-{{enum}}.h5'), stim_type=['pinwheel','annulus','forward spiral', 'reverse spiral'])
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'model_history_dset-{dset}_bts-{stat}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}_e{e1}-{e2}_nbin-{enum}.h5')
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'model_history_dset-{dset}_bts-{stat}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5')
     run:
         df = pd.read_csv(input[0])
