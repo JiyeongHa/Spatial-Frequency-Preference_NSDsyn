@@ -18,7 +18,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.001] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [2]
+MAX_EPOCH = [15000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -47,7 +47,8 @@ def _make_subj_list(dset):
 
 def get_ecc_bin_list(wildcards):
     if 'log' in wildcards.enum:
-        bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(wildcards.enum.replace('log', ''))+1, base=2)
+        enum_only = wildcards.enum[3:]
+        bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(enum_only)+1, base=2)
     else:
         bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
@@ -55,8 +56,8 @@ def get_ecc_bin_list(wildcards):
 
 rule plot_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS[0], subj=_make_subj_list("nsdsyn")[1]),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS[0], subj=_make_subj_list("broderick")[1])
+        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn")),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
 
 rule fit_tuning_curves_all:
     input:
@@ -500,12 +501,16 @@ rule plot_tuning_curves:
         model_history = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
         binned_df = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     output:
+        #output_dir = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D"),
         tuning_curves = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png')
     log:
         os.path.join(config['OUTPUT_DIR'],"logs", "figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
     run:
         bin_df = pd.read_csv(input.binned_df)
         model_df = pd.read_hdf(input.model_history)
-        max_epoch = model_df['epoch'].max()
+        max_epoch = model_df.epoch.max()
+        #model_df = tuning.load_history_df_1D(wildcards.subj, wildcards.dset,wildcards.stat, 'model',wildcards.roi,wildcards.lr,wildcards.max_epoch,wildcards.e1,wildcards.e2,wildcards.enum, output.output_dir)
+
+        print(max_epoch)
         model_df = model_df.query('epoch == @max_epoch')
         tuning.plot_curves(bin_df, model_df, col='names', save_fig=True, save_path=output.tuning_curves)
