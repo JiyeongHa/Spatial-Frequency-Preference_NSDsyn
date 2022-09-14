@@ -18,7 +18,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [1]
+MAX_EPOCH = [10000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -482,3 +482,16 @@ rule combine_all_stim:
         all_df.to_hdf(output.allstim, key='stage', mode='w')
         for f in input.file_names:
             os.remove(f)
+
+rule plot_tuning_curves:
+    input:
+        model_history = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
+        binned_df = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
+    output:
+        tuning_curves = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png')
+    run:
+        bin_df = pd.read_csv(input.binned_df)
+        model_df = pd.read_hdf(input.model_history)
+        max_epoch = model_df['epoch'].max()
+        model_df = model_df.query('epoch == @max_epoch')
+        tuning.plot_curves(bin_df, model_df, col='names', save_fig=True, save_path=output.tuning_curves)
