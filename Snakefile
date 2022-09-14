@@ -61,7 +61,7 @@ rule plot_tuning_curves_all:
 
 rule fit_tuning_curves_all:
     input:
-        #expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick")),
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='0.5', e2='4', enum='log4', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn"))
 
 rule plot_all:
@@ -499,7 +499,7 @@ rule combine_all_stim:
 rule plot_tuning_curves:
     input:
         model_history = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
-        binned_df = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
+        binned_df = os.path.join(config['OUTPUT_DIR'], "dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     output:
         #output_dir = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D"),
         tuning_curves = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png')
