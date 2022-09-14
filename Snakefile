@@ -362,7 +362,7 @@ rule plot_scatterplot_subj:
     output:
         scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs","sfp_model","results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs","figures", "sfp_model","results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.log')
     run:
         bd_df = pd.read_csv(input.bd_file)
         sn_list = get_sn_list(wildcards.dset)
@@ -500,6 +500,8 @@ rule plot_tuning_curves:
         binned_df = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     output:
         tuning_curves = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png')
+    log:
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
     run:
         bin_df = pd.read_csv(input.binned_df)
         model_df = pd.read_hdf(input.model_history)
