@@ -325,7 +325,7 @@ def load_and_merge_1D_df_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, ma
 
 
 
-def tuning_plot(df, col='names', hue='ecc_bin', lgd_title='Eccentricity',
+def tuning_plot_old(df, col='names', hue='ecc_bin', lgd_title='Eccentricity',
                 save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/1D_results.png'):
     col_order = utils.sort_a_df_column(df[col])
     sns.set_context("notebook", font_scale=1.5)
@@ -351,24 +351,26 @@ def _get_x_and_y_prediction(min, max, fnl_param_df):
     y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for k in x]
     return x, y
 
-def tuning_plot_new(df, fnl_param_df, col='names'):
+def plot_curves(df, fnl_param_df, col='names', save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
     subplot_list = df[col].unique()
-    fig, axes = plt.subplots(1, len(subplot_list), figsize=(20, 5), dpi=300, sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 5.5), dpi=300, sharex=True, sharey=True)
     ecc_list = df['ecc_bin'].unique()
-    colors = mpl.cm.viridis(np.linspace(0, 1, len(ecc_list)+5))
+    colors = mpl.cm.viridis(np.linspace(0, 1, len(ecc_list)))
 
     for g in range(len(subplot_list)):
         for ecc in range(len(ecc_list)):
             tmp = df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
             x = tmp['local_sf']
             y = tmp['betas']
-            axes[g].scatter(x, y, s=20, c=colors[ecc+1], alpha=0.9, label=ecc_list[ecc])
+            axes[g].scatter(x, y, s=23, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc])
             tmp_history = fnl_param_df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
             pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
-            axes[g].plot(pred_x, pred_y, c=colors[ecc+1], linewidth=2)
+            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=2)
             plt.xscale('log')
-            model.control_fontsize(14, 20, 15)
-    axes[len(subplot_list)-1].legend(loc='best', ncol=1)
+        axes[g].spines['top'].set_visible(False)
+        axes[g].spines['right'].set_visible(False)
+        model.control_fontsize(14, 20, 15)
+    axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
     fig.supxlabel('Spatial Frequency', fontsize=20)
     fig.supylabel('Beta', fontsize=20)
     plt.tight_layout(w_pad=2)
