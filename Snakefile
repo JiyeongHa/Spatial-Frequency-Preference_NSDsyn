@@ -42,11 +42,21 @@ def _make_subj_list(dset):
     if dset == "broderick":
         return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
     elif dset == "nsdsyn":
-        return [utils.sub_number_to_string(sn, dataset="nsd") for sn in np.arange(1,9)]
+        return [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in np.arange(1,9)]
+
+def get_ecc_bin_list(wildcards):
+    if 'log' in wildcards.enum:
+        bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(wildcards.enum.replace('log', '')), base=2)
+    else:
+        bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), wildcards.nbin)
+    bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    return bin_list, bin_labels
+
 
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
+        #expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='0.5', e2='4', enum='log4', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn"))
 
 rule plot_all:
     input:
@@ -424,15 +434,12 @@ rule binning:
         df = pd.read_csv(input.input_path)
         df = df.replace({'names': {'forward spiral': 'forward-spiral', 'reverse spiral': 'reverse-spiral'}})
         df = df.query('names in @stim_list')
-        bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
-        df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=None)
+        bin_list, bin_labels = get_ecc_bin_list(wildcards)
+        print(bin_labels)
+        df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=bin_labels)
         c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mean')
         c_df.to_csv(output.output_path, index=False)
 
-def get_ecc_bin_list(wildcards):
-    bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), wildcards.nbin)
-    bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
-    return bin_list, bin_labels
 
 rule fit_tuning_curves_for_each_bin:
     input:

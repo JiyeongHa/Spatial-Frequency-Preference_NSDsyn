@@ -608,5 +608,5 @@ grid = tuning.tuning_plot(c_df.query('names != "mixtures"'))
 grid.map(sns.lineplot, data=history_df, x='sigma', y='slope')
 plt.show()
 
-df=c_df
-fnl_param_df=history_df.query('epoch == 1')
+tuning.tuning_plot(df, fnl_param_df)
+plt.show()
