@@ -46,7 +46,7 @@ def _make_subj_list(dset):
 
 def get_ecc_bin_list(wildcards):
     if 'log' in wildcards.enum:
-        bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(wildcards.enum.replace('log', '')+1), base=2)
+        bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(wildcards.enum.replace('log', ''))+1, base=2)
     else:
         bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
