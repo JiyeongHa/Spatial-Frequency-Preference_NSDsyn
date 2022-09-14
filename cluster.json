@@ -9,7 +9,7 @@
 	"cpus_per_task": 1,
 	"output": "{log}-%j",
 	"error": "{log}-%j",
-	"mail_type": "FAIL",
+	"mail_type": "TIME_LIMIT_90",
 	"mail_user": "jiyeong.ha@nyu.edu"
     },
     "run_model":
