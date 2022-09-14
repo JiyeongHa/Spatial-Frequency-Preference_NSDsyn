@@ -296,7 +296,7 @@ def sub_main(sn,
              eroi_range=[1, 2, 3, 4, 5],
              mask_type=['visroi', 'eccroi'],
              df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
-             save_df=True):
+             save_df=True, voxel_criteria='pRFcenter'):
     subj = utils.sub_number_to_string(sn, dataset="nsdsyn")
     print(f'*** creating a dataframe for subject no.{sn} ***')
     mask = _masking(freesurfer_dir=freesurfer_dir, subj=subj,
@@ -318,7 +318,7 @@ def sub_main(sn,
     df = df.merge(sigma_v_df, on=['voxel'])
     df = _calculate_local_orientation(df=df)
     df = _calculate_local_sf(df=df)
-    fnl_df = df.groupby(['voxel', 'class_idx', 'vroinames']).mean().reset_index()
+    fnl_df = df.groupby(['voxel', 'names', 'class_idx', 'vroinames']).mean().reset_index()
     fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
     fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
     if save_df:
@@ -327,10 +327,10 @@ def sub_main(sn,
         for roi in df.vroinames.unique():
             roi_df = df.query('vroinames == @roi')
             roi_fnl_df = fnl_df.query('vroinames == @roi')
-            df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs_{roi}.csv')
+            df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv')
             roi_df.to_csv(df_save_path, index=False)
             print(f'... {subj} {roi} dataframe saved.')
-            fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs_{roi}_mean.csv")
+            fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_mean.csv")
             roi_fnl_df.to_csv(fnl_df_save_path, index=False)
             print(f'... {subj} {roi} mean dataframe dataframe saved.')
     return fnl_df
@@ -365,6 +365,8 @@ def add_class_idx_to_stim_df(save=True):
     tmp_nsd_stim_df = nsd_stim_df.query('phase == 0')
     tmp_nsd_stim_df['class_idx'] = np.arange(0, 28)
     tmp_nsd_stim_df = tmp_nsd_stim_df[['names', 'w_a', 'w_r', 'class_idx']]
+    tmp = np.tile(np.arange(0,6), 4)
+    tmp_nsd_stim_df['freq_lvl'] =np.concatenate((tmp, np.array([3, 3, 3, 3])))
     nsd_stim_df = nsd_stim_df.merge(tmp_nsd_stim_df, on=['names', 'w_a', 'w_r'])
     if save:
         nsd_stim_df.to_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv', index=False)
