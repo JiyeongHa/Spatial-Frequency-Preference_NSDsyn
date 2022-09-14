@@ -15,10 +15,10 @@ pickle.HIGHEST_PROTOCOL = 4
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
+LR_RATE = [0.001] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [10000]
+MAX_EPOCH = [2]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -44,6 +44,7 @@ def _make_subj_list(dset):
     elif dset == "nsdsyn":
         return [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in np.arange(1,9)]
 
+
 def get_ecc_bin_list(wildcards):
     if 'log' in wildcards.enum:
         bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(wildcards.enum.replace('log', ''))+1, base=2)
@@ -54,8 +55,8 @@ def get_ecc_bin_list(wildcards):
 
 rule plot_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn")),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
+        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS[0], subj=_make_subj_list("nsdsyn")[1]),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS[0], subj=_make_subj_list("broderick")[1])
 
 rule fit_tuning_curves_all:
     input:
@@ -491,8 +492,8 @@ rule combine_all_stim:
             df = make_info_columns(wildcards, df)
             all_df = pd.concat((all_df, df), axis=0)
         all_df.to_hdf(output.allstim, key='stage', mode='w')
-        for f in input.file_names:
-            os.remove(f)
+        # for f in input.file_names:
+        #     os.remove(f)
 
 rule plot_tuning_curves:
     input:
