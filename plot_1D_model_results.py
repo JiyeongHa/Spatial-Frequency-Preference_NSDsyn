@@ -11,12 +11,13 @@ from first_level_analysis import np_log_norm_pdf
 def _merge_fitting_output_df_to_subj_df(model_df, subj_df, merge_on=["subj","vroinames", "eccrois"]):
     merged_df = subj_df.merge(model_df, on=merge_on)
     return merged_df
+
 def _get_y_pdf(row):
-    y_pdf = np_log_norm_pdf(row['local_sf'], row['amp'], row['mode'], row['sigma'])
+    y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
     return y_pdf
 
 
-def merge_pdf_values(model_df, subj_df=None, merge_on_cols=["subj", "vroinames", "eccrois"], merge_output_df=True):
+def merge_pdf_values(model_df, subj_df=None, merge_on_cols=["subj", "vroinames", "ecc_bin"], merge_output_df=True):
     if merge_output_df:
         merge_df = _merge_fitting_output_df_to_subj_df(model_df, subj_df, merge_on=merge_on_cols)
     else:
@@ -26,31 +27,28 @@ def merge_pdf_values(model_df, subj_df=None, merge_on_cols=["subj", "vroinames",
 
 
 def beta_vs_sf_scatterplot(subj, merged_df, to_subplot="vroinames", n_sp_low=2,
-                           legend_out=True, to_label="eccrois",
-                           dp_to_x_axis='local_sf', dp_to_y_axis='avg_betas', plot_pdf=True,
+                           legend_out=True, to_label="ecc_bin",
+                            plot_pdf=True,
                            ln_y_axis="y_lg_pdf", x_axis_label="Spatial Frequency", y_axis_label="Beta",
-                           legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
+                           legend_title="Eccentricity",
                            save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
                            save_file_name='.png'):
     sn = utils.sub_number_to_string(subj)
-
     cur_df = merged_df.query('subj == @sn')
     col_order = utils.sort_a_df_column(cur_df[to_subplot])
     grid = sns.FacetGrid(cur_df,
                          col=to_subplot,
                          col_order=col_order,
-                         hue=to_label,
-                         hue_order=labels,
+                         hue="ecc_bin",
+                         hue_order=merged_df['ecc_bin'].unique(),
                          palette=sns.color_palette("rocket"),
-                         col_wrap=n_sp_low,
-                         legend_out=legend_out,
-                         xlim=[10 ** -1, 10 ** 2],
+                         col_wrap=4,
                          sharex=True, sharey=True)
-    g = grid.map(sns.scatterplot, dp_to_x_axis, dp_to_y_axis)
+    g = grid.map(sns.scatterplot, 'local_sf', 'betas')
     if plot_pdf:
-        grid.map(sns.lineplot, dp_to_x_axis, ln_y_axis, linewidth=2)
+        grid.map(sns.lineplot, 'local_sf', ln_y_axis, linewidth=2)
     grid.set_axis_labels(x_axis_label, y_axis_label)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.9), labels=labels, fontsize=15)
+    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.9), labels=merged_df['ecc_bin'].unique(), fontsize=15)
     # Put the legend out of the figure
     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     for subplot_title, ax in grid.axes_dict.items():
