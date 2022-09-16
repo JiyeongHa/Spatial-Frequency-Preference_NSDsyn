@@ -196,6 +196,15 @@ def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
     ecc_bin = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
     return ecc_bin
 
+def get_bin_labels(e1, e2, enum):
+
+    if 'log' in enum:
+        enum_only = enum[3:]
+        bin_list = np.round(np.logspace(np.log2(float(e1)), np.log2(float(e2)), num=int(enum_only)+1, base=2), 2)
+    else:
+        bin_list = np.round(np.linspace(float(e1), float(e2), int(enum)+1), 2)
+    bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    return bin_list, bin_labels
 
 def summary_stat_for_ecc_bin(df, to_bin=["betas", "local_sf"], central_tendency="mode"):
 
@@ -215,12 +224,27 @@ class LogGaussianTuningDataset:
         self.sf = torch.tensor(df.pivot('ecc_bin', 'freq_lvl', 'local_sf').to_numpy())
 
 
+# numpy to torch function
+def _cast_as_tensor(x):
+    """ Change numpy vector to torch vector. The input x should be either a column of dataframe,
+     a list, or numpy vector.You can also pass a torch vector but it will print out warnings."""
+    if type(x) == pd.Series:
+        x = x.values
+    # needs to be float32 to work with the Hessian calculations
+    return torch.tensor(x, dtype=torch.float32)
+
+
+def _cast_as_param(x, requires_grad=True):
+    """ Change input x to parameter"""
+    return torch.nn.Parameter(_cast_as_tensor(x), requires_grad=requires_grad)
+
 class LogGaussianTuningModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.slope = model._cast_as_param(np.random.random(1))
-        self.mode = model._cast_as_param(np.random.random(1))
-        self.sigma = model._cast_as_param(np.random.random(1))
+        self.slope = _cast_as_param(np.random.random(1))
+        self.mode = _cast_as_param(np.random.random(1)+0.5)
+        self.sigma = _cast_as_param(np.random.random(1)+0.5)
+
 
     def forward(self, x):
         """the pdf of the log normal distribution, with a scale factor
@@ -245,6 +269,8 @@ def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, 
     loss_history = []
     model_history = []
     start = timer()
+    param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
+    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, param_values))}\n')
     for t in range(max_epoch):
         optimizer.zero_grad()  # clear previous gradients
         pred = my_model.forward(x=my_dataset.sf)
