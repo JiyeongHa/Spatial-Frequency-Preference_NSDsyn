@@ -249,14 +249,11 @@ def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, 
         optimizer.zero_grad()  # clear previous gradients
         pred = my_model.forward(x=my_dataset.sf)
         loss = loss_fn(pred, my_dataset.target)
-        print(loss.data)
-        print(loss.grad)
         param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
         loss_history.append(loss.item())
         model_history.append(param_values)  # more than one item here
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
-        print(loss.grad)
         optimizer.step()  # perform updates using calculated gradients
 
         if (t + 1) % print_every == 0 or t == 0:
@@ -331,25 +328,29 @@ def load_and_merge_1D_df_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, ma
 
 
 
-def tuning_plot_old(df, col='names', hue='ecc_bin', lgd_title='Eccentricity',
+def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', height=5, subplot_right=0.9, sup_title=None,
                 save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/1D_results.png'):
     col_order = utils.sort_a_df_column(df[col])
     sns.set_context("notebook", font_scale=1.5)
     grid = sns.FacetGrid(df,
-                         col=col,
+                         col='names',
                          hue=hue,
                          hue_order=df[hue].unique(),
-                         palette=sns.color_palette("rocket"),
+                         palette=sns.color_palette("rocket", df[hue].nunique()),
                          col_wrap=4,
+                         height=height,
+                         legend_out=True,
                          sharex=True, sharey=True)
-    g = grid.map(sns.scatterplot, 'local_sf', 'betas')
-    grid.map(sns.lineplot, 'local_sf', 'y_lg_pdf')
-    for subplot_title, ax in grid.axes_dict.items():
-        print(ax)
+    g = grid.map(sns.scatterplot, 'local_sf', 'betas', edgecolor="gray")
     grid.set_axis_labels('Spatial Frequency', 'Beta')
-    grid.fig.legend(title=lgd_title, labels=[x.replace('-', ' ') for x in df.names.unique()])
+    grid.fig.legend(title=lgd_title, labels=df[hue].unique())
+    if sup_title is not None:
+        grid.fig.suptitle(sup_title)
+        grid.fig.subplots_adjust(right=subplot_right, top=0.86)
+    else:
+        grid.fig.subplots_adjust(right=subplot_right)
     plt.xscale('log')
-    #utils.save_fig(save_fig, save_path)
+    utils.save_fig(save_fig, save_path)
     return grid
 
 def _get_x_and_y_prediction(min, max, fnl_param_df):
@@ -361,25 +362,56 @@ def plot_curves(df, fnl_param_df, col='names', save_fig=False, save_path='/Volum
     subplot_list = df[col].unique()
     fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 5.5), dpi=300, sharex=True, sharey=True)
     ecc_list = df['ecc_bin'].unique()
-    colors = mpl.cm.viridis(np.linspace(0, 1, len(ecc_list)))
+    colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
 
     for g in range(len(subplot_list)):
         for ecc in range(len(ecc_list)):
             tmp = df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
             x = tmp['local_sf']
             y = tmp['betas']
-            axes[g].scatter(x, y, s=23, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc])
+            axes[g].scatter(x, y, s=28, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             tmp_history = fnl_param_df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
             pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
-            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=2)
+            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
+            axes[g].set_title(subplot_list[g], fontsize=20)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
-        model.control_fontsize(14, 20, 15)
     axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    fig.supxlabel('Spatial Frequency', fontsize=20)
-    fig.supylabel('Beta', fontsize=20)
+    model.control_fontsize(16, 25, 25)
+    fig.supxlabel('Spatial Frequency', fontsize=25)
+    fig.supylabel('Beta', fontsize=25)
     plt.tight_layout(w_pad=2)
-    fig.subplots_adjust(left=.09, bottom=0.15)
+    fig.subplots_adjust(left=.06, bottom=0.2)
+    utils.save_fig(save_fig, save_path)
 
 
+def plot_param_history(df,
+                       to_label=None, label_order=None,
+                       lgd_title=None, height=5,
+                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
+                       ci=68, n_boot=100, log_y=True):
+    sns.set_context("notebook", font_scale=1.5)
+    to_x = "epoch"
+    to_y = "value"
+    x_label = "Epoch"
+    y_label = "Parameter value"
+    n_labels = df[to_label].nunique()
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    pal = sns.color_palette("rocket", n_labels)
+    grid = sns.FacetGrid(df,
+                         hue=to_label,
+                         hue_order=label_order,
+                         col="names",
+                         row='params',
+                         height=height,
+                         palette=pal,
+                         legend_out=False,
+                         sharex=True, sharey=False)
+    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
+    grid.set_axis_labels(x_label, y_label)
+    if lgd_title is not None:
+        grid.add_legend(title=lgd_title)
+    if log_y is True:
+        plt.semilogy()
+    utils.save_fig(save_fig, save_path)
