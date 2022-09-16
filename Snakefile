@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import pandas as pd
-import simulation as sim
+#import simulation as sim
 import matplotlib as mpl
 #mpl.use('svg', warn=False)
 import sfp_nsd_utils as utils
@@ -18,7 +18,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.001] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [15000]
+MAX_EPOCH = [10000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -54,10 +54,18 @@ def get_ecc_bin_list(wildcards):
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
     return bin_list, bin_labels
 
+def interpret_bin_nums(wildcards):
+    bin_list, bin_labels = get_ecc_bin_list(wildcards)
+    if wildcards.nbin == "all":
+        new_bin_labels = bin_labels
+    else:
+        new_bin_labels = [bin_labels[int(k)] for k in wildcards.ebin]
+    return new_bin_labels
+
 rule plot_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn")),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
+        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), ebin='all', e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn")),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'), ebin=['159','all'], e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
 
 rule fit_tuning_curves_all:
     input:
@@ -408,6 +416,38 @@ rule plot_scatterplot_avgparams:
 
 
 
+rule plot_scatterplot_subj_betweenVareas:
+    input:
+        roi_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
+        df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D")
+    output:
+        scatter_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'scatterplot_subj_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1-vs-{roi}.png')
+    run:
+        sn_list = get_sn_list(wildcards.dset)
+        model_history = model.load_history_df_subj(input.df_dir,wildcards.dset,wildcards.stat,[wildcards.full_ver],sn_list,[float(wildcards.lr)],[int(wildcards.max_epoch)],"model",["V1", wildcards.roi])
+        m_epoch = model_history.epoch.max()
+        params_col = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+        params_group = [0,1,1,2,2,2,2,3,3]
+        V1_df = model_history.query('epoch == @m_epoch & vroinames == "V1"')[params_col]
+        roi_df = model_history.query('epoch == @m_epoch & vroinames == @wildcards.roi')[params_col]
+        subj_list = [utils.sub_number_to_string(sn,dataset=wildcards.dset) for sn in sn_list]
+        if wildcards.dset == "broderick":
+            new_subj = ["sub-{:02d}".format(sn) for sn in np.arange(1,13)]
+            subj_replace_dict = dict(zip(subj_list,new_subj))
+            V1_df = V1_df.replace({'subj': subj_replace_dict})
+            roi_df = roi_df.replace({'subj': subj_replace_dict})
+        else:
+            new_subj = subj_list
+        long_V1 = utils.melt_params(V1_df, value_name= 'V1_value')
+        long_roi = utils.melt_params(roi_df, value_name= f'{wildcards.roi}_value')
+        df = pd.concat((long_V1, long_roi),axis=0)
+        model.scatter_comparison(df.query('params in @params_col'),
+            x="V1_value",y=f"{wildcards.roi}_value",col="params",
+            col_order=params_col,label_order=new_subj,
+            to_label='subj',lgd_title="Subjects",height=7,
+            save_fig=True, save_path=output.scatter_fig)
+
+
 rule plot_scatterplot_avgparams_betweenVareas:
     input:
         roi_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
@@ -427,6 +467,7 @@ rule plot_scatterplot_avgparams_betweenVareas:
         fnl_V1_df = model.get_mean_and_std_for_each_param(V1_df)
         fnl_roi_df = model.get_mean_and_std_for_each_param(roi_df)
         model.scatterplot_two_avg_params(fnl_V1_df, fnl_roi_df, params_col, params_group, x_label=f'{wildcards.dset}: V1', y_label=f'{wildcards.dset}: {wildcards.roi}', save_fig=True, save_path=output.scatter_fig)
+
 
 rule binning:
     input:
@@ -500,15 +541,15 @@ rule plot_tuning_curves:
         model_history = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
         binned_df = os.path.join(config['OUTPUT_DIR'], "dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
     output:
-        #output_dir = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D"),
-        tuning_curves = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png')
+        tuning_curves = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png')
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "figures","sfp_model","results_1D",'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures","sfp_model","results_1D",'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
     run:
+        new_bin_labels = interpret_bin_nums(wildcards)
         bin_df = pd.read_csv(input.binned_df)
-        model_df = pd.read_hdf(input.model_history)
+        model_df = pd.read_hdf(input.model_history).squeeze()
         max_epoch = model_df.epoch.max()
-        #model_df = tuning.load_history_df_1D(wildcards.subj, wildcards.dset,wildcards.stat, 'model',wildcards.roi,wildcards.lr,wildcards.max_epoch,wildcards.e1,wildcards.e2,wildcards.enum, output.output_dir)
-        print(max_epoch)
-        model_df = model_df.query('epoch == @max_epoch')
-        tuning.plot_curves(bin_df, model_df, col='names', save_fig=True, save_path=output.tuning_curves)
+        bin_df = bin_df.query('ecc_bin in @new_bin_labels')
+        print(bin_df)
+        model_df = model_df.query('epoch == @max_epoch & ecc_bin in @new_bin_labels')
+        tuning.plot_curves(bin_df, model_df, save_fig=True, title=f'{wildcards.subj} {wildcards.roi}', save_path=output.tuning_curves)
