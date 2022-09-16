@@ -11,6 +11,7 @@ import two_dimensional_model as model
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.patheffects as pe
 
 def torch_log_norm_pdf(x, slope, mode, sigma):
     """the pdf of the log normal distribution, with a scale factor
@@ -76,7 +77,7 @@ def fit_1D_model(df, sn, stim_class, varea, ecc_bins="bins", n_print=1000,
     for cur_ecc in eroi_list:
         tmp_df = cur_df[cur_df[ecc_bins] == cur_ecc]
         x = _df_column_to_torch(tmp_df, "local_sf")
-        y = _df_column_to_torch(tmp_df, "avg_betas")
+        y = _df_column_to_torch(tmp_df, "betas")
         # set initial parameters
         slope, mode, sigma = _set_initial_params(initial_val)
         # select an optimizer
@@ -106,9 +107,9 @@ def fit_1D_model(df, sn, stim_class, varea, ecc_bins="bins", n_print=1000,
     print(f'###{subj}-{stim_class}-{varea} finished!###')
     print(f'Elapsed time: {np.round(end - start, 2)} sec')
     model_history_df = pd.concat(model_history_df).reset_index().rename(
-        columns={'level_0': "ecc_bins", 'level_1': "epoch"})
+        columns={'level_0': "ecc_bin", 'level_1': "epoch"})
     loss_history_df = pd.concat(loss_history_df).reset_index().rename(
-        columns={'level_0': "ecc_bins", 'level_1': "epoch"})
+        columns={'level_0': "ecc_bin", 'level_1': "epoch"})
     loss_history_df['lr'] = lr
     return model_history_df, loss_history_df, elapsed_time
 
@@ -191,9 +192,9 @@ def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
 
 def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
     if bin_labels is None:
-        bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
-    df['ecc_bin'] = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
-    return df
+        bin_labels = [f'{str(a)}-{str(b)}deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    ecc_bin = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
+    return ecc_bin
 
 
 def summary_stat_for_ecc_bin(df, to_bin=["betas", "local_sf"], central_tendency="mode"):
@@ -231,29 +232,33 @@ class LogGaussianTuningModel(torch.nn.Module):
         return pdf
 
 
-def fit_tuning_curves(model, dataset, learning_rate=1e-4, max_epoch=5000, print_every=100,
+def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, print_every=100,
                       anomaly_detection=True, amsgrad=False, eps=1e-8):
     """Fit log normal Gaussian tuning curves.
     This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
-    my_parameters = [p for p in model.parameters() if p.requires_grad]
-    params_col = [name for name, param in model.named_parameters() if param.requires_grad]
+    my_parameters = [p for p in my_model.parameters() if p.requires_grad]
+    params_col = [name for name, param in my_model.named_parameters() if param.requires_grad]
     optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, amsgrad=amsgrad, eps=eps)
     loss_fn = torch.nn.MSELoss()
     loss_history = []
     model_history = []
     start = timer()
     for t in range(max_epoch):
-        pred = model.forward(x=dataset.sf)
-        loss = loss_fn(pred, dataset.target)
-        param_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]
+        optimizer.zero_grad()  # clear previous gradients
+        pred = my_model.forward(x=my_dataset.sf)
+        loss = loss_fn(pred, my_dataset.target)
+        print(loss.data)
+        print(loss.grad)
+        param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
         loss_history.append(loss.item())
         model_history.append(param_values)  # more than one item here
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
+        print(loss.grad)
         optimizer.step()  # perform updates using calculated gradients
-        model.eval()
+
         if (t + 1) % print_every == 0 or t == 0:
             content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
             print(content)
@@ -272,13 +277,14 @@ def fit_tuning_curves_for_each_bin(bin_labels, df, learning_rate=1e-4, max_epoch
     model_history = {}
     for bin in bin_labels:
         c_df = df.query('ecc_bin == @bin')
-        dataset = LogGaussianTuningDataset(c_df)
-        model = LogGaussianTuningModel()
-        loss_history[bin], model_history[bin] = fit_tuning_curves(model, dataset, learning_rate, max_epoch, print_every,
-                                                        anomaly_detection, amsgrad, eps)
+        my_dataset = LogGaussianTuningDataset(c_df)
+        my_model = LogGaussianTuningModel()
+        loss_history[bin], model_history[bin] = fit_tuning_curves(my_model, my_dataset, learning_rate, max_epoch, print_every,
+                                                                  anomaly_detection, amsgrad, eps)
     loss_history = pd.concat(loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
     model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
     return loss_history, model_history
+
 
 def load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, df_dir):
     subj = utils.sub_number_to_string(sn, dataset=dset)
