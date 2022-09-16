@@ -489,8 +489,6 @@ def plot_param_history(df, params, group,
                        ci=68, n_boot=100, log_y=True, sharey=True):
     df = _group_params(df, params, group)
     sns.set_context("notebook", font_scale=1.5)
-    to_x = "epoch"
-    to_y = "value"
     x_label = "Epoch"
     y_label = "Parameter value"
     grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
@@ -502,7 +500,7 @@ def plot_param_history(df, params, group,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
+    g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2, ci=ci, n_boot=n_boot)
     if ground_truth is True:
         for x_param, ax in g.axes_dict.items():
             #ax.set_aspect('auto')
