@@ -602,11 +602,118 @@ df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broder
 
 m_df = merge_pdf_values(fnl_param_df, subj_df=df, merge_on_cols=["subj", "vroinames", 'names', "ecc_bin"], merge_output_df=True)
 
-b_df = tuning.bin_ecc(df, bin_list=np.arange(1,12), to_bin='eccentricity', bin_labels=None)
-c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='median')
-grid = tuning.tuning_plot(c_df.query('names != "mixtures"'))
-grid.map(sns.lineplot, data=history_df, x='sigma', y='slope')
+import plot_1D_model_results as plotting
+
+df_dir = '/Volumes/server/Projects/sfp_nsd/derivatives/'
+dset='broderick'
+stat='median'
+roi='V1'
+e1='1'
+e2='12'
+enum='11'
+lr='0.001'
+max_epoch=15000
+
+for dset, stat, e1, e2, enum in zip(['nsdsyn'], [ 'mean'], ['0.5'], ['4'], ['log3']):
+    if dset == "broderick":
+        sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+    else:
+        sn_list = np.arange(1,9)
+    for roi in ["V1"]:
+        bin_df = tuning.load_binned_df_1D_all_subj(sn_list, dset, stat, roi, e1, e2, enum, os.path.join(df_dir, f'dataframes/binned/{dset}'))
+        model_df = tuning.load_history_1D_all_subj(sn_list, dset, stat, 'model', roi, lr, max_epoch, e1, e2, enum, os.path.join(df_dir, 'sfp_model/results_1D'))
+        f_epoch=model_df.epoch.max()
+
+        for sn in sn_list:
+            subj = utils.sub_number_to_string(sn, dset)
+            sub_bin_df = bin_df.query('subj == @subj')
+            sub_model_df = model_df.query('subj == @subj & epoch == @f_epoch')
+            f_name= f'sftuning_plot_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.png'
+            save_path=os.path.join('/Volumes/server/Projects/sfp_nsd/derivatives/figures/results_1D/', f_name)
+            tuning.plot_curves(sub_bin_df, sub_model_df, save_fig=True, save_path=save_path)
+            plt.show()
+
+
+df = model_df.query('subj == "subj02"')
+df = pd.melt(df, id_vars=['ecc_bin', 'names', 'epoch', 'vroinames'], value_vars=['slope','mode','sigma'], var_name='params', value_name='value')
+tuning.plot_param_history(df, to_label='ecc_bin',  lgd_title='Eccentricity')
 plt.show()
 
-tuning.tuning_plot(df, fnl_param_df)
+stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
+df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn/subj01_stim_voxel_info_df_vs-pRFcenter_V1_mean.csv')
+df = df.replace({'names': {'forward spiral': 'forward-spiral', 'reverse spiral': 'reverse-spiral'}})
+bin_list = np.logspace(np.log2(0.5), np.log2(4), num=4, base=2)
+bin_labels = [f'{str(a)}-{str(b)}deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+df['ecc_bin'] = tuning.bin_ecc(df, bin_list=bin_list)
+df = df.dropna()
+c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mean')
+
+subj_df = pd.read_csv('/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/binned/nsdsyn/binned_e0.5-4_nbin-log3_subj01_stim_voxel_info_df_vs-pRFcenter_V1_mean.csv')
+new_ecc_bin = dict(zip(['0.5-1.0 deg', '1.0-2.0 deg', '2.0-4.0 deg'], ['0.5-1.0deg', '1.0-2.0deg', '2.0-4.0deg']))
+subj_df = subj_df.replace({'ecc_bin': new_ecc_bin})
+bin_labels = ['0.5-1.0deg', '1.0-2.0deg', '2.0-4.0deg']
+
+all_loss_history = {}
+all_model_history = {}
+for stim in ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']:
+    stim_df = c_df.query('names == @stim')
+    for bin in bin_labels:
+        ecc_df = stim_df.query('ecc_bin == @bin')
+        my_dataset = tuning.LogGaussianTuningDataset(ecc_df)
+        my_model = tuning.LogGaussianTuningModel()
+        torch.autograd.set_detect_anomaly(True)
+        my_parameters = [p for p in my_model.parameters() if p.requires_grad]
+        params_col = [name for name, param in my_model.named_parameters() if param.requires_grad]
+        optimizer = torch.optim.Adam(my_parameters, lr=0.001, amsgrad=False, eps=1e-4)
+        loss_fn = torch.nn.MSELoss()
+        loss_history = []
+        model_history = []
+        for t in range(max_epoch):
+            pred = my_model.forward(x=my_dataset.sf)
+            loss = loss_fn(pred, my_dataset.target)
+            param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
+            loss_history.append(loss.item())
+            print(f'loss:{loss.item()}')
+            model_history.append(param_values)  # more than one item here
+            print(f'model_history: {param_values}')
+            loss.backward()  # compute gradients of all variables wrt loss
+            print(f'{loss.item()}')
+            optimizer.step()  # perform updates using calculated gradients
+            optimizer.zero_grad()  # clear previous gradients
+
+            #my_model.eval()
+            if (t + 1) % print_every == 0 or t == 0:
+                content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
+                print(content)
+
+        loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
+        model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
+        tmp_loss_history[bin] = loss_history
+        tmp_model_history[bin] = model_history
+
+all_loss_history = {}
+all_model_history = {}
+for stim in ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']:
+    stim_df = c_df.query('names == @stim')
+    all_loss_history[stim], all_model_history[stim] = tuning.fit_tuning_curves_for_each_bin(bin_labels, stim_df, learning_rate=0.01, max_epoch=100, print_every=10, anomaly_detection=True)
+
+loss_history = pd.concat(all_loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'names'})
+model_history = pd.concat(all_model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'names'})
+
+df = pd.melt(model_history, id_vars=['ecc_bin', 'names', 'epoch'], value_vars=['slope','mode','sigma'], var_name='params', value_name='value')
+tuning.plot_param_history(df, to_label='ecc_bin',  lgd_title='Eccentricity')
+plt.show()
+stim_df = c_df.query('names == @stim')
+loss_history[stim], model_history[stim] = tuning.fit_tuning_curves_for_each_bin(bin_labels, stim_df,
+                                                                                learning_rate=0.001, max_epoch=100,
+                                                                                print_every=1,
+                                                                                anomaly_detection=True)
+
+loss_history = pd.concat(loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'names'})
+model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'names'})
+
+model_history, loss_history = tuning.run_1D_model(c_df, [1], stim_list, ["V1"], ecc_bins="ecc_bin", n_print=1,
+                 initial_val="random", epoch=100, lr=1e-3)
+
+tuning.plot_datapoints(c_df.query('names in @stim_list'), save_fig=False)
 plt.show()

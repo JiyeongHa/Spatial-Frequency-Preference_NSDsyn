@@ -62,7 +62,7 @@ rule plot_tuning_curves_all:
 rule fit_tuning_curves_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick")),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='0.5', e2='4', enum='log4', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn"))
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn"))
 
 rule plot_all:
     input:
@@ -136,7 +136,6 @@ rule plot_synthetic_data:
             print(file)
             tmp =  pd.read_csv(file)
             all_df = pd.concat((all_df,tmp),ignore_index=True)
-
 
 rule run_simulation:
     input:
@@ -460,9 +459,9 @@ rule fit_tuning_curves_for_each_bin:
         mem_mb = 4000
     run:
         subj_df = pd.read_csv(input.input_path)
-        subj_df = subj_df.query('names == @wildcards.stim_type').dropna()
-        bin_labels = subj_df.ecc_bin.unique()
-        loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels, subj_df, float(wildcards.lr), int(wildcards.max_epoch), 200)
+        subj_df = subj_df.query('names == @wildcards.stim_type')
+        bin_list, bin_labels = get_ecc_bin_list(wildcards)
+        loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels=bin_labels, df=subj_df, learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=200)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
@@ -510,7 +509,6 @@ rule plot_tuning_curves:
         model_df = pd.read_hdf(input.model_history)
         max_epoch = model_df.epoch.max()
         #model_df = tuning.load_history_df_1D(wildcards.subj, wildcards.dset,wildcards.stat, 'model',wildcards.roi,wildcards.lr,wildcards.max_epoch,wildcards.e1,wildcards.e2,wildcards.enum, output.output_dir)
-
         print(max_epoch)
         model_df = model_df.query('epoch == @max_epoch')
         tuning.plot_curves(bin_df, model_df, col='names', save_fig=True, save_path=output.tuning_curves)
