@@ -269,8 +269,6 @@ def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, 
     loss_history = []
     model_history = []
     start = timer()
-    param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
-    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, param_values))}\n')
     for t in range(max_epoch):
         optimizer.zero_grad()  # clear previous gradients
         pred = my_model.forward(x=my_dataset.sf)
@@ -384,19 +382,21 @@ def _get_x_and_y_prediction(min, max, fnl_param_df):
     y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for k in x]
     return x, y
 
-def plot_curves(df, fnl_param_df, col='names', save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
-    subplot_list = df[col].unique()
+def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
+    subplot_list = df['names'].unique()
     fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 5.5), dpi=300, sharex=True, sharey=True)
     ecc_list = df['ecc_bin'].unique()
     colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
 
     for g in range(len(subplot_list)):
         for ecc in range(len(ecc_list)):
-            tmp = df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
+            tmp = df[df.names == subplot_list[g]]
+            tmp = tmp[tmp.ecc_bin == ecc_list[ecc]]
             x = tmp['local_sf']
             y = tmp['betas']
             axes[g].scatter(x, y, s=28, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
-            tmp_history = fnl_param_df.query('names == @subplot_list[@g] & ecc_bin == @ecc_list[@ecc]')
+            tmp_history = fnl_param_df[fnl_param_df.names == subplot_list[g]]
+            tmp_history = tmp_history[tmp_history.ecc_bin == ecc_list[ecc]]
             pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
             axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
             axes[g].set_title(subplot_list[g], fontsize=20)
@@ -407,6 +407,7 @@ def plot_curves(df, fnl_param_df, col='names', save_fig=False, save_path='/Volum
     model.control_fontsize(16, 25, 25)
     fig.supxlabel('Spatial Frequency', fontsize=25)
     fig.supylabel('Beta', fontsize=25)
+    fig.suptitle(title, fontsize=20)
     plt.tight_layout(w_pad=2)
     fig.subplots_adjust(left=.06, bottom=0.2)
     utils.save_fig(save_fig, save_path)
@@ -432,7 +433,7 @@ def plot_param_history(df,
                          row='params',
                          height=height,
                          palette=pal,
-                         legend_out=False,
+                         legend_out=True,
                          sharex=True, sharey=False)
     g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
     grid.set_axis_labels(x_label, y_label)
