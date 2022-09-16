@@ -122,3 +122,12 @@ def melt_df(df, value_vars, var_name="type", value_name="value"):
     id_cols = df.drop(columns=value_vars).columns.tolist()
     long_df = pd.melt(df, id_vars=id_cols, value_vars=value_vars, var_name=var_name, value_name=value_name)
     return long_df
+
+def melt_params(df, value_name='value', params=None):
+    if params == None:
+        params = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+    id_cols = df.drop(columns=params).columns.tolist()
+    long_df = pd.melt(df, id_vars=id_cols,
+                      value_vars=params,
+                      var_name='params', value_name=value_name)
+    return long_df
