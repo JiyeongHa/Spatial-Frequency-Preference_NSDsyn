@@ -385,7 +385,7 @@ def melt_history_df(history_df):
     return pd.concat(history_df).reset_index().rename(columns={'level_0': 'subj', 'level_1': 'epoch'})
 
 
-def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
+def plot_loss_history(loss_history_df,
                       to_label=None, label_order=None, to_row=None, to_col=None, height=5,
                       lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
                        ci=68, n_boot=100, log_y=True, sharey=False):
@@ -399,10 +399,10 @@ def plot_loss_history(loss_history_df, to_x="epoch", to_y="loss",
                          row=to_row,
                          col=to_col,
                          height=height,
-                         palette=sns.color_palette("rocket"),
+                         palette=sns.color_palette("rocket", loss_history_df[to_label].nunique()),
                          legend_out=True,
                          sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
+    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=ci, n_boot=n_boot)
     grid.set_axis_labels(x_label, y_label)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
@@ -621,7 +621,7 @@ def plot_grouped_parameters_subj(df, params, col_group,
 
 def scatter_comparison(df, x, y, col, col_order,
                        to_label="study_type", lgd_title="Study", label_order=None,
-                       height=7,
+                       height=7, x_label="Broderick et al.(2022)", y_label="My_value",
                        save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=1.5)
     pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
@@ -643,7 +643,8 @@ def scatter_comparison(df, x, y, col, col_order,
         ax.set_ylim(ymin=min(x0, y0), ymax=max(x1, y1))
         lims = [min(x0, y0), max(x1, y1)]
         ax.plot(lims, lims, '--k', linewidth=2)
-    grid.set_axis_labels("Broderick et al.(2022)", "My value")
+    grid.set_axis_labels(x_label, y_label)
+    #grid.fig.legend(title=lgd_title, labels=label_order)
     utils.save_fig(save_fig, save_path)
     return grid
 
