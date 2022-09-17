@@ -1,10 +1,8 @@
 import sys
 sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 import os
-import itertools
 import nibabel as nib
 import numpy as np
-import pandas as pd
 import h5py
 import itertools
 import pandas as pd
