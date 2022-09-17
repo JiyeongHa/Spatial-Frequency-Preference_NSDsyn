@@ -56,7 +56,7 @@ def get_ecc_bin_list(wildcards):
 
 def interpret_bin_nums(wildcards):
     bin_list, bin_labels = get_ecc_bin_list(wildcards)
-    if wildcards.nbin == "all":
+    if wildcards.ebin == "all":
         new_bin_labels = bin_labels
     else:
         new_bin_labels = [bin_labels[int(k)] for k in wildcards.ebin]
