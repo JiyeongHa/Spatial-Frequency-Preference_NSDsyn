@@ -141,7 +141,6 @@ rule plot_synthetic_data:
     run:
         all_df = pd.DataFrame({})
         for file in input.all_files:
-            print(file)
             tmp =  pd.read_csv(file)
             all_df = pd.concat((all_df,tmp),ignore_index=True)
 
@@ -481,7 +480,6 @@ rule binning:
         df = df.replace({'names': {'forward spiral': 'forward-spiral', 'reverse spiral': 'reverse-spiral'}})
         df = df.query('names in @stim_list')
         bin_list, bin_labels = get_ecc_bin_list(wildcards)
-        print(bin_labels)
         df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=bin_labels)
         c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mean')
         c_df.to_csv(output.output_path, index=False)
