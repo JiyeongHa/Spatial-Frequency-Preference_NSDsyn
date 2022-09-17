@@ -550,6 +550,5 @@ rule plot_tuning_curves:
         model_df = pd.read_hdf(input.model_history).squeeze()
         max_epoch = model_df.epoch.max()
         bin_df = bin_df.query('ecc_bin in @new_bin_labels')
-        print(bin_df)
         model_df = model_df.query('epoch == @max_epoch & ecc_bin in @new_bin_labels')
         tuning.plot_curves(bin_df, model_df, save_fig=True, title=f'{wildcards.subj} {wildcards.roi}', save_path=output.tuning_curves)
