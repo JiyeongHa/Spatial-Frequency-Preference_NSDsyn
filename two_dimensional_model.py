@@ -635,14 +635,18 @@ def scatter_comparison(df, x, y, col, col_order,
                        col=col, col_wrap=3, col_order=col_order,
                        palette=pal, facet_kws={'sharey': False, 'sharex': False},
                        hue=to_label, hue_order=label_order,
-                       height=height)
+                       height=height, s=100)
     for _, ax in grid.axes_dict.items():
         x0, x1 = ax.get_xlim()
         y0, y1 = ax.get_ylim()
-        ax.set_xlim(xmin=min(x0, y0), xmax=max(x1, y1))
-        ax.set_ylim(ymin=min(x0, y0), ymax=max(x1, y1))
-        lims = [min(x0, y0), max(x1, y1)]
+        newlim = [min(x0, y0), max(x1, y1)]
+        lims = [newlim[0], newlim[1]]
         ax.plot(lims, lims, '--k', linewidth=2)
+        ax.set_xlim(xmin=newlim[0], xmax=newlim[1])
+        ax.set_ylim(ymin=newlim[0], ymax=newlim[1])
+        ax.set_xticks(np.round(np.linspace(newlim[0], newlim[1], 4), 1))
+        ax.set_yticks(np.round(np.linspace(newlim[0], newlim[1], 4), 1))
+        ax.axis('scaled')
     grid.set_axis_labels(x_label, y_label)
     #grid.fig.legend(title=lgd_title, labels=label_order)
     utils.save_fig(save_fig, save_path)
@@ -653,15 +657,18 @@ def _get_common_lim(axes):
     ylim = axes.get_ylim()
     return [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
 
-def get_mean_and_std_for_each_param(df):
+def get_mean_and_error_for_each_param(df, err="sem"):
     if 'params' not in df.columns:
         value_vars = ['sigma','slope','intercept','p_1','p_2','p_3','p_4','A_1','A_2']
         id_vars = [x for x in df.columns.to_list() if not x in value_vars]
         df = pd.melt(df, id_vars, value_vars, var_name='params', value_name='value')
     val_name = [col for col in df.columns if 'value' in col][0]
     m_df = df.groupby(['params'])[val_name].mean().reset_index().rename(columns={val_name: 'mean_value'})
-    std_df = df.groupby(['params'])[val_name].std().reset_index().rename(columns={val_name: 'std_value'})
-    return m_df.merge(std_df, on='params')
+    if err == "std":
+        err_df = df.groupby(['params'])[val_name].std().reset_index().rename(columns={val_name: 'std_value'})
+    elif err == "sem":
+        err_df = df.groupby(['params'])[val_name].sem().reset_index().rename(columns={val_name: 'std_value'})
+    return m_df.merge(err_df, on='params')
 
 def control_fontsize(small, medium, large):
     plt.rc('font', size=small)  # controls default text sizes
@@ -699,6 +706,8 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='B
         control_fontsize(14, 20, 15)
     axes[2].axvline(x=0, color='gray', linestyle='--')
     axes[2].axhline(y=0, color='gray', linestyle='--')
+    axes[3].axvline(x=0, color='gray', linestyle='--')
+    axes[3].axhline(y=0, color='gray', linestyle='--')
 
     # common axis labels
     fig.supxlabel(x_label, fontsize=20)
