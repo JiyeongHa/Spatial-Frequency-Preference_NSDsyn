@@ -384,7 +384,7 @@ def _get_x_and_y_prediction(min, max, fnl_param_df):
 
 def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
     subplot_list = df['names'].unique()
-    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 5.5), dpi=300, sharex=True, sharey=True)
+    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
     ecc_list = df['ecc_bin'].unique()
     colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
 
@@ -394,22 +394,23 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
             tmp = tmp[tmp.ecc_bin == ecc_list[ecc]]
             x = tmp['local_sf']
             y = tmp['betas']
-            axes[g].scatter(x, y, s=28, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             tmp_history = fnl_param_df[fnl_param_df.names == subplot_list[g]]
             tmp_history = tmp_history[tmp_history.ecc_bin == ecc_list[ecc]]
             pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
             axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
+            axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             axes[g].set_title(subplot_list[g], fontsize=20)
+            model.control_fontsize(25, 30, 40)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
+        axes[g].tick_params(axis='both', labelsize=22)
     axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    model.control_fontsize(16, 25, 25)
     fig.supxlabel('Spatial Frequency', fontsize=25)
     fig.supylabel('Beta', fontsize=25)
     fig.suptitle(title, fontsize=20)
     plt.tight_layout(w_pad=2)
-    fig.subplots_adjust(left=.06, bottom=0.2)
+    fig.subplots_adjust(left=.08, bottom=0.13)
     utils.save_fig(save_fig, save_path)
 
 
