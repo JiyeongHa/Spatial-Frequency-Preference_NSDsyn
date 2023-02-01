@@ -443,3 +443,63 @@ def plot_param_history(df,
     if log_y is True:
         plt.semilogy()
     utils.save_fig(save_fig, save_path)
+
+
+def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
+    subplot_list = df['names'].unique()
+    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
+    ecc_list = df['ecc_bin'].unique()
+    colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
+
+    for g in range(len(subplot_list)):
+        for ecc in range(len(ecc_list)):
+            tmp = df[df.names == subplot_list[g]]
+            tmp = tmp[tmp.ecc_bin == ecc_list[ecc]]
+            x = tmp['local_sf']
+            y = tmp['betas']
+            tmp_history = fnl_param_df[fnl_param_df.names == subplot_list[g]]
+            tmp_history = tmp_history[tmp_history.ecc_bin == ecc_list[ecc]]
+            pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
+            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
+            axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
+            axes[g].set_title(subplot_list[g], fontsize=20)
+            model.control_fontsize(25, 30, 40)
+            plt.xscale('log')
+        axes[g].spines['top'].set_visible(False)
+        axes[g].spines['right'].set_visible(False)
+        axes[g].tick_params(axis='both', labelsize=22)
+    axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    fig.supxlabel('Spatial Frequency', fontsize=25)
+    fig.supylabel('Beta', fontsize=25)
+    fig.suptitle(title, fontsize=20)
+    plt.tight_layout(w_pad=2)
+    fig.subplots_adjust(left=.08, bottom=0.13)
+    utils.save_fig(save_fig, save_path)
+
+
+def plot_ecc_bin_prediction_from_2D(pred_df, pred_y, hue, lgd_title, save_path=None):
+    fig, ax = plt.subplots()
+    sns.set_context("notebook", font_scale=1.5)
+    sns.lineplot(x="local_sf", y=pred_y, hue=hue, data=pred_df, ax=ax, marker='', ci=None, linestyle='-')
+    ax.set(xlabel='Spatial Frequency', ylabel='Betas')
+    ax.set_xscale('log')
+    plt.show()
+
+
+
+def plot_sf_curves_from_2D(pred_df, pred_y, y, hue, lgd_title, save_path=None):
+    sns.set_context("notebook", font_scale=1.5)
+    grid = sns.FacetGrid(pred_df,
+                         col='vroinames',
+                         hue=hue,
+                         hue_order=pred_df[hue].unique(),
+                         palette=sns.color_palette("rocket", pred_df[hue].nunique()),
+                         height=5,
+                         legend_out=True,
+                         sharex=True, sharey=True)
+    grid.map(sns.lineplot, "local_sf", y, marker='o', ci=None, linestyle='')
+    grid.map(sns.lineplot, "local_sf", pred_y, marker='', ci=None, linestyle='-')
+    grid.set_axis_labels('Spatial Frequency', 'Betas')
+    grid.add_legend(title=lgd_title)
+    plt.xscale('log')
+    utils.save_fig(save_path!=None, save_path)
