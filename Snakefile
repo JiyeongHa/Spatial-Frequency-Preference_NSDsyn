@@ -5,27 +5,27 @@ import pandas as pd
 #import simulation as sim
 import matplotlib as mpl
 mpl.use('svg')
-import sfp_nsd_utils as utils
+import utils as utils
 import two_dimensional_model as model
 import pickle
 from itertools import product
-import first_level_analysis as tuning
+import one_dimensional_model as tuning
 pickle.HIGHEST_PROTOCOL = 4
 
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
-LR_RATE = [0.001] #[0.0007]#np.linspace(5,9,5)*1e-4
+LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [10000]
+MAX_EPOCH = [30000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
-ROIS = ["V1", "V2", "V3"]
+ROIS = ["V1"]
 stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 
 def get_sn_list(dset):
@@ -79,7 +79,7 @@ rule plot_all:
         # expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), dset="broderick", stat="median", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
         # expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'{df_type}_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png'), df_type=["loss", "model"], dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
         expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.eps'), dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1-vs-{roi}.eps'), dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
+        #expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'scatterplot_avgparams_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_V1-vs-{roi}.eps'), dset="nsdsyn", stat="mean", full_ver=FULL_VER, lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS)
 
 
 rule run_all_subj:
@@ -550,3 +550,19 @@ rule plot_tuning_curves:
         bin_df = bin_df.query('ecc_bin in @new_bin_labels')
         model_df = model_df.query('epoch == @max_epoch & ecc_bin in @new_bin_labels')
         tuning.plot_curves(bin_df, model_df, save_fig=True, title=f'{wildcards.subj} {wildcards.roi}', save_path=output.tuning_curves)
+
+rule plot_tuning_curves_from_2D_model:
+    input:
+        subj_df
+        model_history
+    output:
+        plot
+    run:
+        import binning as binning
+        final_params = model_history[model_history.epoch == int(wildcards.max_epoch)]
+        bin_list, bin_labels = get_ecc_bin_list(wildcards)
+        subj_df['bins'] = binning.bin_ecc(subj_df, bin_list, to_bin='eccentricity', bin_labels=None)
+        bin_df = binning.summary_stat_for_ecc_bin(subj_df, to_bin=['normed_betas','local_sf'], central_tendency='mean', bin_group=['subj','bins','vroinames','freq_lvl'])
+        curves.plot_sf_curves_from_2D(bin_df, y, hue, lgd_title, datapoints=True, save_path=output[0])
+
+
