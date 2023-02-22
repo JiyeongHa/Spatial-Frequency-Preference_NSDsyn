@@ -1,3 +1,0 @@
-Building DAG of jobs...
-MissingRuleException:
-No rule to produce run_all_subj_simulation (if you use input functions make sure that they don't raise unexpected exceptions).

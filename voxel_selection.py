@@ -5,7 +5,7 @@ import h5py
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-import sfp_nsd_utils as utils
+import utils as utils
 from math import atan2, degrees
 
 

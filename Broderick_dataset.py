@@ -6,10 +6,10 @@ import numpy as np
 import pandas as pd
 import h5py
 import itertools
-import sfp_nsd_utils as utils
+import utils as utils
 import voxel_selection as vs
 import two_dimensional_model as model
-import bootstrap as bts
+import bootstrapping as bts
 
 
 def _label_stim_names(row):
@@ -95,7 +95,7 @@ def load_prf(sn, mask, prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
 
 def load_betas(sn, mask, results_names=['modelmd'], beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/'):
     """Load beta files. This is shaped as .mat files and lh and rh files are concatenated.
-    See _load_mat_files() in first_level_analysis.py of the Broderick et al (2022) Github."""
+    See _load_mat_files() in one_dimensional_model.py of the Broderick et al (2022) Github."""
     betas = {}
     subj = "sub-wlsubj{:03d}".format(sn)
     betas_file = f'{subj}_ses-04_task-sfprescaled_results.mat'

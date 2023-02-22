@@ -2,7 +2,7 @@ import sys
 # sys.path.append('../../')
 import os
 import seaborn as sns
-import sfp_nsd_utils as utils
+import utils as utils
 import pandas as pd
 import numpy as np
 import torch
@@ -32,8 +32,6 @@ class PredictBOLD2d():
         self.p_4 = self.params_df['p_4']
         self.A_1 = self.params_df['A_1']
         self.A_2 = self.params_df['A_2']
-        self.A_3 = self.params_df['A_3']
-        self.A_4 = self.params_df['A_4']
         self.subj_df = subj_df.copy()
         self.theta_l = self.subj_df['local_ori']
         self.theta_v = self.subj_df['angle']
@@ -44,9 +42,7 @@ class PredictBOLD2d():
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         if full_ver is True:
             Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
-                 self.A_2 * np.cos(4 * self.theta_l) + \
-                 self.A_3 * np.cos(2 * (self.theta_l - self.theta_v)) + \
-                 self.A_4 * np.cos(4 * (self.theta_l - self.theta_v))
+                 self.A_2 * np.cos(4 * self.theta_l)
         elif full_ver is False:
             Av = 1
         return Av
@@ -89,7 +85,7 @@ def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False)
 
 def normalize_pivotStyle(betas):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
-    return  betas / torch.linalg.norm(betas, ord=2, dim=1, keepdim=True)
+    return betas / torch.linalg.norm(betas, ord=2, dim=1, keepdim=True)
 
 
 def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
@@ -579,7 +575,7 @@ def load_loss_and_model_history_Broderick_subj(output_dir, dataset, stat, full_v
     loss_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "loss", roi)
     model_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "model", roi)
     if losses is True:
-        losses_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "losses", )
+        losses_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "losses", roi)
     else:
         losses_history = []
     return loss_history, model_history, losses_history
@@ -657,18 +653,18 @@ def _get_common_lim(axes):
     ylim = axes.get_ylim()
     return [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
 
-def get_mean_and_error_for_each_param(df, err="sem"):
+def get_mean_and_error_for_each_param(df, err="sem", to_group=['params']):
     if 'params' not in df.columns:
         value_vars = ['sigma','slope','intercept','p_1','p_2','p_3','p_4','A_1','A_2']
         id_vars = [x for x in df.columns.to_list() if not x in value_vars]
         df = pd.melt(df, id_vars, value_vars, var_name='params', value_name='value')
     val_name = [col for col in df.columns if 'value' in col][0]
-    m_df = df.groupby(['params'])[val_name].mean().reset_index().rename(columns={val_name: 'mean_value'})
+    m_df = df.groupby(to_group)[val_name].mean().reset_index().rename(columns={val_name: 'mean_value'})
     if err == "std":
-        err_df = df.groupby(['params'])[val_name].std().reset_index().rename(columns={val_name: 'std_value'})
+        err_df = df.groupby(to_group)[val_name].std().reset_index().rename(columns={val_name: 'std_value'})
     elif err == "sem":
-        err_df = df.groupby(['params'])[val_name].sem().reset_index().rename(columns={val_name: 'std_value'})
-    return m_df.merge(err_df, on='params')
+        err_df = df.groupby(to_group)[val_name].sem().reset_index().rename(columns={val_name: 'std_value'})
+    return m_df.merge(err_df, on=to_group)
 
 def control_fontsize(small, medium, large):
     plt.rc('font', size=small)  # controls default text sizes
@@ -686,6 +682,10 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='B
     colors = mpl.cm.tab10(np.linspace(0, 1, len(params_list)))
     n_subplots = len(set(params_group))
     fig, axes = plt.subplots(1, n_subplots, figsize=(20, 5), dpi=300)
+    axes[2].axvline(x=0, color='gray', linestyle='--')
+    axes[2].axhline(y=0, color='gray', linestyle='--')
+    axes[3].axvline(x=0, color='gray', linestyle='--')
+    axes[3].axhline(y=0, color='gray', linestyle='--')
     for g in range(n_subplots):
         tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
         tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
@@ -698,16 +698,27 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='B
             axes[g].legend(loc='best', ncol=1)
         axes[g].axis('scaled')
         newlim = _get_common_lim(axes[g])
+        if g == 0:
+            newlim = [1.5, 2.5]
+        elif g == 1:
+            newlim = [0, 0.41]
+        elif g == 2:
+            newlim = [-0.17, 0.10]
+        elif g == 3:
+            newlim = [-0.05, 0.05]
         axes[g].set_xlim(newlim[0], newlim[1])
         axes[g].set_ylim(newlim[0], newlim[1])
+        if (g == 2):
+            axes[g].set_xticks([-0.15, -0.1, -0.05, 0, 0.05, 0.1])
+            axes[g].set_yticks([-0.15, -0.1, -0.05, 0, 0.05, 0.1])
+        elif (g == 3):
+            axes[g].set_xticks([-0.05 , -0.025,  0,  0.025,  0.05 ])
+            axes[g].set_yticks([-0.05 , -0.025,  0,  0.025,  0.05 ])
+        else:
+            axes[g].set_xticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
+            axes[g].set_yticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
         axes[g].plot(newlim, newlim, '--k', linewidth=2)
-        axes[g].set_xticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
-        axes[g].set_yticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
         control_fontsize(14, 20, 15)
-    axes[2].axvline(x=0, color='gray', linestyle='--')
-    axes[2].axhline(y=0, color='gray', linestyle='--')
-    axes[3].axvline(x=0, color='gray', linestyle='--')
-    axes[3].axhline(y=0, color='gray', linestyle='--')
 
     # common axis labels
     fig.supxlabel(x_label, fontsize=20)
@@ -717,4 +728,87 @@ def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='B
     utils.save_fig(save_fig, save_path)
 
 
+def plot_final_params(df, comb, params_list, params_group, save_fig=True, save_path='/Volumes/server/Projects/sfp_nsd/figures/pic.png'):
+    mpl.rcParams['axes.linewidth'] = 2  # set the value globally
+    params_order = np.arange(0, len(params_list))
+    n_comb = len(comb)
+    colors = mpl.cm.RdPu(np.linspace(0, 1, n_comb+2))[0:n_comb+1]
+    colors[0] = [0, 0, 0, 1]
+    colors[1] = [0.5, 0.5, 0.5, 1]
+    n_subplots = len(set(params_group))
+    fig, axes = plt.subplots(1, n_subplots, figsize=(22, 6), dpi=300,
+                             gridspec_kw={'width_ratios': [params_group.count(x) for x in set(params_group)]})
+    control_fontsize(14, 20, 15)
+    for g in range(n_subplots):
+        tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
+        tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
+        for p, c in zip(tmp_params_list, tmp_params_order):
+            for x_color in np.arange(0, n_comb):
+                roi = comb[x_color][0]
+                dset = comb[x_color][1]
+                tmp_df = df.query('params == @p & vroinames == @roi & dset == @dset')
+                x = tmp_df.params
+                y = tmp_df.mean_value
+                yerr = tmp_df.std_value
+                axes[g].errorbar(x, y, yerr=yerr, fmt="o", ms=16,
+                                 color=colors[x_color],
+                                 elinewidth=3, ecolor=colors[x_color],
+                                 label=f'{dset} {roi}')
+
+                axes[g].spines['top'].set_visible(False)
+                axes[g].spines['right'].set_visible(False)
+                axes[g].tick_params(axis='both', labelsize=22)
+        if g !=0 and g != 1:
+            axes[g].axhline(y=0, color='gray', linestyle='--', linewidth=2)
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    axes[n_subplots-1].legend(by_label.values(), by_label.keys(), loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.tight_layout(w_pad=2)
+    fig.supylabel('Parameter Value', fontsize=20)
+    fig.subplots_adjust(left=.09, bottom=0.15)
+    utils.save_fig(save_fig, save_path)
+
+
+def plot_final_params(df, comb, params_list, params_group, save_fig=True, save_path='/Volumes/server/Projects/sfp_nsd/figures/pic.png'):
+    mpl.rcParams['axes.linewidth'] = 2  # set the value globally
+    params_order = np.arange(0, len(params_list))
+    n_comb = len(comb)
+    colors = mpl.cm.RdPu(np.linspace(0, 1, n_comb+4))[2:n_comb+2]
+    colors[0] = [0, 0, 0, 1]
+    colors[1] = [0.7, 0.7, 0.7, 1]
+    colors[4:] = [0, 0, 0, 0]
+    n_subplots = len(set(params_group))
+    fig, axes = plt.subplots(1, n_subplots, figsize=(22, 6), dpi=300,
+                             gridspec_kw={'width_ratios': [params_group.count(x) for x in set(params_group)]})
+    control_fontsize(14, 20, 15)
+    for g in range(n_subplots):
+        tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
+        tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
+        for p, c in zip(tmp_params_list, tmp_params_order):
+            for x_color in range(n_comb):
+                roi = comb[x_color][0]
+                dset = comb[x_color][1]
+                tmp_df = df.query('params == @p & vroinames == @roi & dset == @dset')
+                x = tmp_df.params
+                y = tmp_df.mean_value
+                yerr = tmp_df.std_value
+                axes[g].errorbar(x, y, yerr=yerr, fmt="o", ms=16,
+                                 color=colors[x_color],
+                                 elinewidth=3, ecolor=colors[x_color],
+                                 label=f'{dset} {roi}')
+
+                axes[g].spines['top'].set_visible(False)
+                axes[g].spines['right'].set_visible(False)
+                axes[g].tick_params(axis='both', labelsize=22)
+        if g !=0 and g != 1:
+            axes[g].axhline(y=0, color='gray', linestyle='--', linewidth=2)
+
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    #axes[n_subplots-1].legend(by_label.values(), by_label.keys(), loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.tight_layout(w_pad=2)
+    #fig.supylabel('Parameter Value', fontsize=20)
+    fig.subplots_adjust(left=.09, bottom=0.15)
+    utils.save_fig(save_fig, save_path)
 

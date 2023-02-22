@@ -1,3 +1,0 @@
-ModuleNotFoundError in line 3 of /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/Snakefile:
-No module named 'numpy'
-  File "/home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/Snakefile", line 3, in <module>

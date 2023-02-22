@@ -1,5 +1,0 @@
-ModuleNotFoundError in line 5 of /home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/Snakefile:
-No module named 'nibabel'
-  File "/home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/Snakefile", line 5, in <module>
-  File "/home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/simulation.py", line 8, in <module>
-  File "/home/jh7685/sfp_nsd/Spatial-Frequency-Preference_NSDsyn/make_df.py", line 4, in <module>

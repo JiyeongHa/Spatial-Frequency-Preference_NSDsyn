@@ -2,16 +2,16 @@ import sys
 # sys.path.append('../../')
 import os
 import seaborn as sns
-import sfp_nsd_utils as utils
+import utils as utils
 import numpy as np
 import pandas as pd
-import make_df
+import preprocessing
 import two_dimensional_model as model
-import binning_eccen as binning
-import first_level_analysis as fitting
+import binning as binning
+import one_dimensional_model as fitting
 import matplotlib.pyplot as plt
 from itertools import product
-import bootstrap as bts
+import bootstrapping as bts
 from pathlib import Path
 import re
 
@@ -32,7 +32,7 @@ class SynthesizeData():
         self.syn_voxels = self.generate_synthetic_voxels()
 
     def get_stim_info_for_n_voxels(self, stim_info_path):
-        stim_info = make_df._load_stim_info(stim_info_path, drop_phase=True)
+        stim_info = preprocessing._load_stim_info(stim_info_path, drop_phase=True)
         stim_info['voxel'] = 0
         tmp_df = stim_info.copy()
         for i in np.arange(1, self.n_voxels):
@@ -82,8 +82,8 @@ class SynthesizeData():
         sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
         df = df.merge(sigma_v, on='voxel')
         syn_df = self.stim_info.merge(df, on='voxel')
-        syn_df = make_df._calculate_local_orientation(syn_df)
-        syn_df = make_df._calculate_local_sf(syn_df)
+        syn_df = preprocessing._calculate_local_orientation(syn_df)
+        syn_df = preprocessing._calculate_local_sf(syn_df)
         return syn_df
 
 
