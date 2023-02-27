@@ -2,6 +2,7 @@ debug*
 __pycache__/*
 .DS_Store/*
 .idea
-.ipynb_checkpoints
+.ipynb_checkpoints/*
 .snakemake/*/*/*
+./notebooks/.ipynb_checkpoints/*
 
