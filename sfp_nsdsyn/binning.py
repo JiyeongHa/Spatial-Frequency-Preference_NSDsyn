@@ -1,10 +1,9 @@
 import sys
-sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import utils as utils
+from . import utils as utils
 from matplotlib import pyplot as plt
 
 

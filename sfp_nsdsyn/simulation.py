@@ -1,11 +1,13 @@
-# sys.path.append('../../')
 import os
 import seaborn as sns
 import numpy as np
 import pandas as pd
 from itertools import product
-from sfp_nsdsyn import bootstrapping as bts, binning as binning, one_dimensional_model as fitting, preprocessing, \
-    two_dimensional_model as model, utils as utils
+from . import utils as utils
+from . import two_dimensional_model as model
+from . import bootstrapping as bts
+from . import binning as binning
+from . import one_dimensional_model as fitting
 import re
 
 class SynthesizeData():

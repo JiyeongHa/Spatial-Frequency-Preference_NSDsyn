@@ -1,18 +1,15 @@
 import os
 import seaborn as sns
-
 from sfp_nsdsyn import utils as utils
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-
 from sfp_nsdsyn.two_dimensional_model import _group_params
 
 
 def plot_avg_parameters(df, params, col_group,
-                        to_label="study_type", lgd_title="Study", label_order=None,
-                        height=7,
+                        to_label="study_type", lgd_title="Study", label_order=None, height=7,
                         save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     df = _group_params(df, params, col_group)
     sns.set_context("notebook", font_scale=1.5)

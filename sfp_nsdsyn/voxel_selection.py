@@ -3,7 +3,7 @@ import numpy as np
 import h5py
 import pandas as pd
 import seaborn as sns
-import utils as utils
+from . import utils as utils
 from math import atan2, degrees
 
 

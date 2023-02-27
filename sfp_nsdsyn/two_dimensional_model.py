@@ -1,11 +1,11 @@
 # sys.path.append('../../')
 import os
-import utils as utils
 import pandas as pd
 import numpy as np
 import torch
 import itertools
 from timeit import default_timer as timer
+from . import utils as utils
 
 
 def break_down_phase(df):

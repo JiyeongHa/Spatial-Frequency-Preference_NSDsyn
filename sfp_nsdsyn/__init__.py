@@ -8,5 +8,4 @@ from . import preprocessing
 from . import save_stimuli_description
 from . import simulation
 from . import two_dimensional_model
-from visualization import plot_1D_model_results
-from visualization import plot_2D_model_results
+

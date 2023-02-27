@@ -7,10 +7,10 @@ import h5py
 import itertools
 import pandas as pd
 from scipy.io import loadmat
-import voxel_selection as vs
-import utils as utils
-from sfp_nsdsyn import bootstrapping as bts
-import two_dimensional_model as model
+from . import voxel_selection as vs
+from . import utils as utils
+from . import bootstrapping as bts
+from . import two_dimensional_model as model
 
 def cart2pol(xramp, yramp):
     R = np.sqrt(xramp ** 2 + yramp ** 2)

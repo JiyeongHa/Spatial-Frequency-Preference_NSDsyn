@@ -1,15 +1,14 @@
 import sys
-sys.path.append('/Users/jh7685/Documents/GitHub/spatial-frequency-preferences')
 import os
 import nibabel as nib
 import numpy as np
 import pandas as pd
 import h5py
 import itertools
-import utils as utils
-import voxel_selection as vs
-import two_dimensional_model as model
-import bootstrapping as bts
+from . import utils as utils
+from . import voxel_selection as vs
+from . import two_dimensional_model as model
+from . import bootstrapping as bts
 
 
 def _label_stim_names(row):
