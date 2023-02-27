@@ -1,10 +1,8 @@
-import sys
 import os
 import numpy as np
 import h5py
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 import utils as utils
 from math import atan2, degrees
 

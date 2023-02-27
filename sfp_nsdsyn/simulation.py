@@ -1,18 +1,11 @@
-import sys
 # sys.path.append('../../')
 import os
 import seaborn as sns
-import utils as utils
 import numpy as np
 import pandas as pd
-import preprocessing
-import two_dimensional_model as model
-import binning as binning
-import one_dimensional_model as fitting
-import matplotlib.pyplot as plt
 from itertools import product
-import bootstrapping as bts
-from pathlib import Path
+from sfp_nsdsyn import bootstrapping as bts, binning as binning, one_dimensional_model as fitting, preprocessing, \
+    two_dimensional_model as model, utils as utils
 import re
 
 class SynthesizeData():

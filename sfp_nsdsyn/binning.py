@@ -6,7 +6,6 @@ import pandas as pd
 import seaborn as sns
 import utils as utils
 from matplotlib import pyplot as plt
-import two_dimensional_model as model
 
 
 def label_eccband(row):

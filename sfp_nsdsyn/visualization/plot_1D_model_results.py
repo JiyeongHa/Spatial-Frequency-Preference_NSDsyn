@@ -1,12 +1,11 @@
 import sys
-sys.path.append('../../../')
+sys.path.append('../../../../')
 import os
 import seaborn as sns
 from matplotlib import pyplot as plt
-import utils as utils
+from sfp_nsdsyn import utils as utils
 import pandas as pd
-import numpy as np
-from one_dimensional_model import np_log_norm_pdf
+from sfp_nsdsyn.one_dimensional_model import np_log_norm_pdf
 
 def _merge_fitting_output_df_to_subj_df(model_df, subj_df, merge_on=["subj","vroinames", "eccrois"]):
     merged_df = subj_df.merge(model_df, on=merge_on)

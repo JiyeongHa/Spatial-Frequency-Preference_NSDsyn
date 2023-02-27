@@ -1,15 +1,14 @@
 import os
-import sys
 import numpy as np
 import pandas as pd
 #import simulation as sim
 import matplotlib as mpl
+
+import sfp_nsdsyn.visualization.plot_2D_model_results
+
 mpl.use('svg')
-import utils as utils
-import two_dimensional_model as model
 import pickle
-from itertools import product
-import one_dimensional_model as tuning
+
 pickle.HIGHEST_PROTOCOL = 4
 
 configfile:
@@ -181,7 +180,7 @@ rule plot_loss_history:
             loss_history['max_epoch'] = int(wildcards.max_epoch)
             loss_history['full_ver'] = wildcards.full_ver
             loss_history['pw'] = wildcards.pw
-        model.plot_loss_history(loss_history, to_x="epoch",to_y="loss", to_label=None,
+        sfp_nsdsyn.visualization.plot_2D_model_results.plot_loss_history(loss_history, to_x="epoch",to_y="loss", to_label=None,
             save_fig=True, save_path=output.loss_fig, ci="sd", n_boot=100, log_y=True)
 
 
@@ -203,7 +202,7 @@ rule plot_model_param_history:
             model_history['full_ver'] = wildcards.full_ver
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params, (wildcards.full_ver=="True"))
-        model.plot_param_history(model_history,params=params_col, group=params_group,
+        sfp_nsdsyn.visualization.plot_2D_model_results.plot_param_history(model_history,params=params_col, group=params_group,
             to_label=None,label_order=None, ground_truth=True,
             lgd_title=None, save_fig=True, save_path=output.param_fig, ci=68, n_boot=100, log_y=True, sharey=False)
 
@@ -344,7 +343,7 @@ rule plot_avg_subj_parameter_history:
             subj_list = new_subj
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params,full_ver=(wildcards.full_ver=="True"))
-        model.plot_param_history_horizontal(model_history, params=params_col, group=np.arange(0,9), to_label='subj',
+        sfp_nsdsyn.visualization.plot_2D_model_results.plot_param_history_horizontal(model_history, params=params_col, group=np.arange(0,9), to_label='subj',
             label_order=subj_list, ground_truth=True, lgd_title="Subjects", save_fig=True, save_path=output.history_fig,
             height=8, col_wrap=3, ci="sd", n_boot=100, log_y=False)
 
@@ -358,7 +357,7 @@ rule plot_avg_subj_loss_history:
     run:
         sn_list = get_sn_list(wildcards.dset)
         loss_history = model.load_history_df_subj(input.df_dir, wildcards.dset, wildcards.stat, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "loss", [wildcards.roi])
-        model.plot_loss_history(loss_history,to_x="epoch",to_y="loss", to_label=None, to_col='lr_rate', height=5,
+        sfp_nsdsyn.visualization.plot_2D_model_results.plot_loss_history(loss_history,to_x="epoch",to_y="loss", to_label=None, to_col='lr_rate', height=5,
             lgd_title=None,to_row=None, save_fig=True, save_path=output.history_fig, ci=68, n_boot=100, log_y=True, sharey=True)
 
 
@@ -386,7 +385,7 @@ rule plot_scatterplot_subj:
         fnl_df = pd.melt(fnl_df,id_vars=['subj'],value_vars=params_col,var_name='params',value_name='My_value')
         df = fnl_df.merge(bd_df, on=['subj','params'])
         f_name = 'scatter_comparison.png'
-        grid = model.scatter_comparison(df.query('params in @params_col'),
+        grid = sfp_nsdsyn.visualization.plot_2D_model_results.scatter_comparison(df.query('params in @params_col'),
             x="Broderick_value", y="My_value", col="params",
             col_order=params_col,label_order=new_subj,
             to_label='subj',lgd_title="Subjects",height=6,
@@ -411,7 +410,7 @@ rule plot_scatterplot_avgparams:
         params_group = [0,1,1,2,2,2,2,3,3]
         fnl_df = model_history.query('epoch == @m_epoch')[params_col]
         m_fnl_df = model.get_mean_and_error_for_each_param(fnl_df, err="sem")
-        model.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, x_label='Broderick et al.(2022) values', y_label=f'My values: {wildcards.dset}', save_fig=True, save_path=output.scatter_fig)
+        sfp_nsdsyn.visualization.plot_2D_model_results.scatterplot_two_avg_params(m_bd_fnl_df, m_fnl_df, params_col, params_group, x_label='Broderick et al.(2022) values', y_label=f'My values: {wildcards.dset}', save_fig=True, save_path=output.scatter_fig)
 
 
 
@@ -437,10 +436,10 @@ rule plot_scatterplot_subj_betweenVareas:
             roi_df = roi_df.replace({'subj': subj_replace_dict})
         else:
             new_subj = subj_list
-        long_V1 = utils.melt_params(V1_df, value_name= 'V1_value')
-        long_roi = utils.melt_params(roi_df, value_name= f'{wildcards.roi}_value')
+        long_V1 = utils.melt_params(V1_df, value_name='V1_value')
+        long_roi = utils.melt_params(roi_df, value_name=f'{wildcards.roi}_value')
         df = pd.concat((long_V1, long_roi),axis=0)
-        model.scatter_comparison(df.query('params in @params_col'),
+        sfp_nsdsyn.visualization.plot_2D_model_results.scatter_comparison(df.query('params in @params_col'),
             x="V1_value",y=f"{wildcards.roi}_value",col="params",
             col_order=params_col,label_order=new_subj,
             to_label='subj',lgd_title="Subjects",height=7,
@@ -465,7 +464,7 @@ rule plot_scatterplot_avgparams_betweenVareas:
 
         fnl_V1_df = model.get_mean_and_error_for_each_param(V1_df, err="sem")
         fnl_roi_df = model.get_mean_and_error_for_each_param(roi_df, err="sem")
-        model.scatterplot_two_avg_params(fnl_V1_df, fnl_roi_df, params_col, params_group, x_label=f'{wildcards.dset}: V1', y_label=f'{wildcards.dset}: {wildcards.roi}', save_fig=True, save_path=output.scatter_fig)
+        sfp_nsdsyn.visualization.plot_2D_model_results.scatterplot_two_avg_params(fnl_V1_df, fnl_roi_df, params_col, params_group, x_label=f'{wildcards.dset}: V1', y_label=f'{wildcards.dset}: {wildcards.roi}', save_fig=True, save_path=output.scatter_fig)
 
 
 rule binning:
@@ -558,11 +557,12 @@ rule plot_tuning_curves_from_2D_model:
     output:
         plot
     run:
-        import binning as binning
+        from sfp_nsdsyn import binning as binning, utils as utils
+
         final_params = model_history[model_history.epoch == int(wildcards.max_epoch)]
         bin_list, bin_labels = get_ecc_bin_list(wildcards)
         subj_df['bins'] = binning.bin_ecc(subj_df, bin_list, to_bin='eccentricity', bin_labels=None)
-        bin_df = binning.summary_stat_for_ecc_bin(subj_df, to_bin=['normed_betas','local_sf'], central_tendency='mean', bin_group=['subj','bins','vroinames','freq_lvl'])
+        bin_df = binning.summary_stat_for_ecc_bin(subj_df, to_bin=['normed_betas', 'local_sf'], central_tendency='mean', bin_group=['subj', 'bins', 'vroinames', 'freq_lvl'])
         curves.plot_sf_curves_from_2D(bin_df, y, hue, lgd_title, datapoints=True, save_path=output[0])
 
 

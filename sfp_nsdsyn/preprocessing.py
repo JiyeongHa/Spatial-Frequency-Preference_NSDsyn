@@ -9,7 +9,7 @@ import pandas as pd
 from scipy.io import loadmat
 import voxel_selection as vs
 import utils as utils
-import bootstrapping as bts
+from sfp_nsdsyn import bootstrapping as bts
 import two_dimensional_model as model
 
 def cart2pol(xramp, yramp):

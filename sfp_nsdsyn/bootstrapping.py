@@ -1,12 +1,8 @@
 import sys
-sys.path.append('../../')
-import os
-import seaborn as sns
-from matplotlib import pyplot as plt
+sys.path.append('../../../')
 import utils as utils
 import pandas as pd
 import numpy as np
-from one_dimensional_model import np_log_norm_pdf
 from tqdm import tqdm
 
 def bootstrap_sample(data, stat=np.mean, n_select=8, n_bootstrap=100):

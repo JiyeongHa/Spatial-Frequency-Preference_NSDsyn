@@ -1,13 +1,12 @@
 import sys
-sys.path.append('../../')
+
+sys.path.append('../../../')
 import os
 import numpy as np
-import itertools
 import pandas as pd
 import torch
 import utils as utils
 from timeit import default_timer as timer
-import two_dimensional_model as model
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -406,7 +405,7 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
             axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
             axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             axes[g].set_title(subplot_list[g], fontsize=20)
-            model.control_fontsize(25, 30, 40)
+            sfp_nsdsyn.visualization.plot_2D_model_results.control_fontsize(25, 30, 40)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
@@ -469,7 +468,7 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
             axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
             axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             axes[g].set_title(subplot_list[g], fontsize=20)
-            model.control_fontsize(25, 30, 40)
+            sfp_nsdsyn.visualization.plot_2D_model_results.control_fontsize(25, 30, 40)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
@@ -517,7 +516,7 @@ def plot_sf_curves_from_2D(pred_df, pred_y, y, hue, lgd_title, t, save_path=None
     grid.fig.suptitle(t)
     plt.xscale('log')
     grid.fig.subplots_adjust(top=0.8)
-    utils.save_fig(save_path!=None, save_path)
+    utils.save_fig(save_path != None, save_path)
 
 
 def plot_sf_curves_from_2D_voxel(df, y, pred_df, pred_y, hue, lgd_title, t, save_path=None):
@@ -539,4 +538,4 @@ def plot_sf_curves_from_2D_voxel(df, y, pred_df, pred_y, hue, lgd_title, t, save
     grid.set(ylim=(0, 0.22), xlim=(0.01, 100))
     plt.xscale('log')
     grid.fig.suptitle(t)
-    utils.save_fig(save_path!=None, save_path)
+    utils.save_fig(save_path != None, save_path)
