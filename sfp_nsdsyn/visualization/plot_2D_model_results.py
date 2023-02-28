@@ -5,33 +5,56 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from sfp_nsdsyn.two_dimensional_model import _group_params
+from sfp_nsdsyn.two_dimensional_model import group_params
 
 
-def plot_avg_parameters(df, params, col_group,
-                        to_label="study_type", lgd_title="Study", label_order=None, height=7,
-                        save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    df = _group_params(df, params, col_group)
+def plot_avg_parameters(df, params, subplot_group, height=7,
+                        save_fig=False,
+                        save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=1.5)
+    df = group_params(df, params, subplot_group)
     x_label = "Parameter"
     y_label = "Value"
     grid = sns.FacetGrid(df,
                          col="group",
-                         col_wrap=3,
-                         palette=sns.color_palette("rocket", n_colors=df[to_label].nunique()),
-                         hue=to_label,
+                         aspect = 1.5,
                          height=height,
-                         hue_order=label_order,
+                         legend_out=True,
+                         sharex=False, sharey=False, gridspec_kws={'width_ratios': [1, 2, 6]})
+    grid.map(sns.lineplot, "params", "value", markersize=30, alpha=0.9, color='k',
+             marker='o', linestyle='', linewidth=3, err_style='bars',
+             ci=68)
+    axes = grid.axes
+    axes[0, 1].margins(x=0.7)
+    axes[0, 2].margins(x=0.1)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    grid.set_axis_labels("", y_label)
+    utils.save_fig(save_fig, save_path)
+    return grid
+
+def plot_individual_parameters(df, params, subplot_group,
+                               to_label="subj", lgd_title="Subjects", height=7,
+                        save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=1.5)
+    df = group_params(df, params, subplot_group)
+    x_label = "Parameter"
+    y_label = "Value"
+    grid = sns.FacetGrid(df,
+                         col="group",
+                         palette=sns.color_palette("rocket", df[to_label].nunique()),
+                         hue=to_label,
+                         hue_order=df[to_label].unique(),
+                         height=height,
                          legend_out=True,
                          sharex=False, sharey=False)
-    grid.map(sns.lineplot, "params", "value", markersize=15, alpha=0.9, marker='o', linestyle='', err_style='bars',
+    grid.map(sns.lineplot, "params", "value", markersize=15, alpha=0.9,
+             marker='o', linestyle='', err_style='bars',
              ci=68)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
-    grid.fig.legend(title=lgd_title, labels=label_order)
+    grid.fig.legend(title=lgd_title, labels=df[to_label].unique())
     grid.set_axis_labels("", y_label)
-    # grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
-    # grid.fig.suptitle(f'{title}', fontweight="bold")
     utils.save_fig(save_fig, save_path)
 
 
@@ -200,7 +223,7 @@ def plot_param_history(df, params, group,
                        lgd_title=None,
                        save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
                        ci=68, n_boot=100, log_y=True, sharey=True):
-    df = _group_params(df, params, group)
+    df = group_params(df, params, group)
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Epoch"
     y_label = "Parameter value"
@@ -233,7 +256,7 @@ def plot_param_history_horizontal(df, params, group,
                                   lgd_title=None, height=5, col_wrap=3,
                                   save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
                                   ci=68, n_boot=100, log_y=True):
-    df = _group_params(df, params, group)
+    df = group_params(df, params, group)
     sns.set_context("notebook", font_scale=1.5)
     to_x = "epoch"
     to_y = "value"
@@ -274,7 +297,7 @@ def plot_grouped_parameters_subj(df, params, col_group,
                             to_label="study_type", lgd_title="Study", label_order=None,
                             height=7,
                             save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    df = _group_params(df, params, col_group)
+    df = group_params(df, params, col_group)
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Parameter"
     y_label = "Value"

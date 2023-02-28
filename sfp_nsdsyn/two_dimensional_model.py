@@ -248,16 +248,16 @@ def melt_history_df(history_df):
     return pd.concat(history_df).reset_index().rename(columns={'level_0': 'subj', 'level_1': 'epoch'})
 
 
-def _add_param_type_column(model_history_df, params):
+def add_param_type_column(model_history_df, params):
     id_cols = model_history_df.drop(columns=params).columns.tolist()
     df = pd.melt(model_history_df, id_vars=id_cols, value_vars=params,
                  var_name='params', value_name='value')
     return df
 
-def _group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
+def group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
     """Create a new column in df based on params values.
     Params and group should be 1-on-1 matched."""
-    df = _add_param_type_column(df, params)
+    df = add_param_type_column(df, params)
     conditions = []
     for i in params:
         tmp = df['params'] == i
