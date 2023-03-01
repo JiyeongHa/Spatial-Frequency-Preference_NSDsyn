@@ -51,8 +51,55 @@ def plot_individual_parameters(df, params, subplot_group, height=6, hue='subj',
                          height=height,
                          legend_out=True,
                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+
     grid.map(sns.pointplot, "params", "value", estimator=np.mean, linestyles='',
-             scale=1.5, alpha=0.9, orient="v", errorbar=("ci", 68))
+             scale=1.5, alpha=0.9, orient="v", errorbar=("ci", 68), dodge=100)
+    grid.add_legend()
+    for ax in range(len(groups)):
+        plt.setp(grid.axes[0, ax].collections, sizes=[200])
+    axes = grid.axes
+    axes[0, 1].margins(x=0.5)
+    axes[0, 2].margins(x=0.1)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    grid.set_axis_labels("", y_label)
+    utils.save_fig(save_fig, save_path)
+    return grid
+
+def merge_continuous_eccentricity(df, ecc_range=(0,6), repeat=1000, col_name='eccentricity'):
+
+    val_range = np.linspace(ecc_range[0], ecc_range[-1], repeat)
+    all_ecc_df = pd.DataFrame({})
+    for val in val_range:
+        df[col_name] = val
+        all_ecc_df = all_ecc_df.append(df, ignore_index=True)
+
+    return all_ecc_df
+
+def plot_preferred_period():
+
+    return grid
+
+
+
+def plot_parameters_in_polar(df, params, subplot_group, height=6, hue='names',
+                               save_fig=False,
+                               save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=2)
+    df = group_params(df, params, subplot_group)
+    x_label = "Parameter"
+    y_label = "Value"
+    groups, counts = np.unique(subplot_group, return_counts=True)
+    grid = sns.FacetGrid(df,
+                         col="group",
+                         hue=hue,
+                         hue_order=df[hue].unique(),
+                         palette=sns.color_palette("husl", df[hue].nunique()),
+                         subplot_kws=dict(projection='polar'),
+                         height=height,
+                         legend_out=True,
+                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+    grid.map(plt.plot, "params", "value")
     for ax in range(len(groups)):
         plt.setp(grid.axes[0, ax].collections, sizes=[200])
     axes = grid.axes
@@ -63,6 +110,7 @@ def plot_individual_parameters(df, params, subplot_group, height=6, hue='subj',
         ax.set_title(f" ")
     grid.set_axis_labels("", y_label)
     utils.save_fig(save_fig, save_path)
+    return grid
 
 
 def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
