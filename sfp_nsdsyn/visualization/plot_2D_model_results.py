@@ -8,24 +8,25 @@ import matplotlib as mpl
 from sfp_nsdsyn.two_dimensional_model import group_params
 
 
-def plot_avg_parameters(df, params, subplot_group, height=7,
+def plot_avg_parameters(df, params, subplot_group, height=6,
                         save_fig=False,
                         save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=1.5)
+    sns.set_context("notebook", font_scale=2)
     df = group_params(df, params, subplot_group)
     x_label = "Parameter"
     y_label = "Value"
+    groups, counts = np.unique(subplot_group, return_counts=True)
     grid = sns.FacetGrid(df,
                          col="group",
-                         aspect = 1.5,
                          height=height,
                          legend_out=True,
-                         sharex=False, sharey=False, gridspec_kws={'width_ratios': [1, 2, 6]})
-    grid.map(sns.lineplot, "params", "value", markersize=30, alpha=0.9, color='k',
-             marker='o', linestyle='', linewidth=3, err_style='bars',
-             ci=68)
+                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+    grid.map(sns.pointplot, "params", "value", estimator=np.mean, linestyles='',
+             scale=1.5, alpha=0.9, color='k', orient="v", errorbar=("ci", 68))
+    for ax in range(len(groups)):
+        plt.setp(grid.axes[0, ax].collections, sizes=[200])
     axes = grid.axes
-    axes[0, 1].margins(x=0.7)
+    axes[0, 1].margins(x=0.5)
     axes[0, 2].margins(x=0.1)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
@@ -33,27 +34,33 @@ def plot_avg_parameters(df, params, subplot_group, height=7,
     utils.save_fig(save_fig, save_path)
     return grid
 
-def plot_individual_parameters(df, params, subplot_group,
-                               to_label="subj", lgd_title="Subjects", height=7,
-                        save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=1.5)
+
+def plot_individual_parameters(df, params, subplot_group, height=6, hue='subj',
+                               save_fig=False,
+                               save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=2)
     df = group_params(df, params, subplot_group)
     x_label = "Parameter"
     y_label = "Value"
+    groups, counts = np.unique(subplot_group, return_counts=True)
     grid = sns.FacetGrid(df,
                          col="group",
-                         palette=sns.color_palette("rocket", df[to_label].nunique()),
-                         hue=to_label,
-                         hue_order=df[to_label].unique(),
+                         hue=hue,
+                         hue_order=df[hue].unique(),
+                         palette=sns.color_palette("husl", df[hue].nunique()),
                          height=height,
                          legend_out=True,
-                         sharex=False, sharey=False)
-    grid.map(sns.lineplot, "params", "value", markersize=15, alpha=0.9,
-             marker='o', linestyle='', err_style='bars',
-             ci=68)
+                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+    grid.map(sns.pointplot, "params", "value", estimator=np.mean, linestyles='',
+             scale=1.5, alpha=0.9, orient="v", errorbar=("ci", 68))
+    for ax in range(len(groups)):
+        plt.setp(grid.axes[0, ax].collections, sizes=[200])
+    axes = grid.axes
+    axes[0, 1].margins(x=0.5)
+    axes[0, 2].margins(x=0.1)
+    grid.add_legend()
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
-    grid.fig.legend(title=lgd_title, labels=df[to_label].unique())
     grid.set_axis_labels("", y_label)
     utils.save_fig(save_fig, save_path)
 
