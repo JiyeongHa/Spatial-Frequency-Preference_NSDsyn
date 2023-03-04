@@ -76,10 +76,22 @@ def merge_continuous_eccentricity(df, ecc_range=(0,6), repeat=1000, col_name='ec
 
     return all_ecc_df
 
-def plot_preferred_period():
-
+def plot_preferred_period(df, height=6, hue='names',
+                               save_fig=False,
+                               save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=2)
+    x_label = "Eccentricity"
+    y_label = "Preferred period"
+    grid = sns.FacetGrid(df,
+                         height=height,
+                         legend_out=True,
+                         sharex=False, sharey=False)
+    grid.map(sns.lineplot, "eccentricity", "Pv", estimator=np.mean, error_style='band', ci='sd')
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    grid.set_axis_labels("", y_label)
+    utils.save_fig(save_fig, save_path)
     return grid
-
 
 
 def plot_parameters_in_polar(df, params, subplot_group, height=6, hue='names',

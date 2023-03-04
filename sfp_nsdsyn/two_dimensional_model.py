@@ -14,6 +14,17 @@ def break_down_phase(df):
 
     return df
 
+def get_Pv(row, full_ver: bool = True):
+    ecc_dependency = row.slope * row.eccentricity + row.intercept
+    if full_ver is True:
+        Pv = ecc_dependency * (1 + row.p_1 * np.cos(2 * row.ori) +
+                               row.p_2 * np.cos(4 * row.angle) +
+                               row.p_3 * np.cos(2 * (row.angle - row.ori)) +
+                               row.p_4 * np.cos(4 * (row.angle - row.ori)))
+    elif full_ver is False:
+        Pv = ecc_dependency
+    return Pv
+
 
 class PredictBOLD2d():
     """ Define parameters used in forward model"""
