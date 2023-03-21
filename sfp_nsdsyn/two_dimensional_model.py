@@ -14,15 +14,20 @@ def break_down_phase(df):
 
     return df
 
-def get_Pv(row, full_ver: bool = True):
-    ecc_dependency = row.slope * row.eccentricity + row.intercept
-    if full_ver is True:
-        Pv = ecc_dependency * (1 + row.p_1 * np.cos(2 * row.ori) +
-                               row.p_2 * np.cos(4 * row.angle) +
-                               row.p_3 * np.cos(2 * (row.angle - row.ori)) +
-                               row.p_4 * np.cos(4 * (row.angle - row.ori)))
-    elif full_ver is False:
-        Pv = ecc_dependency
+def get_Pv_row(row, params, p_part_only=False):
+    params = params.iloc[0]
+    ecc_dependency = params.slope * row.eccentricity + params.intercept
+    if p_part_only is False:
+        Pv = ecc_dependency * (1 + params.p_1 * np.cos(2 * row.local_ori) +
+                               params.p_2 * np.cos(4 * row.local_ori) +
+                               params.p_3 * np.cos(2 * (row.local_ori - row.angle)) +
+                               params.p_4 * np.cos(4 * (row.local_ori - row.angle)))
+    elif p_part_only is True:
+        Pv = (1 + params.p_1 * np.cos(2 * row.local_ori) +
+              params.p_2 * np.cos(4 * row.local_ori) +
+              params.p_3 * np.cos(2 * (row.local_ori - row.angle)) +
+              params.p_4 * np.cos(4 * (row.local_ori - row.angle)))
+
     return Pv
 
 
