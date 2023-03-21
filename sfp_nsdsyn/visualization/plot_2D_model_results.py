@@ -7,11 +7,46 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from sfp_nsdsyn.two_dimensional_model import group_params
 
+def weighted_mean(x, **kws):
+    """store weights as imaginery number"""
+    return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
 
-def plot_avg_parameters(df, params, subplot_group, height=6,
+
+def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7,
+                            save_fig=False,
+                            save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=2.5)
+    df = group_params(df, params, subplot_group)
+    x_label = "Parameter"
+    y_label = "Value"
+    df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df.sigma_squared_s)]
+    groups, counts = np.unique(subplot_group, return_counts=True)
+    grid = sns.FacetGrid(df,
+                         col="group",
+                         height=height,
+                         legend_out=True,
+                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+    grid.map(sns.pointplot, "params", "value_and_weights", estimator=weighted_mean, linestyles='',
+             scale=1.5, alpha=0.9, color='k', orient="v", errorbar=("ci", 68))
+    for ax in range(len(groups)):
+        plt.setp(grid.axes[0, ax].collections, sizes=[200])
+    axes = grid.axes
+    axes[0, 1].margins(x=0.5)
+    axes[0, 2].margins(x=0.1)
+    axes[0, 0].set_ylim([0, 2.6])
+    axes[0, 1].set_ylim([0, 0.5])
+    axes[0, 2].set_ylim([-0.2, 0.15])
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    grid.set_axis_labels("", 'Precision weighted\nvalue')
+    utils.save_fig(save_fig, save_path)
+    return grid
+
+
+def plot_avg_parameters(df, params, subplot_group, height=7,
                         save_fig=False,
                         save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=2)
+    sns.set_context("notebook", font_scale=2.5)
     df = group_params(df, params, subplot_group)
     x_label = "Parameter"
     y_label = "Value"
@@ -28,6 +63,9 @@ def plot_avg_parameters(df, params, subplot_group, height=6,
     axes = grid.axes
     axes[0, 1].margins(x=0.5)
     axes[0, 2].margins(x=0.1)
+    axes[0, 0].set_ylim([0, 2.6])
+    axes[0, 1].set_ylim([0, 0.5])
+    axes[0, 2].set_ylim([-0.2, 0.15])
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", y_label)
@@ -35,7 +73,7 @@ def plot_avg_parameters(df, params, subplot_group, height=6,
     return grid
 
 
-def plot_individual_parameters(df, params, subplot_group, height=6, hue='subj',
+def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj',
                                save_fig=False,
                                save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=2)
@@ -43,32 +81,43 @@ def plot_individual_parameters(df, params, subplot_group, height=6, hue='subj',
     x_label = "Parameter"
     y_label = "Value"
     groups, counts = np.unique(subplot_group, return_counts=True)
+    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+           (189, 189, 189)]
+    n_labels = df[hue].nunique()
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    pal = sns.color_palette(np.array(pal) / 255, n_labels)
     grid = sns.FacetGrid(df,
                          col="group",
                          hue=hue,
                          hue_order=df[hue].unique(),
-                         palette=sns.color_palette("husl", df[hue].nunique()),
+                         palette=pal,
                          height=height,
                          legend_out=True,
                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
 
-    grid.map(sns.pointplot, "params", "value", estimator=np.mean, linestyles='',
-             scale=1.5, alpha=0.9, orient="v", errorbar=("ci", 68), dodge=100)
+    grid.map(sns.stripplot, "params", "value", dodge=True, size=20, alpha=0.8)
+    # for ax in range(len(groups)):
+    #     plt.setp(grid.axes[0, ax].collections, sizes=[200])
     grid.add_legend()
-    for ax in range(len(groups)):
-        plt.setp(grid.axes[0, ax].collections, sizes=[200])
+    # for lgd_marker in grid._legend.legendHandles:
+    #     lgd_marker._sizes = [100]
     axes = grid.axes
     axes[0, 1].margins(x=0.5)
     axes[0, 2].margins(x=0.1)
+    axes[0, 0].set_ylim([1.5, 3])
+    axes[0, 1].set_ylim([0, 0.3])
+    axes[0, 2].set_ylim([-0.4, 0.2])
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", y_label)
     utils.save_fig(save_fig, save_path)
     return grid
 
-def merge_continuous_eccentricity(df, ecc_range=(0,6), repeat=1000, col_name='eccentricity'):
+def merge_continuous_values_to_the_df(df, val_range=(0,6), repeat=1000, col_name='eccentricity', endpoint=True):
 
-    val_range = np.linspace(ecc_range[0], ecc_range[-1], repeat)
+    val_range = np.linspace(val_range[0], val_range[-1], repeat, endpoint=endpoint)
     all_ecc_df = pd.DataFrame({})
     for val in val_range:
         df[col_name] = val
@@ -76,21 +125,54 @@ def merge_continuous_eccentricity(df, ecc_range=(0,6), repeat=1000, col_name='ec
 
     return all_ecc_df
 
-def plot_preferred_period(df, height=6, hue='names',
+def plot_preferred_period(df, height=6, hue='names', col='subj',
                                save_fig=False,
                                save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=2)
     x_label = "Eccentricity"
     y_label = "Preferred period"
-    grid = sns.FacetGrid(df,
-                         height=height,
-                         legend_out=True,
-                         sharex=False, sharey=False)
-    grid.map(sns.lineplot, "eccentricity", "Pv", estimator=np.mean, error_style='band', ci='sd')
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
+    df['value_and_weights'] = [v + w * 1j for v, w in zip(df.value, df.sigma_squared_s)]
+    if col != None:
+        grid = sns.FacetGrid(df,
+                             hue=hue, palette=sns.color_palette("hls", df[hue].nunique()),
+                             hue_order=['annulus', 'reverse spiral', 'pinwheel', 'forward spiral'],
+                             height=height,
+                             col=col, col_wrap=4,
+                             aspect=1.1,
+                             legend_out=True,
+                             sharex=True, sharey=True)
+    elif col is None:
+        grid = sns.FacetGrid(df,
+                             hue=hue, palette=sns.color_palette("hls", df[hue].nunique()),
+                             hue_order=['annulus','reverse spiral','pinwheel','forward spiral'],
+                             height=height,
+                             col=col,
+                             aspect=1.1,
+                             legend_out=True,
+                             sharex=True, sharey=True)
+    grid = grid.map(sns.lineplot, "eccentricity", "Pv", estimator=weighted_mean, n_boot=100, err_style='band', ci=68)
+    grid.set(xlim=(0,10))
+    grid.add_legend()
     grid.set_axis_labels("", y_label)
     utils.save_fig(save_fig, save_path)
+    return grid
+
+def polarplot_preferred_period(df, height=6, hue='names', col='subj',
+                               save_fig=False,
+                               save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=2)
+    x_label = "Angle"
+    y_label = "Preferred period"
+    grid = sns.FacetGrid(df,
+                         height=height,
+                         col=col, col_wrap=4,
+                         hue=hue,
+                         subplot_kws={'projection': 'polar'},
+                         sharex=False,
+                         sharey=False, despine=False)
+    grid = grid.map(sns.lineplot, "angle", "Pv", estimator=np.mean, n_boot=100, err_style='band', ci=68)
+    grid.add_legend()
+
     return grid
 
 
