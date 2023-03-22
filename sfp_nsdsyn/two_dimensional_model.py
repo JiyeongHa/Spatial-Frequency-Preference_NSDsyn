@@ -8,6 +8,8 @@ from timeit import default_timer as timer
 from . import utils as utils
 
 
+
+
 def break_down_phase(df):
     dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi']
     df = df.groupby(dv_to_group).mean().reset_index()
@@ -322,5 +324,3 @@ def get_mean_and_error_for_each_param(df, err="sem", to_group=['params']):
     elif err == "sem":
         err_df = df.groupby(to_group)[val_name].sem().reset_index().rename(columns={val_name: 'std_value'})
     return m_df.merge(err_df, on=to_group)
-
-
