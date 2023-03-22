@@ -11,6 +11,29 @@ def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
 
+def violinplot_precision_weighted_avg_parameters(df, params, subplot_group,
+                                                 save_fig=False,
+                                                 save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+    sns.set_context("notebook", font_scale=2.5)
+    groups, counts = np.unique(subplot_group, return_counts=True)
+    df = group_params(df, params, subplot_group)
+    grid = sns.FacetGrid(df,
+                         col="group",
+                         height=8,
+                         legend_out=True,
+                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+    pal = sns.diverging_palette(145,300,s=100, l=65, n=2, as_cmap=False)
+    grid = grid.map(sns.violinplot, "params", "value", 'dset', hue_order=['nsdsyn','broderick'], split=True,
+                    palette=pal, inner='stick', linewidth=3, saturation=0.5)
+    axes = grid.axes
+    axes[0, 0].margins(x=0.2)
+    axes[0, 1].margins(x=0.2)
+    axes[0, 2].margins(x=0.05)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    grid.add_legend()
+    grid.set_axis_labels('', 'Precision weighted\nvalue')
+    utils.save_fig(save_fig, save_path)
 
 def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7,
                             save_fig=False,
@@ -131,80 +154,71 @@ def plot_preferred_period(df, height=6, hue='names', col='subj',
     sns.set_context("notebook", font_scale=2)
     x_label = "Eccentricity"
     y_label = "Preferred period"
-    df['value_and_weights'] = [v + w * 1j for v, w in zip(df.value, df.sigma_squared_s)]
+    df['value_and_weights'] = [v + w * 1j for v, w in zip(df.Pv, df.sigma_squared_s)]
     if col != None:
         grid = sns.FacetGrid(df,
-                             hue=hue, palette=sns.color_palette("hls", df[hue].nunique()),
+                             hue=hue, palette=sns.color_palette("deep", df[hue].nunique()) + [(.5, .5, .5)],
                              hue_order=['annulus', 'reverse spiral', 'pinwheel', 'forward spiral'],
                              height=height,
                              col=col, col_wrap=4,
-                             aspect=1.1,
+                             aspect=1.2,
                              legend_out=True,
                              sharex=True, sharey=True)
     elif col is None:
         grid = sns.FacetGrid(df,
-                             hue=hue, palette=sns.color_palette("hls", df[hue].nunique()),
+                             hue=hue, palette=sns.color_palette("deep", df[hue].nunique()) + [(.5, .5, .5)],
                              hue_order=['annulus','reverse spiral','pinwheel','forward spiral'],
                              height=height,
                              col=col,
-                             aspect=1.1,
+                             aspect=1.2,
                              legend_out=True,
                              sharex=True, sharey=True)
-    grid = grid.map(sns.lineplot, "eccentricity", "Pv", estimator=weighted_mean, n_boot=100, err_style='band', ci=68)
-    grid.set(xlim=(0,10))
+    grid = grid.map(sns.lineplot, "eccentricity", "value_and_weights", linewidth=2, estimator=weighted_mean, n_boot=100, err_style='band', ci=68)
+
+    grid.set(xlim=(0,10), ylim=(0,2))
     grid.add_legend()
     grid.set_axis_labels("", y_label)
     utils.save_fig(save_fig, save_path)
     return grid
 
-def polarplot_preferred_period(df, height=6, hue='names', col='subj',
+def polarplot_preferred_period(df, height=9, hue='names', col='subj',
                                save_fig=False,
                                save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=2)
     x_label = "Angle"
     y_label = "Preferred period"
-    grid = sns.FacetGrid(df,
-                         height=height,
-                         col=col, col_wrap=4,
-                         hue=hue,
-                         subplot_kws={'projection': 'polar'},
-                         sharex=False,
-                         sharey=False, despine=False)
-    grid = grid.map(sns.lineplot, "angle", "Pv", estimator=np.mean, n_boot=100, err_style='band', ci=68)
+    df['value_and_weights'] = [v + w * 1j for v, w in zip(df.Pv, df.sigma_squared_s)]
+    pal = sns.color_palette("deep", 4)
+    stim_class = ['annulus','reverse spiral','pinwheel','forward spiral']
+    colors = [pal[i] for i in range(len(pal)) if stim_class[i] in df[hue].unique()]
+    colors_order = [stim_class[i] for i in range(len(pal)) if stim_class[i] in df[hue].unique()]
+    if col != None:
+        grid = sns.FacetGrid(df,
+                             height=height, palette=colors,
+                             col=col, col_wrap=4,
+                             hue=hue,
+                             hue_order=colors_order,
+                             subplot_kws={'projection': 'polar'},
+                             sharex=True,
+                             sharey=True, despine=False)
+    elif col == None:
+        grid = sns.FacetGrid(df,
+                             height=height, palette=colors,
+                             hue=hue,
+                             hue_order=colors_order,
+                             subplot_kws={'projection': 'polar'},
+                             sharex=True,
+                             sharey=True, despine=False)
+    grid = grid.map(sns.lineplot, "angle", "value_and_weights", linewidth=height/3, estimator=weighted_mean, n_boot=100, err_style='band', ci=68)
     grid.add_legend()
-
-    return grid
-
-
-def plot_parameters_in_polar(df, params, subplot_group, height=6, hue='names',
-                               save_fig=False,
-                               save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=2)
-    df = group_params(df, params, subplot_group)
-    x_label = "Parameter"
-    y_label = "Value"
-    groups, counts = np.unique(subplot_group, return_counts=True)
-    grid = sns.FacetGrid(df,
-                         col="group",
-                         hue=hue,
-                         hue_order=df[hue].unique(),
-                         palette=sns.color_palette("husl", df[hue].nunique()),
-                         subplot_kws=dict(projection='polar'),
-                         height=height,
-                         legend_out=True,
-                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-    grid.map(plt.plot, "params", "value")
-    for ax in range(len(groups)):
-        plt.setp(grid.axes[0, ax].collections, sizes=[200])
-    axes = grid.axes
-    axes[0, 1].margins(x=0.5)
-    axes[0, 2].margins(x=0.1)
-    grid.add_legend()
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
-    grid.set_axis_labels("", y_label)
+    grid.set(xticklabels=[], yticks=[0, 0.5, 1, 1.5])
+    grid.set(ylim=(0, 1.5))
+    grid.set_axis_labels(x_label, y_label)
     utils.save_fig(save_fig, save_path)
+
     return grid
+
+
 
 
 def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",

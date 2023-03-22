@@ -77,3 +77,16 @@ def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['v
 def merge_sigma_v_to_main_df(bts_v_df, subj_df, on=['subj', 'voxel']):
     return subj_df.merge(bts_v_df, on=on)
 
+def average_sigma_v_across_voxels(df, subset=['subj']):
+
+    if all(df.groupby(['voxel']+subset)['sigma_v_squared'].count() == 1) == False:
+        df = df.drop_duplicates(['voxel']+subset)
+    avg_sigma_v_df = df[subset+['sigma_v_squared']].groupby(subset).mean().reset_index()
+    avg_sigma_v_df = avg_sigma_v_df.rename(columns={'sigma_v_squared': 'sigma_squared_s'})
+    return avg_sigma_v_df
+
+def get_precision_s(df, subset):
+    avg_sigma_v_df = average_sigma_v_across_voxels(df, subset)
+    avg_sigma_v_df['precision'] = 1 / avg_sigma_v_df['sigma_squared_s']
+    return avg_sigma_v_df[subset + ['precision']]
+
