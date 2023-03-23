@@ -191,3 +191,11 @@ def R2_histogram(sn_list, all_subj_R2, n_col=2, n_row=4, xlimit=100, n_bins=200,
         plt.savefig(save_path)
     plt.show()
     return
+
+def convert_rgb_to_seaborn_color_palette(rgb_list, n_colors):
+    return sns.color_palette(np.array(rgb_list) / 255, n_colors)
+
+def color_husl_palette_different_shades(n_colors, hex_hue):
+    """hue must be seaborn palettes._ColorPalette"""
+    pal = sns.color_palette(f'light:{hex_hue}', n_colors=n_colors)
+    return pal
