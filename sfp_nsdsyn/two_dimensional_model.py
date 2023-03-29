@@ -283,6 +283,18 @@ def group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
     df['group'] = np.select(conditions, group, default='other')
     return df
 
+def load_history_files(file_list):
+    history_df = pd.DataFrame({})
+    for f in file_list:
+        tmp = pd.read_hdf(f)
+        tmp['subj'] = [subj for subj in f.split('_') if 'subj' in subj][0]
+        tmp['dset'] = [dset for dset in f.split('_') if 'dset' in dset][0][5:]
+        tmp['lr_rate'] = [lr for lr in f.split('_') if 'lr' in lr][0][3:]
+        tmp['max_epoch'] = [eph for eph in f.split('_') if 'eph' in eph][0][4:]
+        tmp['vroinames'] = f.split('_')[-1][:-3]
+        history_df = history_df.append(tmp)
+    return history_df
+
 
 def load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, df_type, roi):
     all_history_df = pd.DataFrame()
