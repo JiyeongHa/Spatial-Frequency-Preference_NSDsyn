@@ -1,15 +1,13 @@
 import os
 import numpy as np
 import pandas as pd
-#import simulation as sim
 import matplotlib as mpl
-
-import sfp_nsdsyn.visualization.plot_2D_model_results
-
 mpl.use('svg')
+#from sfp_nsdsyn import *
 import pickle
-
 pickle.HIGHEST_PROTOCOL = 4
+from sfp_nsdsyn import utils
+
 
 configfile:
     "config.json"
@@ -27,7 +25,7 @@ SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broder
 ROIS = ["V1"]
 stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
-params_group = [0,1,1,2,2,2,2,3,3]
+params_group = [0,1,1,2,2,2,2,2,2]
 
 def get_sn_list(dset):
     if dset == "broderick":
@@ -552,45 +550,45 @@ rule plot_tuning_curves:
         model_df = model_df.query('epoch == @max_epoch & ecc_bin in @new_bin_labels')
         tuning.plot_curves(bin_df, model_df, save_fig=True, title=f'{wildcards.subj} {wildcards.roi}', save_path=output.tuning_curves)
 
-rule plot_tuning_curves_from_2D_model:
+rule save_precision_s:
     input:
-        subj_df
-        model_history
+        subj_df = lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards))
     output:
-        plot
+        os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     run:
-        from sfp_nsdsyn import binning as binning, utils as utils
+        print(input.subj_df)
+        from sfp_nsdsyn import bts
+        precision_df = pd.DataFrame({})
+        for df in input.subj_df:
+            tmp = pd.read_csv(df)
+            tmp = bts.get_precision_s(tmp,subset=['subj'])
+            precision_df = precision_df.append(tmp)
+            precision_df.to_csv(output[0], index=False)
 
-        final_params = model_history[model_history.epoch == int(wildcards.max_epoch)]
-        bin_list, bin_labels = get_ecc_bin_list(wildcards)
-        subj_df['bins'] = binning.bin_ecc(subj_df, bin_list, to_bin='eccentricity', bin_labels=None)
-        bin_df = binning.summary_stat_for_ecc_bin(subj_df, to_bin=['normed_betas', 'local_sf'], central_tendency='mean', bin_group=['subj', 'bins', 'vroinames', 'freq_lvl'])
-        curves.plot_sf_curves_from_2D(bin_df, y, hue, lgd_title, datapoints=True, save_path=output[0])
-
-
-rule plot_2D_parameters:
+rule plot_precision_weighted_2D_parameters:
     input:
-        model_history=lambda wildcards: expand(os.path.join(config[
-            'OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
-        subj_df=lambda wildcards: expand(os.path.join(config[
-            'INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards))
+        model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
+        subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
+        precision_df = os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'plot-precision-weighted-params_avg-{avg}_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.svg'),
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}'),
     params:
+        df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D"),
         sn_list = lambda wildcards: get_sn_list(wildcards.dset),
         params_order = params_list,
         params_group = params_group
     run:
-        from sfp_nsdsyn import bootstrapping as bts
-        from sfp_nsdsyn import visualization as vis
-        model_history = model.load_history_df_subj(input.df_dir,wildcards.dset,wildcards.stat,[wildcards.full_ver],
-            params.sn_list,[float(wildcards.lr)],[int(wildcards.max_epoch)],"model",[wildcards.roi])
+        from sfp_nsdsyn import model
+        from sfp_nsdsyn import bts
+        from sfp_nsdsyn import vis
+        model_history = model.load_history_files(input.model_history)
+        #model_history = model.load_history_df_subj(output_dir=params.df_dir, dataset=wildcards.dset, stat=wildcards.stat, full_ver=[True], sn_list=params.sn_list, lr_rate=[float(wildcards.lr)], max_epoch=[int(wildcards.max_epoch)], df_type="model", roi=[wildcards.roi])
         final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
-        precision_df = pd.DataFrame({})
-        for df in subj_df:
-            tmp = pd.read_csv(df)
-            tmp = bts.get_precision_s(tmp, subset=['subj'])
-            precision_df = precision_df.append(tmp)
+        precision_df = pd.read_csv(input.precision_df)
         final_params_with_precision = pd.merge(final_params, precision_df, on='subj')
-        grid = vis.plot_2D_model_results.plot_precision_weighted_avg_parameters(final_params_with_precision, params.params_order, params.params_group,
-            save_fig=True, save_path=output[0])
+        grid = vis.plot_precision_weighted_avg_parameters(final_params_with_precision, params.params_order, params.params_group,
+            save_fig=True, save_path=output[0], roi='all')
+
+rule svg_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1', 'V2','V3'])
