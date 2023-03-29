@@ -1,11 +1,12 @@
-from . import one_dimensional_model
-from . import utils
-from . import binning
-from . import voxel_selection
-from . import Broderick_dataset
-from . import bootstrapping
-from . import preprocessing
+from . import one_dimensional_model as tuning
+from . import utils as utils
+from . import binning as binning
+from . import voxel_selection as vs
+from . import Broderick_dataset as brod
+from . import bootstrapping as bts
+from . import preprocessing as prep
 from . import save_stimuli_description
-from . import simulation
-from . import two_dimensional_model
-from . import visualization
+from . import simulation as sim
+from . import two_dimensional_model as model
+from .visualization import plot_1D_model_results, plot_2D_model_results as vis
+
