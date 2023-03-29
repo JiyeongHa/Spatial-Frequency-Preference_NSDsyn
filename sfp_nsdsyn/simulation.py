@@ -83,8 +83,6 @@ class SynthesizeData():
 
 
     def synthesize_BOLD_1d(self, bin_list, bin_labels, params):
-        #TODO: write 1D model forward class?
-        # binning
         syn_df = self.syn_voxels.copy()
         syn_df['bins'] = binning.bin_ecc(self.syn_voxels, bin_list=bin_list, to_bin='eccentricity', bin_labels=bin_labels)
         syn_df = binning.summary_stat_for_ecc_bin(syn_df,
