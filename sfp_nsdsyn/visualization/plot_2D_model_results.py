@@ -35,14 +35,47 @@ def violinplot_precision_weighted_avg_parameters(df, params, subplot_group,
     grid.set_axis_labels('', 'Precision weighted\nvalue')
     utils.save_fig(save_fig, save_path)
 
-def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7,
+
+def _change_params_to_math_symbols(params_col):
+    params_col = params_col.replace({'sigma': r"$\sigma$",
+                                     'intercept': r"$b$",
+                                     'slope': r"$a$",
+                                     'p_1': r"$p_1$",
+                                     'p_2': r"$p_2$",
+                                     'p_3': r"$p_3$",
+                                     'p_4': r"$p_4$",
+                                     'A_1': r"$a_1$",
+                                     'A_2': r"$a_2$"})
+    return params_col
+
+def _find_ylim(ax, roi):
+    if roi == "V1":
+        switcher = {0: [0, 2.6],
+                    1: [0, 0.5],
+                    2: [-0.2, 0.2]}
+    elif roi == "V2":
+        switcher = {0: [1, 4],
+                    1: [0, 0.5],
+                    2: [-0.4, 0.2]}
+    elif roi == "V3":
+        switcher = {0: [2, 5],
+                    1: [0, 0.5],
+                    2: [-0.6, 0.2]}
+    else:
+        switcher = {0: [0, 5],
+                    1: [0, 0.5],
+                    2: [-0.6, 0.2]}
+    return switcher.get(ax)
+
+def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7, roi='all',
                             save_fig=False,
                             save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=2.5)
+    rc = {'axes.labelpad': 25}
+    sns.set_context("notebook", font_scale=2.6, rc=rc)
+
     df = group_params(df, params, subplot_group)
-    x_label = "Parameter"
-    y_label = "Value"
-    df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df.sigma_squared_s)]
+    df['params'] = _change_params_to_math_symbols(df['params'])
+    df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df.precision)]
     groups, counts = np.unique(subplot_group, return_counts=True)
     grid = sns.FacetGrid(df,
                          col="group",
@@ -53,12 +86,9 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7,
              scale=1.5, alpha=0.9, color='k', orient="v", errorbar=("ci", 68))
     for ax in range(len(groups)):
         plt.setp(grid.axes[0, ax].collections, sizes=[200])
-    axes = grid.axes
-    axes[0, 1].margins(x=0.5)
-    axes[0, 2].margins(x=0.1)
-    axes[0, 0].set_ylim([0, 2.6])
-    axes[0, 1].set_ylim([0, 0.5])
-    axes[0, 2].set_ylim([-0.2, 0.15])
+        grid.axes[0, ax].set_ylim(_find_ylim(ax, roi))
+        if counts[ax] > 1:
+            grid.axes[0, ax].margins(x=1 - 0.45*ax)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", 'Precision weighted\nvalue')
@@ -97,30 +127,30 @@ def plot_avg_parameters(df, params, subplot_group, height=7,
 
 
 def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj',
-                               save_fig=False,
+                               save_fig=False, palette=None,
                                save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=2)
     df = group_params(df, params, subplot_group)
     x_label = "Parameter"
     y_label = "Value"
     groups, counts = np.unique(subplot_group, return_counts=True)
-    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
-           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
-           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
-           (189, 189, 189)]
-    n_labels = df[hue].nunique()
-    # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    pal = sns.color_palette(np.array(pal) / 255, n_labels)
+    if palette is None:
+        palette = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+               (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+               (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+               (189, 189, 189)]
+        palette = utils.convert_rgb_to_seaborn_color_palette(palette, df[hue].nunique())
+
     grid = sns.FacetGrid(df,
                          col="group",
                          hue=hue,
                          hue_order=df[hue].unique(),
-                         palette=pal,
+                         palette=palette,
                          height=height,
                          legend_out=True,
                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
 
-    grid.map(sns.stripplot, "params", "value", dodge=True, size=20, alpha=0.8)
+    grid.map(sns.stripplot, "params", "value", dodge=True, size=20, alpha=0.8, edgecolor="gray", linewidth=1)
     # for ax in range(len(groups)):
     #     plt.setp(grid.axes[0, ax].collections, sizes=[200])
     grid.add_legend()
@@ -128,10 +158,11 @@ def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj',
     #     lgd_marker._sizes = [100]
     axes = grid.axes
     axes[0, 1].margins(x=0.5)
-    axes[0, 2].margins(x=0.1)
-    axes[0, 0].set_ylim([1.5, 3])
+    #axes[0, 2].margins(x=0.1)
+    axes[0, 0].set_ylim([1.5, 3.1])
     axes[0, 1].set_ylim([0, 0.3])
-    axes[0, 2].set_ylim([-0.4, 0.2])
+    axes[0, 2].set_ylim([0.0, 0.91])
+    axes[0, 3].set_ylim([-0.4, 0.2])
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", y_label)
@@ -311,44 +342,6 @@ def beta_2Dhist(sn, df, to_subplot="vroinames", to_label="eccrois",
         plt.savefig(save_path)
     plt.show()
 
-
-def beta_1Dhist(sn, df, to_subplot="vroinames",
-                x_axis_label='Beta', y_axis_label="Probability",
-                legend_title="Beta type", labels=['measured betas', 'model prediction'],
-                n_row=4, legend_out=True, alpha=0.5, bins=30,
-                save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
-                save_file_name='model_pred.png'):
-    subj = utils.sub_number_to_string(sn)
-    cur_df = df.query('subj == @subj')
-    melt_df = pd.melt(cur_df, id_vars=['subj', 'voxel', 'vroinames'], value_vars=['norm_betas', 'norm_pred'],
-                      var_name='beta_type', value_name='beta_value')
-    col_order = utils.sort_a_df_column(cur_df[to_subplot])
-    grid = sns.FacetGrid(melt_df,
-                         col=to_subplot,
-                         col_order=col_order,
-                         hue="beta_type",
-                         palette=sns.color_palette("husl"),
-                         col_wrap=n_row,
-                         legend_out=legend_out)
-    g = grid.map(sns.histplot, "beta_value", stat="probability")
-    grid.set_axis_labels(x_axis_label, y_axis_label)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
-    # Put the legend out of the figure
-    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
-    grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
-    grid.tight_layout()
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
-        plt.savefig(save_path)
-    plt.show()
 
 
 def plot_loss_history(loss_history_df,
@@ -675,3 +668,69 @@ def plot_final_params_2(df, comb, params_list, params_group, save_fig=True, save
     #fig.supylabel('Parameter Value', fontsize=20)
     fig.subplots_adjust(left=.09, bottom=0.15)
     utils.save_fig(save_fig, save_path)
+
+
+def SD_histogram(df, col='dset', save_fig=False, save_path='/',
+                 col_wrap=None, **kwargs):
+    grid = sns.FacetGrid(df,
+                         height=7,
+                         col=col,
+                         col_order=['NSD','Broderick'],
+                         hue="subj",
+                         col_wrap=col_wrap,
+                         palette=sns.color_palette("husl"),
+                         sharex=False, sharey=False)
+    grid = grid.map(sns.histplot, "sigma_v_squared", edgecolor='gray', linewidth=1,
+                    stat="density", alpha=0.7, **kwargs)
+    grid.set_axis_labels(r'$\sigma^2_v$', 'Density')
+    axes = grid.axes
+    axes[0, 0].set_xlim([0, 55])
+    axes[0, 1].set_xlim([0, 2])
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(subplot_title)
+    utils.save_fig(save_fig, save_path)
+    return grid
+
+    #
+    #
+    # def beta_1Dhist(df, to_subplot="vroinames",
+    #                 x_axis_label='Beta', y_axis_label="Probability",
+    #                 legend_title="Beta type", labels=['measured betas', 'model prediction'],
+    #                 n_row=4, legend_out=True, alpha=0.5, bins=30,
+    #                 save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
+    #                 save_file_name='model_pred.png'):
+    #     cur_df = df.query('subj == @subj')
+    #     melt_df = pd.melt(cur_df, id_vars=['subj', 'voxel', 'vroinames'], value_vars=['norm_betas', 'norm_pred'],
+    #                       var_name='beta_type', value_name='beta_value')
+    #     col_order = utils.sort_a_df_column(cur_df[to_subplot])
+    #     grid = sns.FacetGrid(melt_df,
+    #                          col=to_subplot,
+    #                          col_order=col_order,
+    #                          hue="beta_type",
+    #                          palette=sns.color_palette("husl"),
+    #                          col_wrap=n_row,
+    #                          legend_out=legend_out)
+    #     g = grid.map(sns.histplot, "beta_value", stat="probability")
+    #     grid.set_axis_labels(x_axis_label, y_axis_label)
+    #     grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
+    #     # Put the legend out of the figure
+    #     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    #     for subplot_title, ax in grid.axes_dict.items():
+    #         ax.set_title(f"{subplot_title.title()}")
+    #     grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
+    #     grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
+    #     grid.tight_layout()
+    #     if save_fig:
+    #         if not save_dir:
+    #             raise Exception("Output directory is not defined!")
+    #         fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
+    #         if not os.path.exists(fig_dir):
+    #             os.makedirs(fig_dir)
+    #         save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
+    #         plt.savefig(save_path)
+    #     plt.show()
+
+def plot_sd_with_different_shades(df):
+    sns.set_context('notebook', font_scale=3)
+    sns.catplot(data=df, x='dset', y="sigma_v_squared", kind="point", hue='subj', hue_order=df.subj.unique(),
+                palette=broderick_pal, dodge=True, size=20, alpha=0.8, edgecolor="gray", linewidth=1)
