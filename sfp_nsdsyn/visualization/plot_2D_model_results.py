@@ -48,28 +48,50 @@ def _change_params_to_math_symbols(params_col):
                                      'A_2': r"$a_2$"})
     return params_col
 
-def _find_ylim(ax, roi):
-    if roi == "V1":
-        switcher = {0: [0, 2.6],
-                    1: [0, 0.5],
-                    2: [-0.2, 0.2]}
-    elif roi == "V2":
-        switcher = {0: [1, 4],
-                    1: [0, 0.5],
-                    2: [-0.4, 0.2]}
-    elif roi == "V3":
-        switcher = {0: [2, 5],
-                    1: [0, 0.5],
-                    2: [-0.6, 0.2]}
-    else:
-        switcher = {0: [0, 5],
-                    1: [0, 0.5],
-                    2: [-0.6, 0.2]}
-    return switcher.get(ax)
+def _find_ylim(ax, roi, avg=True):
+    if avg is True:
+        if roi == "V1":
+            switcher = {0: [0, 2.6],
+                        1: [0, 0.5],
+                        2: [-0.2, 0.2]}
+        elif roi == "V2":
+            switcher = {0: [1, 4],
+                        1: [0, 0.5],
+                        2: [-0.4, 0.2]}
+        elif roi == "V3":
+            switcher = {0: [2, 5],
+                        1: [0, 0.5],
+                        2: [-0.6, 0.2]}
+        else:
+            switcher = {0: [2, 5],
+                        1: [0, 0.5],
+                        2: [-0.66, 0.2]}
+        return switcher.get(ax)
+    elif avg is False:
+        if roi == "V1":
+            switcher = {0: [1.5, 3.1],
+                        1: [0, 0.3],
+                        2: [0.0, 0.5],
+                        3: [-0.4, 0.2]}
+        elif roi == "V2":
+            switcher = {0: [2.5, 4.5],
+                        1: [0.05, 0.35],
+                        2: [0.0, 0.5],
+                        3: [-0.4, 0.4]}
+        elif roi == "V3":
+            switcher = {0: [1.5, 6.5],
+                        1: [0, 0.5],
+                        2: [0.0, 0.5],
+                        3: [-0.4, 0.7]}
+        else:
+            switcher = {0: [1.8, 7],
+                        1: [0, 0.4],
+                        2: [-0.03, 0.5],
+                        3: [-1.5, 0.5]}
+        return switcher.get(ax)
 
-def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7, roi='all',
-                            save_fig=False,
-                            save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
+
+def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7, roi=None, hue=None, hue_order=None, lgd_title=None):
     rc = {'axes.labelpad': 25}
     sns.set_context("notebook", font_scale=2.6, rc=rc)
 
@@ -77,96 +99,82 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group, height=7, 
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df.precision)]
     groups, counts = np.unique(subplot_group, return_counts=True)
+    if hue is not None:
+        pal = sns.cubehelix_palette(n_colors=df[hue].nunique(), as_cmap=False, reverse=True)
+    else:
+        pal = sns.color_palette([(0,0,0)])
     grid = sns.FacetGrid(df,
                          col="group",
                          height=height,
                          legend_out=True,
                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-    grid.map(sns.pointplot, "params", "value_and_weights", estimator=weighted_mean, linestyles='',
-             scale=1.5, alpha=0.9, color='k', orient="v", errorbar=("ci", 68))
+    grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order, dodge=0.17, palette=pal, edgecolors='black', linewidth=2,
+             estimator=weighted_mean, linestyles='', scale=2.2, joint=False, orient="v", errorbar=("ci", 68))
     for ax in range(len(groups)):
-        plt.setp(grid.axes[0, ax].collections, sizes=[200])
-        grid.axes[0, ax].set_ylim(_find_ylim(ax, roi))
+        # plt.setp(grid.axes[0, ax].collections, alpha=.3)
+        # plt.setp(grid.axes[0, ax].lines, alpha=.9)
+        # for path in grid.axes[0, ax].collections:
+        #     points = path.get_offsets().data
+        #     reposition_amount = np.zeros(points.shape)
+        #     reposition_amount[:, 0] = np.random.rand(points.shape[0]) * 0.1
+        #     new_location = points + reposition_amount
+        #     path.set_offsets(new_location)
+        if roi is not None:
+            grid.axes[0, ax].set_ylim(_find_ylim(ax, roi))
         if counts[ax] > 1:
             grid.axes[0, ax].margins(x=1 - 0.45*ax)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", 'Precision weighted\nvalue')
-    utils.save_fig(save_fig, save_path)
+    if lgd_title is not None:
+        grid.add_legend(title=lgd_title)
     return grid
 
 
-def plot_avg_parameters(df, params, subplot_group, height=7,
-                        save_fig=False,
-                        save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=2.5)
-    df = group_params(df, params, subplot_group)
-    x_label = "Parameter"
-    y_label = "Value"
-    groups, counts = np.unique(subplot_group, return_counts=True)
-    grid = sns.FacetGrid(df,
-                         col="group",
-                         height=height,
-                         legend_out=True,
-                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-    grid.map(sns.pointplot, "params", "value", estimator=np.mean, linestyles='',
-             scale=1.5, alpha=0.9, color='k', orient="v", errorbar=("ci", 68))
-    for ax in range(len(groups)):
-        plt.setp(grid.axes[0, ax].collections, sizes=[200])
-    axes = grid.axes
-    axes[0, 1].margins(x=0.5)
-    axes[0, 2].margins(x=0.1)
-    axes[0, 0].set_ylim([0, 2.6])
-    axes[0, 1].set_ylim([0, 0.5])
-    axes[0, 2].set_ylim([-0.2, 0.15])
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
-    grid.set_axis_labels("", y_label)
-    utils.save_fig(save_fig, save_path)
-    return grid
-
-
-def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj',
-                               save_fig=False, palette=None,
-                               save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=2)
-    df = group_params(df, params, subplot_group)
-    x_label = "Parameter"
-    y_label = "Value"
-    groups, counts = np.unique(subplot_group, return_counts=True)
-    if palette is None:
+def make_dset_palettes(dset):
+    c_list = sns.diverging_palette(130, 300, s=100, l=30, n=2, as_cmap=False)
+    hex_color = c_list.as_hex()
+    if dset == 'broderick':
+        pal = utils.color_husl_palette_different_shades(12, hex_color[1])
+        pal.reverse()
+    elif dset == 'nsdsyn':
+        pal = utils.color_husl_palette_different_shades(8, hex_color[0])
+        pal.reverse()
+    else:
         palette = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
                (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
                (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
                (189, 189, 189)]
-        palette = utils.convert_rgb_to_seaborn_color_palette(palette, df[hue].nunique())
+        pal = utils.convert_rgb_to_seaborn_color_palette(palette)
+    return pal
 
+def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj', roi=None,
+                               palette=None, lgd_title='Subjects'):
+    sns.set_context("notebook", font_scale=2)
+    hue_order = df.sort_values(by='precision', ignore_index=True, ascending=False).subj.unique()
+    df = group_params(df, params, subplot_group)
+    df['params'] = _change_params_to_math_symbols(df['params'])
+    y_label = "Value"
+    groups, counts = np.unique(subplot_group, return_counts=True)
+    if palette is None:
+        palette = make_dset_palettes('default')
     grid = sns.FacetGrid(df,
                          col="group",
                          hue=hue,
-                         hue_order=df[hue].unique(),
+                         hue_order=hue_order,
                          palette=palette,
                          height=height,
                          legend_out=True,
                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-
-    grid.map(sns.stripplot, "params", "value", dodge=True, size=20, alpha=0.8, edgecolor="gray", linewidth=1)
-    # for ax in range(len(groups)):
-    #     plt.setp(grid.axes[0, ax].collections, sizes=[200])
-    grid.add_legend()
-    # for lgd_marker in grid._legend.legendHandles:
-    #     lgd_marker._sizes = [100]
-    axes = grid.axes
-    axes[0, 1].margins(x=0.5)
-    #axes[0, 2].margins(x=0.1)
-    axes[0, 0].set_ylim([1.5, 3.1])
-    axes[0, 1].set_ylim([0, 0.3])
-    axes[0, 2].set_ylim([0.0, 0.91])
-    axes[0, 3].set_ylim([-0.4, 0.2])
+    grid.map(sns.stripplot, "params", "value", dodge=True, jitter=True, size=20, alpha=0.82, edgecolor="gray", linewidth=1)
+    grid.add_legend(title=lgd_title)
+    for ax in range(len(groups)):
+        grid.axes[0, ax].set_ylim(_find_ylim(ax, roi, avg=False))
+        if counts[ax] > 1 and len(groups) < 4:
+            grid.axes[0, ax].margins(x=1 - 0.45*ax)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", y_label)
-    utils.save_fig(save_fig, save_path)
     return grid
 
 def merge_continuous_values_to_the_df(df, val_range=(0,6), repeat=1000, col_name='eccentricity', endpoint=True):

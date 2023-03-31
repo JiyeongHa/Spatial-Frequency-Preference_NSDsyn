@@ -567,11 +567,11 @@ rule save_precision_s:
 
 rule plot_precision_weighted_2D_parameters:
     input:
-        model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
-        subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
-        precision_df = os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
+        model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
+        subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}.csv"),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
+        precision_df = lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","precision_s_{{dset}}_{roi}.csv"), roi=['V1','V2','V3'])
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}'),
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-V1V2V3.{fig_format}'),
     params:
         df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D"),
         sn_list = lambda wildcards: get_sn_list(wildcards.dset),
@@ -584,11 +584,47 @@ rule plot_precision_weighted_2D_parameters:
         model_history = model.load_history_files(input.model_history)
         #model_history = model.load_history_df_subj(output_dir=params.df_dir, dataset=wildcards.dset, stat=wildcards.stat, full_ver=[True], sn_list=params.sn_list, lr_rate=[float(wildcards.lr)], max_epoch=[int(wildcards.max_epoch)], df_type="model", roi=[wildcards.roi])
         final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
+        precision_df = pd.DataFrame({})
+        for tmp in input.precision_df:
+            tmp_df = pd.read_csv(tmp)
+            tmp_df['vroinames'] = tmp.split('_')[-1][:2]
+            precision_df = precision_df.append(tmp_df, ignore_index=True)
+        final_params_with_precision = pd.merge(final_params, precision_df, on=['subj','vroinames'])
+        grid = vis.plot_precision_weighted_avg_parameters(final_params_with_precision,
+                                                          params.params_order,
+                                                          params.params_group,
+                                                          roi='all', hue='vroinames', hue_order=['V1','V2','V3'])
+        utils.save_fig(save_fig=True,save_path=output[0])
+
+rule plot_2D_parameters_individual:
+    input:
+        model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
+        subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
+        precision_df=os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-params_avg-False_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}'),
+    params:
+        df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D"),
+        params_order = params_list,
+        params_group = [1,2,3,4,4,4,4,4,4]
+    run:
+        from sfp_nsdsyn import model
+        from sfp_nsdsyn import bts
+        from sfp_nsdsyn import vis
+        model_history = model.load_history_files(input.model_history)
+        final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
         precision_df = pd.read_csv(input.precision_df)
         final_params_with_precision = pd.merge(final_params, precision_df, on='subj')
-        grid = vis.plot_precision_weighted_avg_parameters(final_params_with_precision, params.params_order, params.params_group,
-            save_fig=True, save_path=output[0], roi='all')
+        pal = vis.make_dset_palettes(wildcards.dset)
+        grid = vis.plot_individual_parameters(final_params_with_precision, params.params_order, subplot_group=params.params_group, palette=pal,
+            roi='all')
+        utils.save_fig(save_fig=True, save_path=output[0])
+
+
+#TODO: rule plot_preferred_period
+#TODO: violinplot
+
 
 rule svg_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1', 'V2','V3'])
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3'])
