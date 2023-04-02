@@ -263,17 +263,16 @@ def _add_stim_info_to_df(df, stim_description_df):
     return df
 
 
-def _calculate_local_orientation(df):
+def calculate_local_orientation(w_a, w_r, retinotopic_angle, radians=False):
     # calculate distance
-    ang = np.arctan2(df.w_a, df.w_r)
-    df['local_ori'] = ang  # this should be added to theta
-    df['local_ori'] = np.deg2rad(df['angle']) + df['local_ori']  # prf angle is the same as orientation
-    df['local_ori'] = np.remainder(df['local_ori'], np.pi)
+    frequency_ratio = np.arctan2(w_a, w_r)
+    if radians is False:
+        retinotopic_angle = np.deg2rad(retinotopic_angle)
+    local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
+    return np.remainder(local_ori, np.pi)
 
-    return df
 
-
-def _calculate_local_sf(df):
+def calculate_local_sf(df):
     # calculate local frequency
     df['local_sf'] = np.sqrt((df.w_r ** 2 + df.w_a ** 2))  # this should be divided by R
     df['local_sf'] = df['local_sf'] / df['eccentricity']  # prf eccentricity is the same as R
@@ -314,8 +313,8 @@ def sub_main(sn,
     df['subj'] = subj
     sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel'])
     df = df.merge(sigma_v_df, on=['voxel'])
-    df = _calculate_local_orientation(df=df)
-    df = _calculate_local_sf(df=df)
+    df = calculate_local_orientation(df=df)
+    df = calculate_local_sf(df=df)
     fnl_df = df.groupby(['voxel', 'names', 'class_idx', 'vroinames']).mean().reset_index()
     fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
     fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
