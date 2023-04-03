@@ -620,12 +620,6 @@ rule plot_2D_parameters_individual:
             roi='all')
         utils.save_fig(save_fig=True, save_path=output[0])
 
-def get_stim_class(stim):
-    if stim == 'all':
-        stim = 'afpr'
-    stim_dict = {'a': 'annulus', 'f': 'forward spiral', 'p': 'pinwheel', 'r':'reverse spiral'}
-    return [v for k, v in stim_dict.items() if k in stim]
-
 def get_projection(x):
     if x == 'angle':
         projection = 'polar'
@@ -634,6 +628,13 @@ def get_projection(x):
         projection = None
         despine = True
     return projection, despine
+
+def get_stim_class(stim):
+    stim_dict = {'a': 'annulus', 'f': 'forward spiral', 'p': 'pinwheel', 'r':'reverse spiral'}
+    if stim == 'all':
+        return stim_dict.values()
+    else:
+        return [v for k, v in stim_dict.items() if k in stim]
 
 rule preferred_period:
     input:
@@ -690,5 +691,5 @@ rule preferred_period:
 rule svg_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3']),
-        c = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), x=['eccentricity','angle'], stim=['all'], roi=['V1', 'V2', 'V3'])
+        b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), x=['eccentricity','angle'], stim=['all'], roi=['V1', 'V2', 'V3'])
 
