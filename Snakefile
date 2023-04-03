@@ -25,7 +25,7 @@ SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broder
 ROIS = ["V1"]
 stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
-params_group = [0,1,1,2,2,2,2,2,2]
+params_group = [0,1,1,2,2,2,2,3,3]
 
 def get_sn_list(dset):
     if dset == "broderick":
@@ -561,7 +561,7 @@ rule save_precision_s:
         precision_df = pd.DataFrame({})
         for df in input.subj_df:
             tmp = pd.read_csv(df)
-            tmp = bts.get_precision_s(tmp,subset=['subj'])
+            tmp = bts.get_precision_s(tmp, subset=['subj','vroinames'])
             precision_df = precision_df.append(tmp)
             precision_df.to_csv(output[0], index=False)
 
@@ -593,7 +593,7 @@ rule plot_precision_weighted_2D_parameters:
         grid = vis.plot_precision_weighted_avg_parameters(final_params_with_precision,
                                                           params.params_order,
                                                           params.params_group,
-                                                          roi='all', hue='vroinames', hue_order=['V1','V2','V3'])
+                                                          roi='all', hue='vroinames', hue_order=['V1','V2','V3'], lgd_title='Visual areas')
         utils.save_fig(save_fig=True,save_path=output[0])
 
 rule plot_2D_parameters_individual:
@@ -620,11 +620,75 @@ rule plot_2D_parameters_individual:
             roi='all')
         utils.save_fig(save_fig=True, save_path=output[0])
 
+def get_stim_class(stim):
+    if stim == 'all':
+        stim = 'afpr'
+    stim_dict = {'a': 'annulus', 'f': 'forward spiral', 'p': 'pinwheel', 'r':'reverse spiral'}
+    return [v for k, v in stim_dict.items() if k in stim]
 
-#TODO: rule plot_preferred_period
+def get_projection(x):
+    if x == 'angle':
+        projection = 'polar'
+        despine = False
+    else:
+        projection = None
+        despine = True
+    return projection, despine
+
+rule preferred_period:
+    input:
+        stim_info = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
+        model_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
+        precision_df = os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}')
+    params:
+        sn_list = lambda wildcards: get_sn_list(wildcards.dset),
+        stim_class = lambda wildcards: get_stim_class(wildcards.stim),
+        properties = lambda wildcards: get_projection(wildcards.x)
+    run:
+        from sfp_nsdsyn import prep
+        from sfp_nsdsyn import vis
+        from sfp_nsdsyn import model
+        stim_info = model.stim_w_r_and_w_a(input.stim_info, params.stim_class)
+        synthetic_voxels = model.create_synthetic_cols(stim_info,
+                                                       var_list=['eccentricity', 'angle'],
+                                                       val_range_list=[(0, 10), (0, np.pi * 2)],
+                                                       n_val_list=[3, 360])
+        synthetic_voxels['local_ori'] = prep.calculate_local_orientation(w_a=synthetic_voxels.w_a,
+                                                                         w_r=synthetic_voxels.w_r,
+                                                                         retinotopic_angle=synthetic_voxels.angle,
+                                                                         radians=True)
+
+        model_history = model.load_history_files(input.model_history)
+        final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
+        synthetic_voxels_all_subj = pd.DataFrame({})
+        for sn in params.sn_list:
+            tmp = synthetic_voxels.copy()
+            subj = utils.sub_number_to_string(sn, wildcards.dset)
+            subj_params = final_params.query('subj == @subj')
+            tmp['subj'] = subj
+            tmp['vroinames'] = wildcards.roi
+            tmp['Pv'] = tmp.apply(model.get_Pv_row, params=subj_params, axis=1)
+            synthetic_voxels_all_subj = synthetic_voxels_all_subj.append(tmp, ignore_index=True)
+
+        precision_s = pd.read_csv(input.precision_df)
+        synthetic_voxels_all_subj = pd.merge(synthetic_voxels_all_subj, precision_s, on=['subj','vroinames'])
+        if wildcards.x == 'angle':
+            synthetic_voxels_all_subj = synthetic_voxels_all_subj.query('eccentricity == 5')
+        vis.plot_preferred_period(synthetic_voxels_all_subj,
+                                  x=wildcards.x,
+                                  col=None, col_wrap=None,
+                                  hue='names', hue_order=params.stim_class,
+                                  projection=params.properties[0],
+                                  despine=params.properties[1])
+        utils.save_fig(save_fig=True, save_path=output[0])
+
 #TODO: violinplot
 
 
 rule svg_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3'])
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3']),
+        c = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), x=['eccentricity','angle'], stim=['all'], roi=['V1', 'V2', 'V3'])
+

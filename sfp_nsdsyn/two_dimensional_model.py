@@ -9,12 +9,44 @@ from . import utils as utils
 
 
 
+def stim_w_r_and_w_a(stim_df,
+                      stim_class=['pinwheel','forward spiral','annulus','reverse spiral']):
+    stim_info = pd.read_csv(stim_df)
+    stim_info.drop_duplicates('names', inplace=True)
+    stim_info = stim_info[['names','w_r','w_a']]
+    stim_info.query('names in @stim_class', inplace=True)
+    return stim_info
+
+def merge_synthetic_values_to_df(df, var_name, val_range, n_vals,endpoint=True):
+    vals = np.linspace(val_range[0], val_range[-1], num=n_vals, endpoint=endpoint)
+    synthetic_df = pd.DataFrame({})
+    for val in vals:
+        df[var_name] = val
+        synthetic_df = synthetic_df.append(df, ignore_index=True)
+    return synthetic_df
+
+def create_synthetic_cols(df, var_list, val_range_list, n_val_list, endpoint=True):
+    if (len(var_list) == len(val_range_list) == len(n_val_list)) is False:
+        raise Exception("var_list nad val_range_list must have the same length!")
+    vals = [np.linspace(val_range_list[k][0],
+                        val_range_list[k][-1],
+                        n_val_list[k],
+                        endpoint=endpoint) for k in range(len(n_val_list))]
+    all_combinations = list(itertools.product(*vals))
+    synthetic_df = pd.DataFrame({})
+    for combination in all_combinations:
+        pd_dict = {col:val for col,val in zip(var_list, combination)}
+        tmp = df.assign(**pd_dict)
+        synthetic_df = synthetic_df.append(tmp, ignore_index=True)
+    return synthetic_df
 
 def break_down_phase(df):
     dv_to_group = ['subj', 'freq_lvl', 'names', 'voxel', 'hemi']
     df = df.groupby(dv_to_group).mean().reset_index()
 
     return df
+
+
 
 def get_Pv_row(row, params, p_part_only=False):
     params = params.iloc[0]
