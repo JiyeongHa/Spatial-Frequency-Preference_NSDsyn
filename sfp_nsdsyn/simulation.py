@@ -77,8 +77,8 @@ class SynthesizeData():
         sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
         df = df.merge(sigma_v, on='voxel')
         syn_df = self.stim_info.merge(df, on='voxel')
-        syn_df = preprocessing._calculate_local_orientation(syn_df)
-        syn_df = preprocessing._calculate_local_sf(syn_df)
+        syn_df = preprocessing.calculate_local_orientation(syn_df)
+        syn_df = preprocessing.calculate_local_sf(syn_df)
         return syn_df
 
 
