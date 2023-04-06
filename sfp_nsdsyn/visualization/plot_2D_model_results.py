@@ -192,7 +192,7 @@ def plot_preferred_period(df,
     x_label = x.title()
     y_label = "Preferred period"
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df.Pv, df.precision)]
-
+    # plotting average of prediction, not the prediction of average
     grid = sns.FacetGrid(df,
                          hue=hue, palette=get_color(hue_order, hue_type='stim'),
                          hue_order=hue_order,
