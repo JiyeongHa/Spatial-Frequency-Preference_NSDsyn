@@ -6,8 +6,8 @@ __pycache__/*
 .idea
 
 # ignore snakemake hidden directory
-.snakemake
+.snakemake/
 
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
-notebooks/.ipynb_checkpoints/*
+notebooks/.ipynb_checkpoints/
