@@ -1,17 +1,13 @@
 debug*
 __pycache__/*
 .DS_Store/*
+
+# Pycharm
 .idea
-.ipynb_checkpoints/*
+
+# ignore snakemake hidden directory
 .snakemake
-.snakemake/*
-.snakemake/auxiliary/
-.snakemake/conda/
-.snakemake/conda-archive/
-.snakemake/incomplete/
-.snakemake/locks/
-.snakemake/log/
-.snakemake/metadata/
-.snakemake/shadow/
-.snakemake/singularity/
+
+# Jupyter NB Checkpoints
+.ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/*
