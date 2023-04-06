@@ -60,19 +60,19 @@ def vrois_num_to_names(vrois):
     return [_label_vareas(i) for i in vrois]
 
 def load_common_mask_and_rois(rois_path, rois_vals):
-    roi, all_masks = {}, []
+    roi_dict, all_masks = {}, []
     roi_names = [k.split('/')[-1].replace('prf-', '').replace('.mgz','') for k in rois_path]
     for roi_name, roi_path, roi_val in zip(roi_names, rois_path, rois_vals):
-        tmp, roi[roi_name] = load_mask_and_roi(roi_path, roi_val)
+        tmp, roi_dict[roi_name] = load_mask_and_roi(roi_path, roi_val)
         if 'visualrois' in roi_name:
-            roi[roi_name] = vrois_num_to_names(roi[roi_name])
+            roi_dict[roi_name] = vrois_num_to_names(roi_dict[roi_name])
         all_masks.append(tmp)
     mask = np.all(all_masks, axis=0)
-    return mask, roi
+    return mask, roi_dict
 
-def load_prf_properties(prf_path_list, mask):
+def load_prf_properties_as_dict(prf_path_list, mask):
     # load pRF labels & save masked voxels
-    mgzs = {}
+    prf_dict = {}
     for prf_path in prf_path_list:
         tmp_prf = nib.load(prf_path).get_fdata().squeeze()
         if mask is not None:
@@ -80,8 +80,8 @@ def load_prf_properties(prf_path_list, mask):
             tmp_prf = tmp_prf[mask]
         k = prf_path.split('/')[-1].replace('prf', '').replace('.mgz', '')
         # save ROIs, ecc rois, & pRF labels into a dict
-        mgzs[k] = tmp_prf
-    return mgzs
+        prf_dict[k] = tmp_prf
+    return prf_dict
 
 def _get_beta_folder_name(beta_version):
     # load GLMdenoise file
@@ -118,21 +118,21 @@ def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
     spiral_index["memory_task"] = spiral_index["memory_task"].astype(int)
     return spiral_index
 
-def load_betas(betas_path, design_mat, image_idx, mask, task_list=['fixation_task','memory_task'], average=True):
+def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixation_task','memory_task'], average=True):
     """Check the directory carefully. There are three different types of beta in NSD synthetic dataset: b1, b2, or b3.
     b2 (folder: betas_fithrf) is results of GLM in which the HRF is estimated for each voxel.
     b3 (folder: betas_fithrf_GLMdenoise_RR) is the result from GLM ridge regression,
     the GLMdenoise technique is used for denoising,
     and ridge regression is used to better estimate the single-trial betas.
     task_from should be either 'fix', 'memory', or 'both'. """
-    betas = {}
+    betas_dict = {}
     design_df = _find_beta_index_for_spiral_stimuli(design_mat, image_idx)
     with h5py.File(betas_path, 'r') as f:
         # betas[hemi].shape shows 784 x # of voxels
         tmp_betas = f.get('betas')
         tmp_betas = tmp_betas[:, mask]
         n_image = design_df.shape[0]
-        for task_name in task_list:
+        for task_name in task_keys:
             task_betas = np.empty([n_image, tmp_betas.shape[1]])
             for x_img_idx in np.arange(0, n_image):
                 task_betas[x_img_idx] = tmp_betas[design_df[task_name][x_img_idx], :]
@@ -140,22 +140,22 @@ def load_betas(betas_path, design_mat, image_idx, mask, task_list=['fixation_tas
             k = f'{task_name}_betas'
             betas[k] = task_betas.T
     if average is True:
-        if len(task_list) < 2:
+        if len(task_keys) < 2:
             raise Exception('The task list length is less than 2!\n')
-        betas['avg_betas'] = np.mean([a for a in betas.values()], axis=0)
-    return betas
+        betas_dict['avg_betas'] = np.mean([a for a in betas_dict.values()], axis=0)
+    return betas_dict
 
-def melt_2D_beta_mgzs_into_df(beta_mgzs, x_axis='voxel', y_axis='stim_idx', long_format=True):
+def melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True):
     """convert beta mgzs to dataframe and melt it into a long dataframe based on x and y axes.
     In general x axis should be the voxel index and y axis is stim index."""
-    shapes = [beta_mgzs[k].shape for k in beta_mgzs.keys()]
+    shapes = [betas_dict[k].shape for k in betas_dict.keys()]
     if all(shapes) is False:
         raise Exception('The sizes of the arrays are different between entries!')
     # initialize df
     x, y = range(shapes[0][0]), range(shapes[0][1])
     df = pd.DataFrame(list(itertools.product(x, y)), columns=[x_axis, y_axis])
-    for k in beta_mgzs.keys():
-        tmp = pd.DataFrame(beta_mgzs[k])
+    for k in betas_dict.keys():
+        tmp = pd.DataFrame(betas_dict[k])
         y_list = tmp.columns.to_list()
         tmp = tmp.reset_index().rename(columns={'index': x_axis})
         tmp = tmp.melt(id_vars=x_axis,
@@ -164,45 +164,18 @@ def melt_2D_beta_mgzs_into_df(beta_mgzs, x_axis='voxel', y_axis='stim_idx', long
                        value_name=k)
         df = pd.merge(df, tmp, on=[x_axis, y_axis])
     if long_format:
-        new_names = [k.replace('_task', '').replace('_betas', '') for k in beta_mgzs.keys()]
-        df = df.rename(columns=dict(zip(beta_mgzs.keys(), new_names)))
+        new_names = [k.replace('_task', '').replace('_betas', '') for k in betas_dict.keys()]
+        df = df.rename(columns=dict(zip(betas_dict.keys(), new_names)))
         df = df.melt(id_vars=[x_axis, y_axis], var_name='task', value_name='betas')
     return df
 
-def add_prf_columns_to_df(prf_mgzs, df, roi_mgzs=None, on='voxel'):
+def add_1D_prf_dict_to_df(prf_dict, df, roi_mgzs=None, on='voxel'):
     """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
      since it does not include melting df part."""
     if roi_mgzs is not None:
-        prf_mgzs = {**prf_mgzs, **roi_mgzs}
-    prf_df = pd.DataFrame(prf_mgzs).reset_index().rename(columns={'index': on})
+        prf_dict = {**prf_dict, **roi_mgzs}
+    prf_df = pd.DataFrame(prf_dict).reset_index().rename(columns={'index': on})
     return df.merge(prf_df, on=on)
-
-def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
-    """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
-     since it does not include melting df part."""
-
-    # add pRF properties as columns to df
-    for hemi, prf_full_name in itertools.product(['lh', 'rh'], prf_label_names):
-        prf_name = prf_full_name.replace("prf", "").replace("-", "")
-        mgz_key = "%s-%s" % (hemi, prf_name)
-        test_df = pd.DataFrame(prf_mgzs[mgz_key])  # organized in a voxel order
-        # To combine test_df to the existing df, we have to set a common column, which is 'voxel'
-        test_df = test_df.reset_index().rename(columns={'index': 'voxel', 0: prf_name})
-        if prf_name == 'visualrois':
-            test_df['vroinames'] = test_df.apply(_label_Vareas, axis=1)
-        df[hemi] = df[hemi].merge(test_df, on='voxel')
-
-    return df
-
-
-def _concat_lh_rh_df(df):
-    # concat df['lh'] and df['rh']
-    df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
-    # df = pd.concat(df).reset_index(0, drop=True)
-    df = pd.concat(df).reset_index().drop(columns=['level_0', 'level_1'])
-
-    return df
-
 
 def _add_stim_info_to_df(df, stim_description_df):
     # add stim information to the df
@@ -231,6 +204,15 @@ def calculate_local_sf(df):
     df['local_sf'] = np.divide(df['local_sf'], 2 * np.pi)
 
     return df
+
+def _concat_lh_rh_df(df):
+    # concat df['lh'] and df['rh']
+    df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
+    # df = pd.concat(df).reset_index(0, drop=True)
+    df = pd.concat(df).reset_index().drop(columns=['level_0', 'level_1'])
+
+    return df
+
 
 
 def sub_main(sn,
@@ -413,3 +395,20 @@ def _melt_2D_beta_mgzs_into_df(beta_mgzs):
         df[hemi]['hemi'] = hemi
     return df
 
+
+def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
+    """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
+     since it does not include melting df part."""
+
+    # add pRF properties as columns to df
+    for hemi, prf_full_name in itertools.product(['lh', 'rh'], prf_label_names):
+        prf_name = prf_full_name.replace("prf", "").replace("-", "")
+        mgz_key = "%s-%s" % (hemi, prf_name)
+        test_df = pd.DataFrame(prf_mgzs[mgz_key])  # organized in a voxel order
+        # To combine test_df to the existing df, we have to set a common column, which is 'voxel'
+        test_df = test_df.reset_index().rename(columns={'index': 'voxel', 0: prf_name})
+        if prf_name == 'visualrois':
+            test_df['vroinames'] = test_df.apply(_label_Vareas, axis=1)
+        df[hemi] = df[hemi].merge(test_df, on='voxel')
+
+    return df
