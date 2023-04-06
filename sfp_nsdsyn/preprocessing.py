@@ -12,72 +12,14 @@ from . import utils as utils
 from . import bootstrapping as bts
 from . import two_dimensional_model as model
 
-def cart2pol(xramp, yramp):
-    R = np.sqrt(xramp ** 2 + yramp ** 2)
-    TH = np.arctan2(yramp, xramp)
-    return (R, TH)
 
-def _masking(freesurfer_dir, subj, visroi_range, eccroi_range, mask_type):
-    """ Make a mask. Mask_type input should be an array."""
-    mask = {}
-    # make masks
-    for hemi in ['lh', 'rh']:
-        # get_fdata() = (x, 1, 1) -> squeeze -> (x,)
-        # make visual roi mask
-        if len(mask_type) == 1:
-            if ('visroi' in mask_type):
-                label_name = 'prf-visualrois.mgz'
-                roi_range = visroi_range
-            elif ('eccroi' in mask_type):
-                label_name = 'prf-eccrois.mgz'
-                roi_range = eccroi_range
+def _load_exp_design_mat(design_mat_path):
+    mat_file = loadmat(design_mat_path)
+    trial_orders = mat_file['masterordering'].reshape(-1)
 
-            roi_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + label_name)
-            roi = nib.load(roi_path).get_fdata().squeeze()
-            roi_mask = np.isin(roi, roi_range)
-            mask[hemi] = roi_mask
+    return trial_orders
 
-        elif ('visroi' in mask_type) & ('eccroi' in mask_type):
-            # make vare roi mask
-            visroi_label_name = 'prf-visualrois.mgz'
-            visroi_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + 'prf-visualrois.mgz')
-            visroi = nib.load(visroi_path).get_fdata().squeeze()
-            visroi_mask = np.isin(visroi, visroi_range)
-
-            # make eccen roi mask
-            eccroi_label_name = 'prf-eccrois.mgz'
-            eccroi_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + 'prf-eccrois.mgz')
-            eccroi = nib.load(eccroi_path).get_fdata().squeeze()
-            eccroi_mask = np.isin(eccroi, eccroi_range)
-
-            # make a combined mask
-            mask[hemi] = visroi_mask & eccroi_mask
-
-    return mask
-
-
-def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply_mask=True):
-    """ Output format will be mgzs[hemi-property]. """
-
-    # load pRF labels & save masked voxels
-    mgzs = {}
-    for hemi, prf_properties in itertools.product(['lh', 'rh'], prf_label_names):
-        prf_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + prf_properties + '.mgz')
-        # load pRF labels
-        tmp_prf = nib.load(prf_path).get_fdata().squeeze()
-        if (apply_mask):
-            if not mask:
-                raise Exception("Mask is not defined!")
-            # throw away voxels that are not included in visual rois & eccen rois
-            tmp_prf = tmp_prf[mask[hemi]]
-        k = "%s-%s" % (hemi, prf_properties.replace("prf", "").replace("-", ""))
-        # save ROIs, ecc rois, & pRF labels into a dict
-        mgzs[k] = tmp_prf
-
-    return mgzs
-
-
-def _load_stim_info(stim_description_path, drop_phase=False):
+def load_stim_info(stim_description_path, drop_phase=False):
     """stimulus description file will be loaded as a dataframe.
        drop_phase arg will remove phase information in the output.
        For example, each unique combination of stim classes and frequency levels
@@ -85,11 +27,61 @@ def _load_stim_info(stim_description_path, drop_phase=False):
 
     # stimuli information
     stim_df = pd.read_csv(stim_description_path)
+    stim_df = stim_df.drop(columns=['phase_idx'])
     if drop_phase is True:
-        stim_df = stim_df.query('phase_idx == 0')
-        stim_df = stim_df.drop(columns=['phase', 'phase_idx'])
+        stim_df = stim_df.query('phase == 0')
     return stim_df
 
+def cart2pol(xramp, yramp):
+    R = np.sqrt(xramp ** 2 + yramp ** 2)
+    TH = np.arctan2(yramp, xramp)
+    return (R, TH)
+
+def load_mask_and_roi(roi_path, roi_vals):
+    mask = {}
+    roi = {}
+    tmp = nib.load(roi_path).get_fdata().squeeze()
+    mask = np.isin(tmp, roi_vals)
+    roi = tmp[mask]
+    return mask, roi
+
+def _label_vareas(roi_val):
+    result = roi_val // 2
+    if result == 1:
+        return 'V1'
+    elif result == 2:
+        return 'V2'
+    elif result == 3:
+        return 'V3'
+    elif result == 4:
+        return 'h4v'
+
+def vrois_num_to_names(vrois):
+    return [_label_vareas(i) for i in vrois]
+
+def load_common_mask_and_rois(rois_path, rois_vals):
+    roi, all_masks = {}, []
+    roi_names = [k.split('/')[-1].replace('prf-', '').replace('.mgz','') for k in rois_path]
+    for roi_name, roi_path, roi_val in zip(roi_names, rois_path, rois_vals):
+        tmp, roi[roi_name] = load_mask_and_roi(roi_path, roi_val)
+        if 'visualrois' in roi_name:
+            roi[roi_name] = vrois_num_to_names(roi[roi_name])
+        all_masks.append(tmp)
+    mask = np.all(all_masks, axis=0)
+    return mask, roi
+
+def load_prf_properties(prf_path_list, mask):
+    # load pRF labels & save masked voxels
+    mgzs = {}
+    for prf_path in prf_path_list:
+        tmp_prf = nib.load(prf_path).get_fdata().squeeze()
+        if mask is not None:
+            # throw away voxels that are not included in visual rois & eccen rois
+            tmp_prf = tmp_prf[mask]
+        k = prf_path.split('/')[-1].replace('prf', '').replace('.mgz', '')
+        # save ROIs, ecc rois, & pRF labels into a dict
+        mgzs[k] = tmp_prf
+    return mgzs
 
 def _get_beta_folder_name(beta_version):
     # load GLMdenoise file
@@ -101,17 +93,10 @@ def _get_beta_folder_name(beta_version):
 
     return switcher.get(beta_version, "Not available beta type")
 
-
-def _load_exp_design_mat(design_mat_path):
-    mat_file = loadmat(design_mat_path)
-    trial_orders = mat_file['masterordering'].reshape(-1)
-
-    return trial_orders
-
-
-def _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df):
+def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
     trial_orders = _load_exp_design_mat(design_mat_path)
-    spiral_index = stim_df[['image_idx']].copy()
+    spiral_index = pd.DataFrame({})
+    spiral_index['image_idx'] = image_idx
     spiral_index['fixation_task'] = np.nan
     spiral_index['memory_task'] = np.nan
     for x_trial in np.arange(0, trial_orders.shape[0]):
@@ -131,99 +116,66 @@ def _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df):
                 spiral_index.loc[cur_loc[0], task_name] = x_trial
     spiral_index["fixation_task"] = spiral_index["fixation_task"].astype(int)
     spiral_index["memory_task"] = spiral_index["memory_task"].astype(int)
-    stim_df = stim_df.set_index('image_idx')
-    spiral_index = spiral_index.set_index('image_idx')
-    stim_df = stim_df.join(spiral_index).reset_index()
+    return spiral_index
 
-    return stim_df
-
-
-def _average_two_task_betas(betas, hemi):
-    """ put in a beta dict and average them voxel-wise """
-
-    if len([v for v in betas.keys() if hemi in v]) != 2:
-        raise Exception('The beta values are from less than two tasks!\n')
-    avg_betas = (betas[f"{hemi}-fixation_task_betas"] + betas[f"{hemi}-memory_task_betas"]) / 2
-
-    return avg_betas
-
-
-def _load_betas(beta_dir, subj, sf_stim_df, beta_version=3, task_from="both", mask=None,
-                apply_mask=True):
+def load_betas(betas_path, design_mat, image_idx, mask, task_list=['fixation_task','memory_task'], average=True):
     """Check the directory carefully. There are three different types of beta in NSD synthetic dataset: b1, b2, or b3.
     b2 (folder: betas_fithrf) is results of GLM in which the HRF is estimated for each voxel.
     b3 (folder: betas_fithrf_GLMdenoise_RR) is the result from GLM ridge regression,
     the GLMdenoise technique is used for denoising,
     and ridge regression is used to better estimate the single-trial betas.
     task_from should be either 'fix', 'memory', or 'both'. """
-
-    beta_version_dir = _get_beta_folder_name(beta_version)
     betas = {}
-    for hemi in ['lh', 'rh']:
-        betas_file_name = hemi + '.betas_nsdsynthetic.hdf5'
-        betas_path = os.path.join(beta_dir, subj, 'nativesurface', beta_version_dir, betas_file_name)
-        f = h5py.File(betas_path, 'r')
+    design_df = _find_beta_index_for_spiral_stimuli(design_mat, image_idx)
+    with h5py.File(betas_path, 'r') as f:
         # betas[hemi].shape shows 784 x # of voxels
         tmp_betas = f.get('betas')
-
-        if apply_mask:
-            if not mask:
-                raise Exception("Mask is not defined!")
-            # mask betas
-            # betas[k] = tmp_betas[:, mask[hemi]].T
-            tmp_betas = tmp_betas[:, mask[hemi]]
-        # extract only sf-related trials
-        if task_from == 'both':
-            task_name_list = ['fixation_task', 'memory_task']
-        else:
-            task_name_list = [task_from + '_task']
-        for task_name in task_name_list:
-            task_betas = np.empty([sf_stim_df.shape[0], tmp_betas.shape[1]])
-            for x_img_idx in np.arange(0, sf_stim_df.shape[0]):
-                task_betas[x_img_idx] = tmp_betas[sf_stim_df[task_name][x_img_idx], :]
+        tmp_betas = tmp_betas[:, mask]
+        n_image = design_df.shape[0]
+        for task_name in task_list:
+            task_betas = np.empty([n_image, tmp_betas.shape[1]])
+            for x_img_idx in np.arange(0, n_image):
+                task_betas[x_img_idx] = tmp_betas[design_df[task_name][x_img_idx], :]
             task_betas = np.float32(task_betas) / 300
-            k = "%s-%s" % (hemi, task_name + '_betas')
+            k = f'{task_name}_betas'
             betas[k] = task_betas.T
-
+    if average is True:
+        if len(task_list) < 2:
+            raise Exception('The task list length is less than 2!\n')
+        betas['avg_betas'] = np.mean([a for a in betas.values()], axis=0)
     return betas
 
-
-# put mgzs into a dataframe
-def _melt_2D_beta_mgzs_into_df(beta_mgzs):
-    """mgz[hemi-betas] has a shape of (voxel_num, 112). each of element out of 112 represents the spatial frequency images.
-     What we want to do is that we break down this shape into X by 3 columns, (voxel, stim index, and beta values).
-     In other words, we will change the wide shape of data to long shape.
-      So far for this function, the output of each hemisphere will be still seperated, as df['lh'] and df['rh']. """
-
+def melt_2D_beta_mgzs_into_df(beta_mgzs, x_axis='voxel', y_axis='stim_idx', long_format=True):
+    """convert beta mgzs to dataframe and melt it into a long dataframe based on x and y axes.
+    In general x axis should be the voxel index and y axis is stim index."""
+    shapes = [beta_mgzs[k].shape for k in beta_mgzs.keys()]
+    if all(shapes) is False:
+        raise Exception('The sizes of the arrays are different between entries!')
     # initialize df
-    df = {}
-    for hemi in ['lh', 'rh']:
-        # unfold 2D mgzs - betas
-        df[hemi] = pd.DataFrame(columns=['voxel'])
-        hemi_beta_mgzs_keys = [v for v in beta_mgzs.keys() if hemi in v]
-        for mgz_key in hemi_beta_mgzs_keys:
-            # mgz_key = '%s-%s' % (hemi, 'betas')
-            tmp_df = pd.DataFrame(beta_mgzs[mgz_key])
-            tmp_df = pd.melt(tmp_df.reset_index(), id_vars='index')
-            tmp_df = tmp_df.rename(columns={'index': 'voxel', 'variable': 'stim_idx', 'value': mgz_key.replace(hemi + "-", "")})
-            df[hemi] = df[hemi].merge(tmp_df, how='outer')
-        df[hemi] = pd.melt(df[hemi], id_vars=['voxel','stim_idx'], value_vars=['fixation_task_betas','memory_task_betas'], var_name='task', value_name='betas')
-        df[hemi] = df[hemi].replace({'task': {'fixation_task_betas': 'fixation', 'memory_task_betas': 'memory'}})
-        df[hemi]['hemi'] = hemi
+    x, y = range(shapes[0][0]), range(shapes[0][1])
+    df = pd.DataFrame(list(itertools.product(x, y)), columns=[x_axis, y_axis])
+    for k in beta_mgzs.keys():
+        tmp = pd.DataFrame(beta_mgzs[k])
+        y_list = tmp.columns.to_list()
+        tmp = tmp.reset_index().rename(columns={'index': x_axis})
+        tmp = tmp.melt(id_vars=x_axis,
+                       value_vars=y_list,
+                       var_name=y_axis,
+                       value_name=k)
+        df = pd.merge(df, tmp, on=[x_axis, y_axis])
+    if long_format:
+        new_names = [k.replace('_task', '').replace('_betas', '') for k in beta_mgzs.keys()]
+        df = df.rename(columns=dict(zip(beta_mgzs.keys(), new_names)))
+        df = df.melt(id_vars=[x_axis, y_axis], var_name='task', value_name='betas')
     return df
 
-
-def _label_Vareas(row):
-    result = np.remainder(row.visualrois, 7)
-    if result == 1 or result == 2:
-        return 'V1'
-    elif result == 3 or result == 4:
-        return 'V2'
-    elif result == 5 or result == 6:
-        return 'V3'
-    elif result == 0:
-        return 'h4v'
-
+def add_prf_columns_to_df(prf_mgzs, df, roi_mgzs=None, on='voxel'):
+    """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
+     since it does not include melting df part."""
+    if roi_mgzs is not None:
+        prf_mgzs = {**prf_mgzs, **roi_mgzs}
+    prf_df = pd.DataFrame(prf_mgzs).reset_index().rename(columns={'index': on})
+    return df.merge(prf_df, on=on)
 
 def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
     """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
@@ -300,7 +252,7 @@ def sub_main(sn,
                     visroi_range=vroi_range, eccroi_range=eroi_range, mask_type=mask_type)
     mgzs = _load_prf_properties(freesurfer_dir=freesurfer_dir, subj=subj, prf_label_names=prf_label_list, mask=mask,
                                 apply_mask=True)
-    stim_df = _load_stim_info(stim_description_path=stim_description_path)
+    stim_df = load_stim_info(stim_description_path=stim_description_path)
     stim_df = _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df=stim_df)
     beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from, sf_stim_df=stim_df, mask=mask)
     df = _melt_2D_beta_mgzs_into_df(beta_mgzs=beta_mgzs)
@@ -368,3 +320,96 @@ def add_class_idx_to_stim_df(save=True):
     if save:
         nsd_stim_df.to_csv('/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv', index=False)
     return nsd_stim_df
+
+
+def _masking(freesurfer_dir, subj, visroi_range, eccroi_range, mask_type):
+    """ Make a mask. Mask_type input should be an array."""
+    mask = {}
+    # make masks
+    for hemi in ['lh', 'rh']:
+        # get_fdata() = (x, 1, 1) -> squeeze -> (x,)
+        # make visual roi mask
+        if len(mask_type) == 1:
+            if ('visroi' in mask_type):
+                label_name = 'prf-visualrois.mgz'
+                roi_range = visroi_range
+            elif ('eccroi' in mask_type):
+                label_name = 'prf-eccrois.mgz'
+                roi_range = eccroi_range
+            roi_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + label_name)
+            roi = nib.load(roi_path).get_fdata().squeeze()
+            roi_mask = np.isin(roi, roi_range)
+            mask[hemi] = roi_mask
+
+        elif ('visroi' in mask_type) & ('eccroi' in mask_type):
+            # make vare roi mask
+            visroi_label_name = 'prf-visualrois.mgz'
+            visroi_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + 'prf-visualrois.mgz')
+            visroi = nib.load(visroi_path).get_fdata().squeeze()
+            visroi_mask = np.isin(visroi, visroi_range)
+
+            # make eccen roi mask
+            eccroi_label_name = 'prf-eccrois.mgz'
+            eccroi_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + 'prf-eccrois.mgz')
+            eccroi = nib.load(eccroi_path).get_fdata().squeeze()
+            eccroi_mask = np.isin(eccroi, eccroi_range)
+
+            # make a combined mask
+            mask[hemi] = visroi_mask & eccroi_mask
+
+    return mask
+
+
+def _load_prf_properties(freesurfer_dir, subj, prf_label_names, mask=None, apply_mask=True):
+    """ Output format will be mgzs[hemi-property]. """
+
+    # load pRF labels & save masked voxels
+    mgzs = {}
+    for hemi, prf_properties in itertools.product(['lh', 'rh'], prf_label_names):
+        prf_path = os.path.join(freesurfer_dir, subj, 'label', hemi + '.' + prf_properties + '.mgz')
+        # load pRF labels
+        tmp_prf = nib.load(prf_path).get_fdata().squeeze()
+        if (apply_mask):
+            if not mask:
+                raise Exception("Mask is not defined!")
+            # throw away voxels that are not included in visual rois & eccen rois
+            tmp_prf = tmp_prf[mask[hemi]]
+        k = "%s-%s" % (hemi, prf_properties.replace("prf", "").replace("-", ""))
+        # save ROIs, ecc rois, & pRF labels into a dict
+        mgzs[k] = tmp_prf
+
+    return mgzs
+
+def _average_two_task_betas(betas, hemi):
+    """ put in a beta dict and average them voxel-wise """
+
+    if len([v for v in betas.keys() if hemi in v]) != 2:
+        raise Exception('The beta values are from less than two tasks!\n')
+    avg_betas = (betas[f"{hemi}-fixation_task_betas"] + betas[f"{hemi}-memory_task_betas"]) / 2
+
+    return avg_betas
+
+# put mgzs into a dataframe
+def _melt_2D_beta_mgzs_into_df(beta_mgzs):
+    """mgz[hemi-betas] has a shape of (voxel_num, 112). each of element out of 112 represents the spatial frequency images.
+     What we want to do is that we break down this shape into X by 3 columns, (voxel, stim index, and beta values).
+     In other words, we will change the wide shape of data to long shape.
+      So far for this function, the output of each hemisphere will be still seperated, as df['lh'] and df['rh']. """
+
+    # initialize df
+    df = {}
+    for hemi in ['lh', 'rh']:
+        # unfold 2D mgzs - betas
+        df[hemi] = pd.DataFrame(columns=['voxel'])
+        hemi_beta_mgzs_keys = [v for v in beta_mgzs.keys() if hemi in v]
+        for mgz_key in hemi_beta_mgzs_keys:
+            # mgz_key = '%s-%s' % (hemi, 'betas')
+            tmp_df = pd.DataFrame(beta_mgzs[mgz_key])
+            tmp_df = pd.melt(tmp_df.reset_index(), id_vars='index')
+            tmp_df = tmp_df.rename(columns={'index': 'voxel', 'variable': 'stim_idx', 'value': mgz_key.replace(hemi + "-", "")})
+            df[hemi] = df[hemi].merge(tmp_df, how='outer')
+        df[hemi] = pd.melt(df[hemi], id_vars=['voxel','stim_idx'], value_vars=['fixation_task_betas','memory_task_betas'], var_name='task', value_name='betas')
+        df[hemi] = df[hemi].replace({'task': {'fixation_task_betas': 'fixation', 'memory_task_betas': 'memory'}})
+        df[hemi]['hemi'] = hemi
+    return df
+
