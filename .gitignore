@@ -5,6 +5,6 @@ __pycache__/*
 .ipynb_checkpoints/*
 .snakemake/*
 .snakemake/log/*
-.snakemake/metadata/*
 ./notebooks/.ipynb_checkpoints/*
-
+/.snakemake/metadata/
+/.snakemake/
