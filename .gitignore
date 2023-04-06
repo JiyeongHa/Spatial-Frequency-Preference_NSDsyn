@@ -3,8 +3,7 @@ __pycache__/*
 .DS_Store/*
 .idea
 .ipynb_checkpoints/*
-.notebooks/.ipynb_checkpoints/*
-.snakemake/
+.snakemake/*
 .snakemake/auxiliary/
 .snakemake/conda/
 .snakemake/conda-archive/
