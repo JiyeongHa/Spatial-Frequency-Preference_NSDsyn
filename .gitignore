@@ -3,7 +3,7 @@ __pycache__/*
 .DS_Store/*
 .idea
 .ipynb_checkpoints/*
-.snakemake/*/*/*
+.snakemake/*
 .snakemake/log/*
 .snakemake/metadata/*
 ./notebooks/.ipynb_checkpoints/*
