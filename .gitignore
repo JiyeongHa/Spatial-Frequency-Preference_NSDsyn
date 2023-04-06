@@ -14,3 +14,4 @@ __pycache__/*
 .snakemake/metadata/
 .snakemake/shadow/
 .snakemake/singularity/
+notebooks/.ipynb_checkpoints/*
