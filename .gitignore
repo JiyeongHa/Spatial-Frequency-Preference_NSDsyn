@@ -4,5 +4,6 @@ __pycache__/*
 .idea
 .ipynb_checkpoints/*
 .snakemake/*/*/*
+.snakemake/log/*
 ./notebooks/.ipynb_checkpoints/*
 
