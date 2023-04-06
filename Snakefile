@@ -61,6 +61,14 @@ def interpret_bin_nums(wildcards):
         new_bin_labels = [bin_labels[int(k)] for k in wildcards.ebin]
     return new_bin_labels
 
+rule prep_data:
+    input:
+    output:
+    run:
+
+
+
+
 rule plot_tuning_curves_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.eps'), ebin='all', e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn")),

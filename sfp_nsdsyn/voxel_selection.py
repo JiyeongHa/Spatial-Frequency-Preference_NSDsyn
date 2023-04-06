@@ -131,8 +131,7 @@ def _find_min_and_max(img_min_max):
     """ find minimum val of max eccentricity & max val of minimum ecc"""
     spiral_radii = [1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]
 
-    stim_info_df = make_df._load_stim_info(
-        stim_description_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives')
+    stim_info_df = make_df.load_stim_info()
     img_df = pd.DataFrame(img_min_max).rename(columns={0: 'min_stim_ecc_R', 1: 'max_stim_ecc_R'})
     img_df = img_df.reset_index()
     img_df = stim_info_df.reset_index().merge(img_df)
