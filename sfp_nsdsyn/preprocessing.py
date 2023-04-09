@@ -12,14 +12,13 @@ from . import utils as utils
 from . import bootstrapping as bts
 from . import two_dimensional_model as model
 
-
 def _load_exp_design_mat(design_mat_path):
     mat_file = loadmat(design_mat_path)
     trial_orders = mat_file['masterordering'].reshape(-1)
 
     return trial_orders
 
-def load_stim_info(stim_description_path, drop_phase=False):
+def load_stim_info_as_df(stim_description_path, drop_phase=False):
     """stimulus description file will be loaded as a dataframe.
        drop_phase arg will remove phase information in the output.
        For example, each unique combination of stim classes and frequency levels
@@ -27,15 +26,12 @@ def load_stim_info(stim_description_path, drop_phase=False):
 
     # stimuli information
     stim_df = pd.read_csv(stim_description_path)
-    stim_df = stim_df.drop(columns=['phase_idx'])
+    stim_df = stim_df.drop(columns=['phase_idx', 'names_idx'])
+    if 'stim_idx' not in stim_df.columns.to_list():
+        stim_df = stim_df.reset_index().rename(columns={'index':'stim_idx'})
     if drop_phase is True:
         stim_df = stim_df.query('phase == 0')
     return stim_df
-
-def cart2pol(xramp, yramp):
-    R = np.sqrt(xramp ** 2 + yramp ** 2)
-    TH = np.arctan2(yramp, xramp)
-    return (R, TH)
 
 def load_mask_and_roi(roi_path, roi_vals):
     mask = {}
@@ -62,6 +58,7 @@ def vrois_num_to_names(vrois):
 def load_common_mask_and_rois(rois_path, rois_vals):
     roi_dict, all_masks = {}, []
     roi_names = [k.split('/')[-1].replace('prf-', '').replace('.mgz','') for k in rois_path]
+    roi_names = [k.split('.')[-1] for k in roi_names]
     for roi_name, roi_path, roi_val in zip(roi_names, rois_path, rois_vals):
         tmp, roi_dict[roi_name] = load_mask_and_roi(roi_path, roi_val)
         if 'visualrois' in roi_name:
@@ -79,6 +76,7 @@ def load_prf_properties_as_dict(prf_path_list, mask):
             # throw away voxels that are not included in visual rois & eccen rois
             tmp_prf = tmp_prf[mask]
         k = prf_path.split('/')[-1].replace('prf', '').replace('.mgz', '')
+        k = k.split('.')[-1]
         # save ROIs, ecc rois, & pRF labels into a dict
         prf_dict[k] = tmp_prf
     return prf_dict
@@ -90,7 +88,6 @@ def _get_beta_folder_name(beta_version):
         2: 'nsdsyntheticbetas_fithrf',
         3: 'nsdsyntheticbetas_fithrf_GLMdenoise_RR',
     }
-
     return switcher.get(beta_version, "Not available beta type")
 
 def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
@@ -105,6 +102,8 @@ def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
             task_name = "fixation_task"
         elif task_number == 0:
             task_name = "memory_task"
+        else:
+            raise Exception('not a number assigned to NSD tasks!')
         # if it's the first trial and if it's not a picture repeated
         if x_trial == 0 or trial_orders[x_trial] != trial_orders[x_trial - 1]:
             # if a spiral image was presented at that trial
@@ -138,7 +137,7 @@ def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixa
                 task_betas[x_img_idx] = tmp_betas[design_df[task_name][x_img_idx], :]
             task_betas = np.float32(task_betas) / 300
             k = f'{task_name}_betas'
-            betas[k] = task_betas.T
+            betas_dict[k] = task_betas.T
     if average is True:
         if len(task_keys) < 2:
             raise Exception('The task list length is less than 2!\n')
@@ -153,7 +152,7 @@ def melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', lo
         raise Exception('The sizes of the arrays are different between entries!')
     # initialize df
     x, y = range(shapes[0][0]), range(shapes[0][1])
-    df = pd.DataFrame(list(itertools.product(x, y)), columns=[x_axis, y_axis])
+    betas_df = pd.DataFrame(list(itertools.product(x, y)), columns=[x_axis, y_axis])
     for k in betas_dict.keys():
         tmp = pd.DataFrame(betas_dict[k])
         y_list = tmp.columns.to_list()
@@ -162,31 +161,39 @@ def melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', lo
                        value_vars=y_list,
                        var_name=y_axis,
                        value_name=k)
-        df = pd.merge(df, tmp, on=[x_axis, y_axis])
+        betas_df = pd.merge(betas_df, tmp, on=[x_axis, y_axis])
     if long_format:
         new_names = [k.replace('_task', '').replace('_betas', '') for k in betas_dict.keys()]
-        df = df.rename(columns=dict(zip(betas_dict.keys(), new_names)))
-        df = df.melt(id_vars=[x_axis, y_axis], var_name='task', value_name='betas')
-    return df
+        betas_df = betas_df.rename(columns=dict(zip(betas_dict.keys(), new_names)))
+        betas_df = betas_df.melt(id_vars=[x_axis, y_axis], var_name='task', value_name='betas')
+    return betas_df
 
-def add_1D_prf_dict_to_df(prf_dict, df, roi_mgzs=None, on='voxel'):
+def add_1D_prf_dict_to_df(prf_dict, df, roi_dict=None, on='voxel'):
     """This function has to be used after applying _melt_2D_beta_mgzs_into_df(),
      since it does not include melting df part."""
-    if roi_mgzs is not None:
-        prf_dict = {**prf_dict, **roi_mgzs}
+    if roi_dict is not None:
+        prf_dict = {**prf_dict, **roi_dict}
     prf_df = pd.DataFrame(prf_dict).reset_index().rename(columns={'index': on})
     return df.merge(prf_df, on=on)
 
-def _add_stim_info_to_df(df, stim_description_df):
-    # add stim information to the df
-    # dataframes are merged based on index
-    # Therefore, we first set df's index to stim_idx (same idx as stim_df)
-    # combine them and set df's index back to 0,1,2,... n rows.
-    df = df.set_index('stim_idx')
-    df = df.join(stim_description_df)
-    df = df.reset_index().rename(columns={'index': 'stim_idx'})
-    return df
+def merge_stim_df_and_betas_df(stim_df, betas_df, on='stim_idx'):
 
+    if not isinstance(stim_df, pd.DataFrame):
+        raise Exception('stim_df is not a dataframe!\n')
+    return pd.merge(stim_df, betas_df, on=on)
+
+def merge_all(stim_df,
+              betas_dict,
+              prf_dict,
+              roi_dict,
+              betas_dict_xy=('voxel', 'stim_idx'), betas_long_format=True,
+              between_stim_and_voxel='stim_idx',
+              between_voxels='voxel'):
+    betas_dict_x, betas_dict_y = betas_dict_xy
+    betas_df = melt_2D_betas_dict_into_df(betas_dict, betas_dict_x, betas_dict_y, betas_long_format)
+    betas_prf_df = add_1D_prf_dict_to_df(prf_dict, betas_df, roi_dict, on=between_voxels)
+    betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
+    return betas_prf_stim_df
 
 def calculate_local_orientation(w_a, w_r, retinotopic_angle, radians=False):
     # calculate distance
@@ -196,14 +203,46 @@ def calculate_local_orientation(w_a, w_r, retinotopic_angle, radians=False):
     local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
     return np.remainder(local_ori, np.pi)
 
-
-def calculate_local_sf(df):
+def calculate_local_sf(w_a, w_r, eccentricity):
     # calculate local frequency
-    df['local_sf'] = np.sqrt((df.w_r ** 2 + df.w_a ** 2))  # this should be divided by R
-    df['local_sf'] = df['local_sf'] / df['eccentricity']  # prf eccentricity is the same as R
-    df['local_sf'] = np.divide(df['local_sf'], 2 * np.pi)
+    l2_norm = np.sqrt((w_r ** 2 + w_a ** 2))
+    local_sf = l2_norm / eccentricity
+    #TODO: ask about this
+    # to convert this from radians per pixel to cycles per degrees,
+    # we multiply by a conversion factor c = 1/2pi
+    return np.divide(local_sf, 2*np.pi)
 
-    return df
+def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_radians=False):
+    local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity)
+    local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle, radians=angle_radians)
+    return local_sf, local_ori
+
+def arrange_inputs_into_df(stim_info,
+                           design_mat,
+                           rois, rois_vals,
+                           prfs,
+                           betas, task_keys, average):
+    stim_df = load_stim_info_as_df(stim_info, drop_phase=False)
+    mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
+    prf_dict = load_prf_properties_as_dict(prfs, mask)
+    betas_dict = load_betas_as_dict(betas, design_mat,
+                                    stim_df['image_idx'], mask,
+                                    task_keys, average)
+    sf_df = merge_all(stim_df,
+                      betas_dict,
+                      prf_dict,
+                      roi_dict,
+                      betas_dict_xy=('voxel', 'stim_idx'),
+                      betas_long_format=True,
+                      between_stim_and_voxel='stim_idx',
+                      between_voxels='voxel')
+    sf_df['local_sf'], sf_df['local_ori'] = calculate_local_stim_properties(sf_df['w_a'],
+                                                                            sf_df['w_r'],
+                                                                            sf_df['eccentricity'],
+                                                                            sf_df['angle'],
+                                                                            angle_radians=False)
+
+
 
 def _concat_lh_rh_df(df):
     # concat df['lh'] and df['rh']
@@ -215,81 +254,83 @@ def _concat_lh_rh_df(df):
 
 
 
-def sub_main(sn,
-             freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
-             betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
-             beta_version=3,
-             stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
-             design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
-             task_from="both",
-             prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
-             vroi_range=[1, 2, 3, 4, 5, 6, 7],
-             eroi_range=[1, 2, 3, 4, 5],
-             mask_type=['visroi', 'eccroi'],
-             df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
-             save_df=True, voxel_criteria='pRFcenter'):
-    subj = utils.sub_number_to_string(sn, dataset="nsdsyn")
-    print(f'*** creating a dataframe for subject no.{sn} ***')
-    mask = _masking(freesurfer_dir=freesurfer_dir, subj=subj,
-                    visroi_range=vroi_range, eccroi_range=eroi_range, mask_type=mask_type)
-    mgzs = _load_prf_properties(freesurfer_dir=freesurfer_dir, subj=subj, prf_label_names=prf_label_list, mask=mask,
-                                apply_mask=True)
-    stim_df = load_stim_info(stim_description_path=stim_description_path)
-    stim_df = _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df=stim_df)
-    beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from, sf_stim_df=stim_df, mask=mask)
-    df = _melt_2D_beta_mgzs_into_df(beta_mgzs=beta_mgzs)
-    df = _add_prf_columns_to_df(prf_mgzs=mgzs, df=df, prf_label_names=prf_label_list)
-    df = _concat_lh_rh_df(df=df)
-    df['angle'] = np.deg2rad(df['angle'])
-    df = df.rename(columns={'size': 'sigma'})
-    df = _add_stim_info_to_df(df=df, stim_description_df=stim_df)
-    df = vs.select_voxels(df, vs.pix_to_deg(42.878), vs.pix_to_deg(714/2), ['voxel'], 'betas', near_border=True)
-    df['subj'] = subj
-    sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel'])
-    df = df.merge(sigma_v_df, on=['voxel'])
-    df = calculate_local_orientation(df=df)
-    df = calculate_local_sf(df=df)
-    fnl_df = df.groupby(['voxel', 'names', 'class_idx', 'vroinames']).mean().reset_index()
-    fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
-    fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
-    if save_df:
-        if not os.path.exists(df_save_dir):
-            os.makedirs(df_save_dir)
-        for roi in df.vroinames.unique():
-            roi_df = df.query('vroinames == @roi')
-            roi_fnl_df = fnl_df.query('vroinames == @roi')
-            df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv')
-            roi_df.to_csv(df_save_path, index=False)
-            print(f'... {subj} {roi} dataframe saved.')
-            fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_mean.csv")
-            roi_fnl_df.to_csv(fnl_df_save_path, index=False)
-            print(f'... {subj} {roi} mean dataframe dataframe saved.')
-    return fnl_df
-
-
-def main(sn_list, freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
-         betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
-         beta_version=3,
-         stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
-         design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
-         task_from="both",
-         prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
-         vroi_range=[1, 2, 3, 4, 5, 6, 7],
-         eroi_range=[1, 2, 3, 4, 5],
-         mask_type=['visroi', 'eccroi'],
-         df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
-         save_df=True):
-    print(f'*** subject list: {sn_list} ***')
-    if save_df:
-        print(f'save mode: on')
-        print(f'.... Each dataframe will be saved in dir=\n{df_save_dir}.')
-    print(f'\n')
-    df = {}
-    for sn in sn_list:
-        df[sn] = sub_main(sn, freesurfer_dir, betas_dir, beta_version, stim_description_path, design_mat_path,
-                          task_from, prf_label_list, vroi_range, eroi_range, mask_type, df_save_dir, save_df)
-    all_subj = pd.concat(df, ignore_index=True)
-    return all_subj
+### old functions
+#
+# def sub_main(sn,
+#              freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
+#              betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
+#              beta_version=3,
+#              stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
+#              design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
+#              task_from="both",
+#              prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
+#              vroi_range=[1, 2, 3, 4, 5, 6, 7],
+#              eroi_range=[1, 2, 3, 4, 5],
+#              mask_type=['visroi', 'eccroi'],
+#              df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
+#              save_df=True, voxel_criteria='pRFcenter'):
+#     subj = utils.sub_number_to_string(sn, dataset="nsdsyn")
+#     print(f'*** creating a dataframe for subject no.{sn} ***')
+#     mask = _masking(freesurfer_dir=freesurfer_dir, subj=subj,
+#                     visroi_range=vroi_range, eccroi_range=eroi_range, mask_type=mask_type)
+#     mgzs = _load_prf_properties(freesurfer_dir=freesurfer_dir, subj=subj, prf_label_names=prf_label_list, mask=mask,
+#                                 apply_mask=True)
+#     stim_df = load_stim_info_as_df(stim_description_path=stim_description_path)
+#     stim_df = _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df=stim_df)
+#     beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from, sf_stim_df=stim_df, mask=mask)
+#     df = _melt_2D_beta_mgzs_into_df(beta_mgzs=beta_mgzs)
+#     df = _add_prf_columns_to_df(prf_mgzs=mgzs, df=df, prf_label_names=prf_label_list)
+#     df = _concat_lh_rh_df(df=df)
+#     df['angle'] = np.deg2rad(df['angle'])
+#     df = df.rename(columns={'size': 'sigma'})
+#     df = _add_stim_info_to_df(df=df, stim_description_df=stim_df)
+#     df = vs.select_voxels(df, vs.pix_to_deg(42.878), vs.pix_to_deg(714/2), ['voxel'], 'betas', near_border=True)
+#     df['subj'] = subj
+#     sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel'])
+#     df = df.merge(sigma_v_df, on=['voxel'])
+#     df = calculate_local_orientation(,
+#     df = calculate_local_sf(df=df)
+#     fnl_df = df.groupby(['voxel', 'names', 'class_idx', 'vroinames']).mean().reset_index()
+#     fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
+#     fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
+#     if save_df:
+#         if not os.path.exists(df_save_dir):
+#             os.makedirs(df_save_dir)
+#         for roi in df.vroinames.unique():
+#             roi_df = df.query('vroinames == @roi')
+#             roi_fnl_df = fnl_df.query('vroinames == @roi')
+#             df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv')
+#             roi_df.to_csv(df_save_path, index=False)
+#             print(f'... {subj} {roi} dataframe saved.')
+#             fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_mean.csv")
+#             roi_fnl_df.to_csv(fnl_df_save_path, index=False)
+#             print(f'... {subj} {roi} mean dataframe dataframe saved.')
+#     return fnl_df
+#
+#
+# def main(sn_list, freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
+#          betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
+#          beta_version=3,
+#          stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
+#          design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
+#          task_from="both",
+#          prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
+#          vroi_range=[1, 2, 3, 4, 5, 6, 7],
+#          eroi_range=[1, 2, 3, 4, 5],
+#          mask_type=['visroi', 'eccroi'],
+#          df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
+#          save_df=True):
+#     print(f'*** subject list: {sn_list} ***')
+#     if save_df:
+#         print(f'save mode: on')
+#         print(f'.... Each dataframe will be saved in dir=\n{df_save_dir}.')
+#     print(f'\n')
+#     df = {}
+#     for sn in sn_list:
+#         df[sn] = sub_main(sn, freesurfer_dir, betas_dir, beta_version, stim_description_path, design_mat_path,
+#                           task_from, prf_label_list, vroi_range, eroi_range, mask_type, df_save_dir, save_df)
+#     all_subj = pd.concat(df, ignore_index=True)
+#     return all_subj
 
 def add_class_idx_to_stim_df(save=True):
     nsd_stim_df = pd.read_csv('/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/nsddata/stimuli/nsdsynthetic/nsdsynthetic_sf_stim_description.csv')
@@ -412,3 +453,19 @@ def _add_prf_columns_to_df(prf_mgzs, df, prf_label_names):
         df[hemi] = df[hemi].merge(test_df, on='voxel')
 
     return df
+
+def _add_stim_info_to_df(df, stim_description_df):
+    # add stim information to the df
+    # dataframes are merged based on index
+    # Therefore, we first set df's index to stim_idx (same idx as stim_df)
+    # combine them and set df's index back to 0,1,2,... n rows.
+    df = df.set_index('stim_idx')
+    df = df.join(stim_description_df)
+    df = df.reset_index().rename(columns={'index': 'stim_idx'})
+    return df
+
+
+def cart2pol(xramp, yramp):
+    R = np.sqrt(xramp ** 2 + yramp ** 2)
+    TH = np.arctan2(yramp, xramp)
+    return (R, TH)
