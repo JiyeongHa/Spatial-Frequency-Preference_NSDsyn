@@ -11,3 +11,5 @@ __pycache__/*
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/
+
+!/config.json
