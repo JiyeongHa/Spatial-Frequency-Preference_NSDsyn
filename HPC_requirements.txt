@@ -19,7 +19,7 @@ ConfigArgParse==1.5.3
 configobj==5.0.6
 connection-pool==0.0.3
 cycler==0.11.0
-dataclasses==0.8
+dataclasses
 datrie==0.8.2
 dbus-python==1.2.4
 decorator==4.4.2
