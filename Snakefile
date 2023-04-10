@@ -6,8 +6,8 @@ mpl.use('svg')
 #from sfp_nsdsyn import *
 import pickle
 pickle.HIGHEST_PROTOCOL = 4
-from sfp_nsdsyn import utils
-
+from sfp_nsdsyn import *
+from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
 
 configfile:
     "config.json"
@@ -22,11 +22,10 @@ PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
-ROIS = ["V1"]
+ROIS = ["V1","V2","V3"]
 stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 params_group = [0,1,1,2,2,2,2,3,3]
-
 def get_sn_list(dset):
     if dset == "broderick":
         sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
@@ -64,8 +63,24 @@ def interpret_bin_nums(wildcards):
 rule prep_data:
     input:
     output:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}.csv')
+    params:
+        rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
+        task_keys = ['fixation_task', 'memory_task']
     run:
-
+        from sfp_nsdsyn import prep
+        lh_df = prep.make_sf_dataframe(input.stim_info,
+                                       input.design_mat,
+                                       input.lh_rois, params.rois_vals,
+                                       input.lh_prfs,
+                                       input.lh_betas, params.task_keys, average=True)
+        rh_df = prep.make_sf_dataframe(input.stim_info,
+                                       input.design_mat,
+                                       input.rh_rois, params.rois_vals,
+                                       input.rh_prfs,
+                                       input.rh_betas,params.task_keys, average=True)
+        sf_df = prep.concat_lh_rh_df(lh_df, rh_df)
+        sf_df.to_csv(output[0], index=False)
 
 
 
@@ -91,7 +106,7 @@ rule plot_all:
 
 rule run_all_subj:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
+        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=_make_subj_list("nsdsyn"), lr=LR_RATE,max_epoch=MAX_EPOCH, roi=ROIS)
 
 rule run_simulation_all_subj:
@@ -664,10 +679,7 @@ rule preferred_period:
                                                        var_list=['eccentricity', 'angle'],
                                                        val_range_list=[(0, 10), (0, np.pi * 2)],
                                                        n_val_list=[3, 360])
-        synthetic_voxels['local_ori'] = prep.calculate_local_orientation(w_a=synthetic_voxels.w_a,
-                                                                         w_r=synthetic_voxels.w_r,
-                                                                         retinotopic_angle=synthetic_voxels.angle,
-                                                                         radians=True)
+        synthetic_voxels['local_ori'] = prep.calculate_local_orientation(w_a=synthetic_voxels.w_a,w_r=synthetic_voxels.w_r,retinotopic_angle=synthetic_voxels.angle,radians=True)
 
         model_history = model.load_history_files(input.model_history)
         final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
