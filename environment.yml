@@ -1,0 +1,22 @@
+name: sfp
+channels:
+  - conda-forge
+  - defaults
+  - bioconda
+dependencies:
+  - python>=3.6,<3.8
+  - pip
+  - numpy
+  - matplotlib
+  - scipy
+  - seaborn>=0.11,<0.11.2
+  - pandas
+  - pyyaml
+  - h5py
+  - nibabel
+  - scikit-learn
+  - snakemake>=5.4,<6.0
+  - tqdm
+  - pip:
+      - neuropythy
+      - torch
