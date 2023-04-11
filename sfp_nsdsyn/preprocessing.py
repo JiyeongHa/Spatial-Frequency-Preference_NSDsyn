@@ -36,13 +36,12 @@ def load_stim_info_as_df(stim_description_path, drop_phase=False):
 def load_mask_and_roi(roi_path, roi_vals):
     mask = {}
     roi = {}
-    tmp = nib.load(roi_path).get_fdata().squeeze()
-    mask = np.isin(tmp, roi_vals)
-    roi = tmp[mask]
+    roi = nib.load(roi_path).get_fdata().squeeze()
+    mask = np.isin(roi, roi_vals)
     return mask, roi
 
 def _label_vareas(roi_val):
-    result = roi_val // 2
+    result = (roi_val+1) // 2
     if result == 1:
         return 'V1'
     elif result == 2:
@@ -52,22 +51,37 @@ def _label_vareas(roi_val):
     elif result == 4:
         return 'h4v'
 
+def convert_between_roi_num_and_vareas(roi_val):
+    num_key = {1: "V1", 2: "V1",
+               3: "V2", 4: "V2",
+               5: "V3", 6: "V3",
+               7: "hV4"}
+    name_key = {"V1": [1,2],
+                "V2": [3,4],
+                "V3": [5,6],
+                "hV4": [7]}
+    switcher = {**num_key, **name_key}
+    return switcher.get(roi_val, "No Visual area")
+
 def vrois_num_to_names(vrois):
-    return [_label_vareas(i) for i in vrois]
+    return [convert_between_roi_num_and_vareas(i) for i in vrois]
 
 def load_common_mask_and_rois(rois_path, rois_vals):
-    roi_dict, all_masks = {}, []
+    tmp_roi_dict, all_masks = {}, []
     roi_names = [k.split('/')[-1].replace('prf-', '').replace('.mgz','') for k in rois_path]
     roi_names = [k.split('.')[-1] for k in roi_names]
     for roi_name, roi_path, roi_val in zip(roi_names, rois_path, rois_vals):
-        tmp, roi_dict[roi_name] = load_mask_and_roi(roi_path, roi_val)
-        if 'visualrois' in roi_name:
-            roi_dict[roi_name] = vrois_num_to_names(roi_dict[roi_name])
+        tmp, tmp_roi_dict[roi_name] = load_mask_and_roi(roi_path, roi_val)
         all_masks.append(tmp)
     mask = np.all(all_masks, axis=0)
+    roi_dict = {}
+    for roi_name in roi_names:
+        roi_dict[roi_name] = tmp_roi_dict[roi_name][mask]
+        if 'visualrois' in roi_name:
+            roi_dict['vroinames'] = vrois_num_to_names(roi_dict[roi_name])
     return mask, roi_dict
 
-def load_prf_properties_as_dict(prf_path_list, mask):
+def load_prf_properties_as_dict(prf_path_list, mask, angle_to_radians=True):
     # load pRF labels & save masked voxels
     prf_dict = {}
     for prf_path in prf_path_list:
@@ -76,9 +90,11 @@ def load_prf_properties_as_dict(prf_path_list, mask):
             # throw away voxels that are not included in visual rois & eccen rois
             tmp_prf = tmp_prf[mask]
         k = prf_path.split('/')[-1].replace('prf', '').replace('.mgz', '')
-        k = k.split('.')[-1]
+        k = k.split('.')[-1] # remove hemi
         # save ROIs, ecc rois, & pRF labels into a dict
         prf_dict[k] = tmp_prf
+    if angle_to_radians is True:
+        prf_dict['angle'] = np.deg2rad(prf_dict['angle'])
     return prf_dict
 
 def _get_beta_folder_name(beta_version):
@@ -195,10 +211,12 @@ def merge_all(stim_df,
     betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
     return betas_prf_stim_df
 
-def calculate_local_orientation(w_a, w_r, retinotopic_angle, radians=False):
+def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True):
     # calculate distance
     frequency_ratio = np.arctan2(w_a, w_r)
-    if radians is False:
+    if angle_in_radians is False:
+        if (np.max(retinotopic_angle) - 2*np.pi) < 1:
+            raise Exception('It seems like the angle is already in radians!')
         retinotopic_angle = np.deg2rad(retinotopic_angle)
     local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
     return np.remainder(local_ori, np.pi)
@@ -212,22 +230,24 @@ def calculate_local_sf(w_a, w_r, eccentricity):
     # we multiply by a conversion factor c = 1/2pi
     return np.divide(local_sf, 2*np.pi)
 
-def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_radians=False):
+def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False):
     local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity)
-    local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle, radians=angle_radians)
+    local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle, angle_in_radians=angle_in_radians)
     return local_sf, local_ori
 
-def arrange_inputs_into_df(stim_info,
-                           design_mat,
-                           rois, rois_vals,
-                           prfs,
-                           betas, task_keys, average):
+
+def make_sf_dataframe(stim_info,
+                      design_mat,
+                      rois, rois_vals,
+                      prfs,
+                      betas, task_keys=['fixation_task','memory_task'], task_average=True,
+                      angle_to_radians=True):
     stim_df = load_stim_info_as_df(stim_info, drop_phase=False)
     mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
-    prf_dict = load_prf_properties_as_dict(prfs, mask)
+    prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
     betas_dict = load_betas_as_dict(betas, design_mat,
                                     stim_df['image_idx'], mask,
-                                    task_keys, average)
+                                    task_keys, task_average)
     sf_df = merge_all(stim_df,
                       betas_dict,
                       prf_dict,
@@ -236,22 +256,20 @@ def arrange_inputs_into_df(stim_info,
                       betas_long_format=True,
                       between_stim_and_voxel='stim_idx',
                       between_voxels='voxel')
-    sf_df['local_sf'], sf_df['local_ori'] = calculate_local_stim_properties(sf_df['w_a'],
-                                                                            sf_df['w_r'],
-                                                                            sf_df['eccentricity'],
-                                                                            sf_df['angle'],
-                                                                            angle_radians=False)
+    sf_df['local_sf'], sf_df['local_ori'] = calculate_local_stim_properties(sf_df['w_a'], sf_df['w_r'],
+                                                                            sf_df['eccentricity'], sf_df['angle'],
+                                                                            angle_in_radians=angle_to_radians)
+    return sf_df
 
 
-
-def _concat_lh_rh_df(df):
-    # concat df['lh'] and df['rh']
-    df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
-    # df = pd.concat(df).reset_index(0, drop=True)
-    df = pd.concat(df).reset_index().drop(columns=['level_0', 'level_1'])
-
-    return df
-
+def concat_lh_rh_df(lh_df, rh_df):
+    #TODO: why do lh_df and rh_df change when I only return df
+    lh = lh_df.copy()
+    rh = rh_df.copy()
+    lh['hemi'] = 'lh'
+    rh['hemi'] = 'rh'
+    rh['voxel'] = rh['voxel'] + lh['voxel'].max() + 1
+    return pd.concat((lh, rh), ignore_index=True)
 
 
 ### old functions
@@ -469,3 +487,12 @@ def cart2pol(xramp, yramp):
     R = np.sqrt(xramp ** 2 + yramp ** 2)
     TH = np.arctan2(yramp, xramp)
     return (R, TH)
+
+
+def _concat_lh_rh_df(df):
+    # concat df['lh'] and df['rh']
+    df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
+    # df = pd.concat(df).reset_index(0, drop=True)
+    df = pd.concat(df).reset_index().drop(columns=['level_0', 'level_1'])
+
+    return df
