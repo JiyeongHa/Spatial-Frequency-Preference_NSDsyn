@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 mpl.use('svg')
-#from sfp_nsdsyn import *
 import pickle
 pickle.HIGHEST_PROTOCOL = 4
 from sfp_nsdsyn import *
@@ -26,6 +25,20 @@ ROIS = ["V1","V2","V3"]
 stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 params_group = [0,1,1,2,2,2,2,3,3]
+
+# small tests to make sure snakemake is playing nicely with the job management
+# system.
+rule test_run:
+     log: os.path.expanduser('~/test_run-%j.log')
+     run:
+         import numpy
+         print("success!", numpy)
+
+rule test_shell:
+     log: os.path.expanduser('~/test_shell-%j.log')
+     shell:
+         "python -c 'import numpy; print(numpy)'; echo success!"
+
 def get_sn_list(dset):
     if dset == "broderick":
         sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
@@ -36,7 +49,7 @@ def get_sn_list(dset):
 def make_subj_list(wildcards):
     return [utils.sub_number_to_string(sn, wildcards.dset) for sn in get_sn_list(wildcards.dset)]
 
-def _make_subj_list(dset):
+def get_subj_list(dset):
     if dset == "broderick":
         return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
     elif dset == "nsdsyn":
