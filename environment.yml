@@ -1,4 +1,4 @@
-name: sfp
+name: base
 channels:
   - conda-forge
   - defaults
