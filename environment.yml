@@ -1,10 +1,13 @@
 name: base
 channels:
+  - pytorch
+  - nvidia
   - conda-forge
   - defaults
   - bioconda
 dependencies:
   - python>=3.6,<3.8
+  - torch
   - pip
   - numpy
   - matplotlib
@@ -19,4 +22,3 @@ dependencies:
   - tqdm
   - pip:
       - neuropythy
-      - torch
