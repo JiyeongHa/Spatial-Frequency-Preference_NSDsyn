@@ -14,7 +14,7 @@ measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [30000]
+MAX_EPOCH = [20000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -46,10 +46,7 @@ def get_sn_list(dset):
         sn_list = np.arange(1,9)
     return sn_list
 
-def make_subj_list(wildcards):
-    return [utils.sub_number_to_string(sn, wildcards.dset) for sn in get_sn_list(wildcards.dset)]
-
-def get_subj_list(dset):
+def make_subj_list(dset):
     if dset == "broderick":
         return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
     elif dset == "nsdsyn":
@@ -73,39 +70,79 @@ def interpret_bin_nums(wildcards):
         new_bin_labels = [bin_labels[int(k)] for k in wildcards.ebin]
     return new_bin_labels
 
+rule make_df_for_all_subj:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}_vs-pRFsize.csv'), subj=make_subj_list('nsdsyn'), roi=ROIS)
+
 rule prep_data:
     input:
+        design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
+        stim_info = os.path.join(config['NSD_DIR'], 'nsdsynthetic_sf_stim_description.csv'),
+        lh_prfs = lambda wildcards: expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
+        lh_rois = lambda wildcards: expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
+        lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
+        rh_prfs= lambda wildcards: expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
+        rh_rois= lambda wildcards: expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
+        rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
     output:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}.csv')
     params:
         rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation_task', 'memory_task']
     run:
         from sfp_nsdsyn import prep
-        lh_df = prep.make_sf_dataframe(input.stim_info,
-                                       input.design_mat,
-                                       input.lh_rois, params.rois_vals,
-                                       input.lh_prfs,
-                                       input.lh_betas, params.task_keys, average=True)
-        rh_df = prep.make_sf_dataframe(input.stim_info,
-                                       input.design_mat,
-                                       input.rh_rois, params.rois_vals,
-                                       input.rh_prfs,
-                                       input.rh_betas,params.task_keys, average=True)
+        lh_df = prep.make_sf_dataframe(stim_info=input.stim_info,
+                                       design_mat=input.design_mat,
+                                       rois=input.lh_rois, rois_vals=params.rois_vals,
+                                       prfs=input.lh_prfs,
+                                       betas=input.lh_betas,
+                                       task_keys=params.task_keys, task_average=True,
+                                       angle_to_radians=True)
+        rh_df = prep.make_sf_dataframe(stim_info=input.stim_info,
+                                       design_mat=input.design_mat,
+                                       rois=input.rh_rois, rois_vals=params.rois_vals,
+                                       prfs=input.rh_prfs,
+                                       betas=input.rh_betas,
+                                       task_keys=params.task_keys, task_average=True,
+                                       angle_to_radians=True)
         sf_df = prep.concat_lh_rh_df(lh_df, rh_df)
         sf_df.to_csv(output[0], index=False)
 
+def get_stim_size_in_degree(dset):
+    if dset == 'nsdsyn':
+        fixation_radius = vs.pix_to_deg(42.878)
+        stim_radius = vs.pix_to_deg(714/2)
+    else:
+        fixation_radius = 1
+        stim_radius = 12
+    return fixation_radius, stim_radius
+
+rule voxel_selection:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_{subj}_roi-{roi}.csv'),
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-pRFsize.csv')
+    params:
+        stim_size = lambda wildcards: get_stim_size_in_degree(wildcards.dset),
+    run:
+        from sfp_nsdsyn import vs
+        df = pd.read_csv(input.subj_df)
+        vs_df = vs.select_voxels(df, by_size=True,
+                                 inner_border=params.stim_size[0],
+                                 outer_border=params.stim_size[1],
+                                 to_group=['voxel'], return_voxel_list=False)
+        vs_df.to_csv(output[0], index=False)
 
 
 rule plot_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.eps'), ebin='all', e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn")),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.eps'), ebin=['159','all'], e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick"))
+        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.eps'), ebin='all', e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=make_subj_list("nsdsyn")),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.eps'), ebin=['159','all'], e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=make_subj_list("broderick"))
 
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("broderick")),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=_make_subj_list("nsdsyn"))
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='1', e2='12', enum='11', dset='broderick', stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=make_subj_list("broderick")),
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D",'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'), df_type=['loss','model'], e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=make_subj_list("nsdsyn"))
 
 rule plot_all:
     input:
@@ -120,7 +157,7 @@ rule plot_all:
 rule run_all_subj:
     input:
         #expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=_make_subj_list("nsdsyn"), lr=LR_RATE,max_epoch=MAX_EPOCH, roi=ROIS)
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=make_subj_list("nsdsyn"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=['V1', 'V2', 'V3'])
 
 rule run_simulation_all_subj:
     input:
@@ -327,7 +364,7 @@ rule run_Broderick_subj:
 
 rule run_model:
     input:
-        input_path = os.path.join(config['INPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs_{roi}_{stat}.csv")
+        input_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}_{stat}_fix.csv")
     output:
         log_file = os.path.join(config['OUTPUT_DIR'], "logs","sfp_model", "results_2D",'log_dset-dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.txt'),
         model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D",'model_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'),
@@ -604,7 +641,7 @@ rule save_precision_s:
 rule plot_precision_weighted_2D_parameters:
     input:
         model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
-        subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}.csv"),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
+        #subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}.csv"),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
         precision_df = lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","precision_s_{{dset}}_{roi}.csv"), roi=['V1','V2','V3'])
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-V1V2V3.{fig_format}'),
@@ -635,7 +672,7 @@ rule plot_precision_weighted_2D_parameters:
 rule plot_2D_parameters_individual:
     input:
         model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
-        subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
+        #subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
         precision_df=os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-params_avg-False_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}'),
@@ -692,7 +729,7 @@ rule preferred_period:
                                                        var_list=['eccentricity', 'angle'],
                                                        val_range_list=[(0, 10), (0, np.pi * 2)],
                                                        n_val_list=[3, 360])
-        synthetic_voxels['local_ori'] = prep.calculate_local_orientation(w_a=synthetic_voxels.w_a,w_r=synthetic_voxels.w_r,retinotopic_angle=synthetic_voxels.angle,radians=True)
+        synthetic_voxels['local_ori'] = prep.calculate_local_orientation(w_a=synthetic_voxels.w_a,w_r=synthetic_voxels.w_r,retinotopic_angle=synthetic_voxels.angle,angle_in_radians=True)
 
         model_history = model.load_history_files(input.model_history)
         final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
@@ -723,6 +760,6 @@ rule preferred_period:
 
 rule svg_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3']),
-        b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-30000_vs-pRFsigma_roi-{roi}.png'), x=['eccentricity','angle'], stim=['all'], roi=['V1', 'V2', 'V3'])
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-20000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3']),
+        b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-20000_vs-pRFsigma_roi-{roi}.png'), x=['eccentricity','angle'], stim=['all'], roi=['V1', 'V2', 'V3'])
 

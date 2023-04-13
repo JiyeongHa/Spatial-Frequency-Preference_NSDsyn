@@ -27,7 +27,7 @@ class SynthesizeData():
         self.syn_voxels = self.generate_synthetic_voxels()
 
     def get_stim_info_for_n_voxels(self, stim_info_path):
-        stim_info = preprocessing.load_stim_info(stim_info_path, drop_phase=True)
+        stim_info = preprocessing.load_stim_info_as_df(stim_info_path, drop_phase=True)
         stim_info['voxel'] = 0
         tmp_df = stim_info.copy()
         for i in np.arange(1, self.n_voxels):
@@ -77,8 +77,9 @@ class SynthesizeData():
         sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
         df = df.merge(sigma_v, on='voxel')
         syn_df = self.stim_info.merge(df, on='voxel')
-        syn_df = preprocessing.calculate_local_orientation(syn_df)
-        syn_df = preprocessing.calculate_local_sf(syn_df)
+        #TODO: fix this
+        #syn_df = preprocessing.calculate_local_orientation(syn_df,,,
+        #syn_df = preprocessing.calculate_local_sf(syn_df)
         return syn_df
 
 

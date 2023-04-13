@@ -11,7 +11,7 @@ def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
 
-def violinplot_precision_weighted_avg_parameters(df, params, subplot_group,
+def violinplot_parameters(df, params, subplot_group,
                                                  save_fig=False,
                                                  save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
     sns.set_context("notebook", font_scale=2.5)
@@ -32,7 +32,7 @@ def violinplot_precision_weighted_avg_parameters(df, params, subplot_group,
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.add_legend()
-    grid.set_axis_labels('', 'Precision weighted\nvalue')
+    grid.set_axis_labels('', 'Value')
     utils.save_fig(save_fig, save_path)
 
 
