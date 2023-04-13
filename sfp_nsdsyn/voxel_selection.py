@@ -107,11 +107,10 @@ def _find_ecc_range_of_stim(image='nsdsynthetic_stimuli.hdf5',
     return img_min_max
 
 
-def _find_min_and_max(img_min_max):
+def _find_min_and_max(img_min_max, stim_info_df):
     """ find minimum val of max eccentricity & max val of minimum ecc"""
     spiral_radii = [1.581139, 3.535534, 6.670832, 12.349089, 23.119256, 42.877733]
     from sfp_nsdsyn import prep
-    stim_info_df = prep.load_stim_info_as_df()
     img_df = pd.DataFrame(img_min_max).rename(columns={0: 'min_stim_ecc_R', 1: 'max_stim_ecc_R'})
     img_df = img_df.reset_index()
     img_df = stim_info_df.reset_index().merge(img_df)
@@ -136,8 +135,8 @@ def drop_voxels_with_negative_mean_amplitudes(df, to_group=['voxel'], return_vox
         """
     tmp = df.copy()
     if 'bootstraps' in tmp.columns:
-        tmp = tmp.groupby(to_group, as_index=False).median()
-    mean_tmp = tmp.groupby(to_group, as_index=False)['betas'].mean()
+        tmp = tmp.groupby(to_group).median().reset_index()
+    mean_tmp = tmp.groupby(to_group)['betas'].mean().reset_index()
     negative_mean_voxels = mean_tmp.groupby(to_group).filter(lambda x: (x['betas'] < 0)).voxel.unique()
     if return_voxel_list is True:
         return df.query('voxel not in @negative_mean_voxels'), negative_mean_voxels

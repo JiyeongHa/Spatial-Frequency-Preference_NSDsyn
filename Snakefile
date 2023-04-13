@@ -48,10 +48,9 @@ def get_sn_list(dset):
 
 def make_subj_list(dset):
     if dset == "broderick":
-        return [utils.sub_number_to_string(sn, dataset="broderick") for sn in [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]]
+        return [utils.sub_number_to_string(sn, dataset="broderick") for sn in get_sn_list(dset)]
     elif dset == "nsdsyn":
-        return [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in np.arange(1,9)]
-
+        return [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in get_sn_list(dset)]
 
 def get_ecc_bin_list(wildcards):
     if 'log' in wildcards.enum:
@@ -117,21 +116,45 @@ def get_stim_size_in_degree(dset):
         stim_radius = 12
     return fixation_radius, stim_radius
 
+def _get_boolean_for_vs(vs):
+    switcher = {'pRFcenter': False,
+                'pRFsize': True}
+    return switcher.get(vs, True)
+
 rule voxel_selection:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_{subj}_roi-{roi}.csv'),
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-pRFsize.csv')
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv')
     params:
         stim_size = lambda wildcards: get_stim_size_in_degree(wildcards.dset),
     run:
         from sfp_nsdsyn import vs
         df = pd.read_csv(input.subj_df)
-        vs_df = vs.select_voxels(df, by_size=True,
+
+        vs_df = vs.select_voxels(df, by_size=_get_boolean_for_vs(wildcards.vs),
                                  inner_border=params.stim_size[0],
                                  outer_border=params.stim_size[1],
                                  to_group=['voxel'], return_voxel_list=False)
         vs_df.to_csv(output[0], index=False)
+
+rule make_sigma_v_df:
+    input:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-{vs}_precision-{precision}.csv')
+    params:
+        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
+    run:
+        subj_vs_df = pd.read_csv(input[0])
+        power_val = [int(p) for p in wildcards.precision.split('-')]
+        power_var = [col for p, col in params.p_dict.items() if p in power_val]
+        sigma_v_df = bts.get_multiple_sigma_vs(subj_vs_df,
+                                               power=power_val,
+                                               columns=power_var,
+                                               to_sd='betas', to_group=['voxel'])
+        df = subj_vs_df.merge(sigma_v_df, on='voxel')
+        df.to_csv(output[0], index=False)
 
 
 rule plot_tuning_curves_all:
