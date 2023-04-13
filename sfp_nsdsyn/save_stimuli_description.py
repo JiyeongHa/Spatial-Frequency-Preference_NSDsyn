@@ -1,27 +1,27 @@
 import pandas as pd
 import numpy as np
 import os
-
-n_all_stims = 112 # number of sf stims presented in nsdsynthetic experiment
-regular_sf_stims = ['pinwheel', 'forward spiral', 'annulus', 'reverse spiral']
-base_sf_stims = ['intermediate 1', 'intermediate 2', 'intermediate 3', 'intermediate 4']
-freq_levels = np.arange(0, 6) # from K. Kay's nsdsynthetic experiment design.m
-phase_levels = [0.0, 1.570796327, 3.141592654, 4.71238898] # from K. Kay's nsdsynthetic experiment design.m
-used_phase_idx = np.arange(0, 8, 2)
-n_sf_stims = len(regular_sf_stims)
-n_sf_int_stims = 4
-n_phase = len(phase_levels)
-n_freq = len(freq_levels)
-
-save_file_name = 'nsdsynthetic_sf_stim_description2.csv'
-save_path = os.path.join('/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives',
-                         save_file_name)
-
-
-# The intermediate spirals exist only at 37.0.
-# load Broderick et al's spatialFrequencyStim.mat
-original_stim_descriptions_path = '/Users/jh7685/Dropbox/NYU/Projects/SF/prac/task-sfp_stim_description.csv'
-stim_df = pd.read_csv(original_stim_descriptions_path)
+#
+# n_all_stims = 112 # number of sf stims presented in nsdsynthetic experiment
+# regular_sf_stims = ['pinwheel', 'forward spiral', 'annulus', 'reverse spiral']
+# base_sf_stims = ['intermediate 1', 'intermediate 2', 'intermediate 3', 'intermediate 4']
+# freq_levels = np.arange(0, 6) # from K. Kay's nsdsynthetic experiment design.m
+# phase_levels = [0.0, 1.570796327, 3.141592654, 4.71238898] # from K. Kay's nsdsynthetic experiment design.m
+# used_phase_idx = np.arange(0, 8, 2)
+# n_sf_stims = len(regular_sf_stims)
+# n_sf_int_stims = 4
+# n_phase = len(phase_levels)
+# n_freq = len(freq_levels)
+#
+# save_file_name = 'nsdsynthetic_sf_stim_description2.csv'
+# save_path = os.path.join('/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives',
+#                          save_file_name)
+#
+#
+# # The intermediate spirals exist only at 37.0.
+# # load Broderick et al's spatialFrequencyStim.mat
+# original_stim_descriptions_path = '/Users/jh7685/Dropbox/NYU/Projects/SF/prac/task-sfp_stim_description.csv'
+# stim_df = pd.read_csv(original_stim_descriptions_path)
 
 def create_stimulus_df(regular_sf_stims,
                               n_phase, n_freq,
