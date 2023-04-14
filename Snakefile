@@ -71,7 +71,22 @@ def interpret_bin_nums(wildcards):
 
 rule make_df_for_all_subj:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}_vs-pRFsize.csv'), subj=make_subj_list('nsdsyn'), roi=ROIS)
+        #expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}_vs-{vs}.csv'), subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter']),
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','binned','binned-ecc-0.5-4_nbin-log3_dset-nsdsyn_{subj}_roi-{roi}_vs-pRFcenter.csv'), subj=['subj01'], roi=['V1'])
+
+def get_stim_size_in_degree(dset):
+    if dset == 'nsdsyn':
+        fixation_radius = vs.pix_to_deg(42.878)
+        stim_radius = vs.pix_to_deg(714/2)
+    else:
+        fixation_radius = 1
+        stim_radius = 12
+    return fixation_radius, stim_radius
+
+def _get_boolean_for_vs(vs):
+    switcher = {'pRFcenter': False,
+                'pRFsize': True}
+    return switcher.get(vs, True)
 
 rule prep_data:
     input:
@@ -84,12 +99,14 @@ rule prep_data:
         rh_rois= lambda wildcards: expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
         rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}_vs-{vs}.csv')
     params:
         rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
-        task_keys = ['fixation_task', 'memory_task']
+        task_keys = ['fixation_task', 'memory_task'],
+        stim_size= get_stim_size_in_degree('nsdsyn')
     run:
         from sfp_nsdsyn import prep
+        from sfp_nsdsyn import vs
         lh_df = prep.make_sf_dataframe(stim_info=input.stim_info,
                                        design_mat=input.design_mat,
                                        rois=input.lh_rois, rois_vals=params.rois_vals,
@@ -105,7 +122,13 @@ rule prep_data:
                                        task_keys=params.task_keys, task_average=True,
                                        angle_to_radians=True)
         sf_df = prep.concat_lh_rh_df(lh_df, rh_df)
-        sf_df.to_csv(output[0], index=False)
+        if wildcards.vs != 'None':
+            sf_df = vs.select_voxels(sf_df, drop_by=wildcards.vs,
+                                     inner_border=params.stim_size[0],
+                                     outer_border=params.stim_size[1],
+                                     to_group=['voxel'], return_voxel_list=False)
+        sf_df['subj'] = wildcards.subj
+        sf_df.to_csv(output[0],index=False)
 
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
