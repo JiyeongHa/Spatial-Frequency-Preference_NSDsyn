@@ -11,6 +11,8 @@ from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
 configfile:
     "config.json"
 measured_noise_sd =0.03995  # unnormalized 1.502063
+STIM_LIST=['pinwheel','annulus','forward-spiral','reverse-spiral']
+LR = [0.005]
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
@@ -26,6 +28,8 @@ stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 params_group = [0,1,1,2,2,2,2,3,3]
 
+ruleorder:
+    prep_data > binning > fit_tuning_curves_for_each_bin
 # small tests to make sure snakemake is playing nicely with the job management
 # system.
 rule test_run:
@@ -71,8 +75,8 @@ def interpret_bin_nums(wildcards):
 
 rule make_df_for_all_subj:
     input:
-        #expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}_vs-{vs}.csv'), subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter']),
-        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','binned','binned-ecc-0.5-4_nbin-log3_dset-nsdsyn_{subj}_roi-{roi}_vs-pRFcenter.csv'), subj=['subj01'], roi=['V1'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.h5'),
+            stim_class=STIM_LIST, lr=LR, max_epoch=[10000], e1=[0.5], e2=[4], enum=['log3'], subj=make_subj_list('nsdsyn'), roi=['V1'])
 
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
@@ -92,14 +96,14 @@ rule prep_data:
     input:
         design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
         stim_info = os.path.join(config['NSD_DIR'], 'nsdsynthetic_sf_stim_description.csv'),
-        lh_prfs = lambda wildcards: expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
-        lh_rois = lambda wildcards: expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
+        lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
+        lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
         lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
-        rh_prfs= lambda wildcards: expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
-        rh_rois= lambda wildcards: expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
+        rh_prfs= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
+        rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
         rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     params:
         rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation_task', 'memory_task'],
@@ -130,36 +134,60 @@ rule prep_data:
         sf_df['subj'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
-def get_stim_size_in_degree(dset):
-    if dset == 'nsdsyn':
-        fixation_radius = vs.pix_to_deg(42.878)
-        stim_radius = vs.pix_to_deg(714/2)
-    else:
-        fixation_radius = 1
-        stim_radius = 12
-    return fixation_radius, stim_radius
-
-def _get_boolean_for_vs(vs):
-    switcher = {'pRFcenter': False,
-                'pRFsize': True}
-    return switcher.get(vs, True)
-
-rule voxel_selection:
+rule binning:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_{subj}_roi-{roi}.csv'),
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
+    log:
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.log')
     params:
-        stim_size = lambda wildcards: get_stim_size_in_degree(wildcards.dset),
+        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
     run:
-        from sfp_nsdsyn import vs
+        from sfp_nsdsyn import tuning
         df = pd.read_csv(input.subj_df)
+        df = df.query('~names.str.contains("intermediate").values')
+        df['ecc_bin'] = tuning.bin_ecc(df['eccentricity'], bin_list=params.bin_info[0], bin_labels=params.bin_info[1])
+        c_df = tuning.summary_stat_for_ecc_bin(df,
+                                               to_group= ['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
+                                               to_bin=['betas', 'local_sf'],
+                                               central_tendency='mean')
+        c_df.to_csv(output[0], index=False)
 
-        vs_df = vs.select_voxels(df, by_size=_get_boolean_for_vs(wildcards.vs),
-                                 inner_border=params.stim_size[0],
-                                 outer_border=params.stim_size[1],
-                                 to_group=['voxel'], return_voxel_list=False)
-        vs_df.to_csv(output[0], index=False)
+def _get_bin_number(enum):
+    only_num = int(enum.replace('log', ''))
+    return [k for k in np.arange(1,only_num+1)]
+
+def get_trained_model_for_all_bins(wildcards):
+    only_num = only_num = int(wildcards.enum.replace('log', ''))
+    BINS = [f'model-bin-{bin}_class-{wildcards.stim_class}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_binned-ecc-{wildcards.e1}-{wildcards.e2}_nbin-{wildcards.enum}_dset-nsdsyn_{wildcards.subj}_roi-{wildcards.roi}_vs-pRFcenter.pt' for bin in np.arange(1,only_num+1)]
+    return [os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D", bin_path) for bin_path in BINS]
+
+rule fit_tuning_curves_for_each_bin:
+    input:
+        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D", 'nsdsyn', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.h5'),
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "nsdsyn", 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.log')
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
+    params:
+        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
+    run:
+        subj_df = pd.read_csv(input.input_path)
+        save_stim_type_name = wildcards.stim_class.replace('-',' ')
+        subj_df = subj_df.query('names == @save_stim_type_name')
+        model_path_list = get_trained_model_for_all_bins(wildcards)
+        loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels=params.bin_info[1],
+                                                                            df=subj_df,
+                                                                            learning_rate=float(wildcards.lr),
+                                                                            max_epoch=int(wildcards.max_epoch),
+                                                                            print_every=2000, save_path_list=model_path_list)
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
 rule make_sigma_v_df:
     input:
@@ -584,43 +612,6 @@ rule plot_scatterplot_avgparams_betweenVareas:
         fnl_V1_df = model.get_mean_and_error_for_each_param(V1_df, err="sem")
         fnl_roi_df = model.get_mean_and_error_for_each_param(roi_df, err="sem")
         sfp_nsdsyn.visualization.plot_2D_model_results.scatterplot_two_avg_params(fnl_V1_df, fnl_roi_df, params_col, params_group, x_label=f'{wildcards.dset}: V1', y_label=f'{wildcards.dset}: {wildcards.roi}', save_fig=True, save_path=output.scatter_fig)
-
-
-rule binning:
-    input:
-        input_path = os.path.join(config['INPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
-    output:
-        output_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs_{roi}_{stat}.log")
-    run:
-        df = pd.read_csv(input.input_path)
-        df = df.replace({'names': {'forward spiral': 'forward-spiral', 'reverse spiral': 'reverse-spiral'}})
-        df = df.query('names in @stim_list')
-        bin_list, bin_labels = get_ecc_bin_list(wildcards)
-        df = tuning.bin_ecc(df, bin_list=bin_list, to_bin='eccentricity', bin_labels=bin_labels)
-        c_df = tuning.summary_stat_for_ecc_bin(df, to_bin=['betas', 'local_sf'], central_tendency='mean')
-        c_df.to_csv(output.output_path, index=False)
-
-
-rule fit_tuning_curves_for_each_bin:
-    input:
-        input_path = os.path.join(config['OUTPUT_DIR'],"dataframes", "binned", "{dset}", "binned_e{e1}-{e2}_nbin-{enum}_{subj}_stim_voxel_info_df_vs-pRFcenter_{roi}_{stat}.csv")
-    output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D",'model_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.h5'),
-    log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "sfp_model","results_1D",'loss_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_{stim_type}_vs-pRFcenter_e{e1}-{e2}_nbin-{enum}.log')
-    resources:
-        cpus_per_task = 1,
-        mem_mb = 4000
-    run:
-        subj_df = pd.read_csv(input.input_path)
-        subj_df = subj_df.query('names == @wildcards.stim_type')
-        bin_list, bin_labels = get_ecc_bin_list(wildcards)
-        loss_history, model_history = tuning.fit_tuning_curves_for_each_bin(bin_labels=bin_labels, df=subj_df, learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=200)
-        model_history.to_hdf(output.model_history, key='stage', mode='w')
-        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
 def make_file_name_list(wildcards, stim_list):
     f_names = [f'{wildcards.df_type}_history_dset-{wildcards.dset}_bts-{wildcards.stat}_{wildcards.subj}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_{wildcards.roi}_{stim}_vs-pRFcenter_e{wildcards.e1}-{wildcards.e2}_nbin-{wildcards.enum}.h5' for stim in stim_list]

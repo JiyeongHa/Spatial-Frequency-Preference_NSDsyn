@@ -187,12 +187,6 @@ def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
     loss_history_df['lr'] = lr
     return model_history_df, loss_history_df, elapsed_time
 
-def bin_ecc(df, bin_list, to_bin='eccentricity', bin_labels=None):
-    if bin_labels is None:
-        bin_labels = [f'{str(a)}-{str(b)}deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
-    ecc_bin = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
-    return ecc_bin
-
 def get_bin_labels(e1, e2, enum):
 
     if 'log' in enum:
@@ -203,13 +197,21 @@ def get_bin_labels(e1, e2, enum):
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
     return bin_list, bin_labels
 
-def summary_stat_for_ecc_bin(df, to_bin=["betas", "local_sf"], central_tendency="mode"):
+def bin_ecc(to_bin, bin_list, bin_labels=None):
+    if bin_labels is None:
+        bin_labels = [f'{str(a)}-{str(b)}deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
+    ecc_bin = pd.cut(to_bin, bins=bin_list, include_lowest=True, labels=bin_labels)
+    return ecc_bin
 
-    group = ['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames']
+def summary_stat_for_ecc_bin(df,
+                             to_group= ['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
+                             to_bin=["betas", "local_sf"],
+                             central_tendency="mean"):
+
     if central_tendency == "mode":
-        c_df = df.groupby(group)[to_bin].agg(lambda x: pd.Series.mode(x)[0]).reset_index()
+        c_df = df.groupby(to_group)[to_bin].agg(lambda x: pd.Series.mode(x)[0]).reset_index()
     else:
-        c_df = df.groupby(group)[to_bin].agg(central_tendency).reset_index()
+        c_df = df.groupby(to_group)[to_bin].agg(central_tendency).reset_index()
     # this should be fixed for cases where there are more than two central tendencies.
     return c_df
 
@@ -242,7 +244,6 @@ class LogGaussianTuningModel(torch.nn.Module):
         self.mode = _cast_as_param(np.random.random(1)+0.5)
         self.sigma = _cast_as_param(np.random.random(1)+0.5)
 
-
     def forward(self, x):
         """the pdf of the log normal distribution, with a scale factor
         """
@@ -250,11 +251,11 @@ class LogGaussianTuningModel(torch.nn.Module):
         # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is the inverse of
         # the preferred period, the inverse of the mode / the peak spatial frequency.
         pdf = self.slope * torch.exp(-(torch.log2(x) - torch.log2(self.mode)) ** 2 / (2 * self.sigma ** 2))
-        return pdf
+        return torch.clamp(pdf, min=1e-6)
 
 
 def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, print_every=100,
-                      anomaly_detection=True, amsgrad=False, eps=1e-8):
+                      anomaly_detection=False, amsgrad=False, eps=1e-8, save_path=None):
     """Fit log normal Gaussian tuning curves.
     This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
@@ -280,25 +281,26 @@ def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, 
         if (t + 1) % print_every == 0 or t == 0:
             content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
             print(content)
-
     elapsed_time = timer() - start
     print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, param_values))}\n')
     print(f'Elapsed time: {np.round(elapsed_time, 2)} sec \n')
+    if save_path is not None:
+        torch.save(my_model.state_dict(), save_path)
     loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
     model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
     return loss_history, model_history
 
 
 def fit_tuning_curves_for_each_bin(bin_labels, df, learning_rate=1e-4, max_epoch=5000, print_every=100,
-                                   anomaly_detection=True, amsgrad=False, eps=1e-8):
+                                   anomaly_detection=False, amsgrad=False, eps=1e-8, save_path_list=None):
     loss_history = {}
     model_history = {}
-    for bin in bin_labels:
+    for bin, save_path in zip(bin_labels, save_path_list):
         c_df = df.query('ecc_bin == @bin')
         my_dataset = LogGaussianTuningDataset(c_df)
         my_model = LogGaussianTuningModel()
         loss_history[bin], model_history[bin] = fit_tuning_curves(my_model, my_dataset, learning_rate, max_epoch, print_every,
-                                                                  anomaly_detection, amsgrad, eps)
+                                                                  anomaly_detection, amsgrad, eps, save_path)
     loss_history = pd.concat(loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
     model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
     return loss_history, model_history
@@ -537,3 +539,21 @@ def plot_sf_curves_from_2D_voxel(df, y, pred_df, pred_y, hue, lgd_title, t, save
     plt.xscale('log')
     grid.fig.suptitle(t)
     utils.save_fig(save_path != None, save_path)
+
+def match_wildcards_with_col(arg):
+    switcher = {'roi': 'vroinames',
+                'eph': 'max_epoch',
+                'lr': 'lr_rate',
+                'class': 'names'}
+    return switcher.get(arg, arg)
+
+def load_history_files(file_list, *args):
+    """args: ['subj', 'dset', 'lr_rate', 'max_epoch', 'vroinames', 'names'].
+    maybe I can make use of something like [k.split('-')[0] for k in file_name.split('_')] later"""
+    history_df = pd.DataFrame({})
+    for f in file_list:
+        tmp = pd.read_hdf(f)
+        for arg in args:
+                tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+        history_df = history_df.append(tmp)
+    return history_df
