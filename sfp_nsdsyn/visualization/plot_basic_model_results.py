@@ -10,51 +10,51 @@ from sfp_nsdsyn.two_dimensional_model import group_params
 
 def plot_loss_history(loss_history_df,
                       hue=None, lgd_title=None, hue_order=None,
-                      col=None, height=5, save_path=None, log_y=True, sharey=False):
+                      col=None, height=5, save_path=None,
+                      log_y=True, sharey=False):
     sns.set_context("notebook", font_scale=1.5)
     x_label = 'Epoch'
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
                          hue=hue,
                          hue_order=hue_order,
-                         col=col,
+                         row=col,
                          height=height,
                          palette=sns.color_palette("rocket", loss_history_df[hue].nunique()),
                          legend_out=True,
-                         sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=68)
+                         aspect=3,
+                         sharey=sharey)
+    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci="sd")
     grid.set_axis_labels(x_label, y_label)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
-    if log_y is True:
-        plt.semilogy()
+
     utils.save_fig(save_path)
 
 
-def plot_param_history(df, ground_truth=False,
+def plot_param_history(df, params, group, ground_truth=False,
                        hue=None, hue_order=None, lgd_title=None,
-                       col=None,
-                       save_path=None,
-                       log_y=True, sharey=False):
+                       save_path=None, height=5,
+                       log_y=False):
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Epoch"
     y_label = "Parameter value"
-    grid = sns.FacetGrid(df,
+    grid = sns.FacetGrid(group_params(df, params, group),
                          hue=hue,
                          hue_order=hue_order,
                          row="params",
-                         col=col,
-                         height=7,
+                         height=height,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
-                         sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2)
+                         aspect=3,
+                         sharex=True, sharey=False)
+    g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2, ci="sd")
+    if log_y is True:
+        grid.set(yscale='log')
     if ground_truth is True:
         #TODO: ground truth is for simulation
         pass
     grid.set_axis_labels(x_label, y_label)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
-    if log_y is True:
-        plt.semilogy()
     utils.save_fig(save_path)
