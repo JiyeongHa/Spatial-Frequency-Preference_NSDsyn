@@ -4,22 +4,22 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from sfp_nsdsyn import utils as utils
 import pandas as pd
-
+from sfp_nsdsyn.two_dimensional_model import group_params
 
 
 
 def plot_loss_history(loss_history_df,
-                      to_label=None, lgd_title=None, label_order=None,
-                      to_col=None, height=5, save_path=None, log_y=True, sharey=False):
+                      hue=None, lgd_title=None, hue_order=None,
+                      col=None, height=5, save_path=None, log_y=True, sharey=False):
     sns.set_context("notebook", font_scale=1.5)
     x_label = 'Epoch'
     y_label = 'Loss'
     grid = sns.FacetGrid(loss_history_df,
-                         hue=to_label,
-                         hue_order=label_order,
-                         col=to_col,
+                         hue=hue,
+                         hue_order=hue_order,
+                         col=col,
                          height=height,
-                         palette=sns.color_palette("rocket", loss_history_df[to_label].nunique()),
+                         palette=sns.color_palette("rocket", loss_history_df[hue].nunique()),
                          legend_out=True,
                          sharex=True, sharey=sharey)
     g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=68)
@@ -31,36 +31,30 @@ def plot_loss_history(loss_history_df,
     utils.save_fig(save_path)
 
 
-
-
-def plot_param_history(df, params, group,
-                       to_label=None, label_order=None, ground_truth=True, to_col=None,
-                       lgd_title=None,
-                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                       ci=68, n_boot=100, log_y=True, sharey=True):
-    df = group_params(df, params, group)
+def plot_param_history(df, ground_truth=False,
+                       hue=None, hue_order=None, lgd_title=None,
+                       col=None,
+                       save_path=None,
+                       log_y=True, sharey=False):
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Epoch"
     y_label = "Parameter value"
-    grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
-                         hue=to_label,
-                         hue_order=label_order,
+    grid = sns.FacetGrid(df,
+                         hue=hue,
+                         hue_order=hue_order,
                          row="params",
-                         col=to_col,
+                         col=col,
                          height=7,
                          palette=sns.color_palette("rocket"),
                          legend_out=True,
                          sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2, ci=ci, n_boot=n_boot)
+    g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2)
     if ground_truth is True:
-        for x_param, ax in g.axes_dict.items():
-            #ax.set_aspect('auto')
-            g_value = df.query('params == @x_param[0] & lr_rate == "ground_truth"').value.item()
-            ax.axhline(g_value, ls="--", linewidth=3, c="black")
+        #TODO: ground truth is for simulation
+        pass
     grid.set_axis_labels(x_label, y_label)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
-    #grid.fig.suptitle(f'{title}', fontweight="bold")
     if log_y is True:
         plt.semilogy()
-    utils.save_fig(save_fig, save_path)
+    utils.save_fig(save_path)

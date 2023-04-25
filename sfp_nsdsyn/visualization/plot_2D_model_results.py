@@ -306,34 +306,34 @@ def beta_2Dhist(sn, df, to_subplot="vroinames", to_label="eccrois",
         plt.savefig(save_path)
     plt.show()
 
-
-
-def plot_loss_history(loss_history_df,
-                      to_label=None, label_order=None, to_row=None, to_col=None, height=5,
-                      lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
-                       ci=68, n_boot=100, log_y=True, sharey=False):
-    sns.set_context("notebook", font_scale=1.5)
-    #sns.set(font_scale=1.5)
-    x_label = 'Epoch'
-    y_label = 'Loss'
-    grid = sns.FacetGrid(loss_history_df,
-                         hue=to_label,
-                         hue_order=label_order,
-                         row=to_row,
-                         col=to_col,
-                         height=height,
-                         palette=sns.color_palette("rocket", loss_history_df[to_label].nunique()),
-                         legend_out=True,
-                         sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=ci, n_boot=n_boot)
-    grid.set_axis_labels(x_label, y_label)
-    if lgd_title is not None:
-        grid.add_legend(title=lgd_title)
-    #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
-    #grid.fig.suptitle(f'{title}', fontweight="bold")
-    if log_y is True:
-        plt.semilogy()
-    utils.save_fig(save_fig, save_path)
+#
+#
+# def plot_loss_history(loss_history_df,
+#                       to_label=None, label_order=None, to_row=None, to_col=None, height=5,
+#                       lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
+#                        ci=68, n_boot=100, log_y=True, sharey=False):
+#     sns.set_context("notebook", font_scale=1.5)
+#     #sns.set(font_scale=1.5)
+#     x_label = 'Epoch'
+#     y_label = 'Loss'
+#     grid = sns.FacetGrid(loss_history_df,
+#                          hue=to_label,
+#                          hue_order=label_order,
+#                          row=to_row,
+#                          col=to_col,
+#                          height=height,
+#                          palette=sns.color_palette("rocket", loss_history_df[to_label].nunique()),
+#                          legend_out=True,
+#                          sharex=True, sharey=sharey)
+#     g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=ci, n_boot=n_boot)
+#     grid.set_axis_labels(x_label, y_label)
+#     if lgd_title is not None:
+#         grid.add_legend(title=lgd_title)
+#     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
+#     #grid.fig.suptitle(f'{title}', fontweight="bold")
+#     if log_y is True:
+#         plt.semilogy()
+#     utils.save_fig(save_fig, save_path)
 
 
 

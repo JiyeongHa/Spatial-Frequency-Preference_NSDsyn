@@ -327,8 +327,7 @@ rule plot_loss_history:
             loss_history['max_epoch'] = int(wildcards.max_epoch)
             loss_history['full_ver'] = wildcards.full_ver
             loss_history['pw'] = wildcards.pw
-        sfp_nsdsyn.visualization.plot_2D_model_results.plot_loss_history(loss_history, to_x="epoch",to_y="loss", to_label=None,
-            save_fig=True, save_path=output.loss_fig, ci="sd", n_boot=100, log_y=True)
+            vis.plot_2D_model_results.plot_loss_history(loss_history,hue=None,save_path=output.loss_fig,log_y=True)
 
 
 
@@ -349,9 +348,7 @@ rule plot_model_param_history:
             model_history['full_ver'] = wildcards.full_ver
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params, (wildcards.full_ver=="True"))
-        sfp_nsdsyn.visualization.plot_2D_model_results.plot_param_history(model_history,params=params_col, group=params_group,
-            to_label=None,label_order=None, ground_truth=True,
-            lgd_title=None, save_fig=True, save_path=output.param_fig, ci=68, n_boot=100, log_y=True, sharey=False)
+        sfp_nsdsyn.visualization.plot_2D_model_results.plot_param_history(model_history,params=params_col,group=params_group,hue=None,hue_order=None,ground_truth=True,lgd_title=None,save_fig=True,save_path=output.param_fig,ci=68,n_boot=100,log_y=True,sharey=False)
 
 
 
@@ -504,8 +501,7 @@ rule plot_avg_subj_loss_history:
     run:
         sn_list = get_sn_list(wildcards.dset)
         loss_history = model.load_history_df_subj(input.df_dir, wildcards.dset, wildcards.stat, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "loss", [wildcards.roi])
-        sfp_nsdsyn.visualization.plot_2D_model_results.plot_loss_history(loss_history,to_x="epoch",to_y="loss", to_label=None, to_col='lr_rate', height=5,
-            lgd_title=None,to_row=None, save_fig=True, save_path=output.history_fig, ci=68, n_boot=100, log_y=True, sharey=True)
+        sfp_nsdsyn.visualization.plot_2D_model_results.plot_loss_history(loss_history,hue=None,lgd_title=None,col='lr_rate',height=5,save_path=output.history_fig,log_y=True,sharey=True)
 
 
 rule plot_scatterplot_subj:

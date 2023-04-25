@@ -98,10 +98,8 @@ def old_save_fig(save_fig, save_dir, y_label, x_label, f_name):
         save_path = os.path.join(fig_dir, f_name)
         plt.savefig(save_path, bbox_inches='tight')
 
-def save_fig(save_fig, save_path):
-    if save_fig:
-        if not save_path:
-            raise Exception("Output directory is not defined!")
+def save_fig(save_path):
+    if save_path is not None:
         parent_path = Path(save_path)
         if not os.path.exists(parent_path.parent.absolute()):
             os.makedirs(parent_path.parent.absolute())
