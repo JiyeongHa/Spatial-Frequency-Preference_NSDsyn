@@ -134,7 +134,22 @@ rule prep_data:
         sf_df['subj'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
-rule binning:
+
+def get_stim_size_in_degree(dset):
+    if dset == 'nsdsyn':
+        fixation_radius = vs.pix_to_deg(42.878)
+        stim_radius = vs.pix_to_deg(714/2)
+    else:
+        fixation_radius = 1
+        stim_radius = 12
+    return fixation_radius, stim_radius
+
+def _get_boolean_for_vs(vs):
+    switcher = {'pRFcenter': False,
+                'pRFsize': True}
+    return switcher.get(vs, True)
+
+rule voxel_selection:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
     output:
