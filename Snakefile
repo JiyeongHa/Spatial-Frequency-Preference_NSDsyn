@@ -10,13 +10,14 @@ from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
 
 configfile:
     "config.json"
-measured_noise_sd =0.03995  # unnormalized 1.502063
+
 STIM_LIST=['pinwheel','annulus','forward-spiral','reverse-spiral']
 LR = [0.005]
+MAX_EPOCH = [8000]
+measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
 NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
-MAX_EPOCH = [20000]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -61,7 +62,8 @@ def get_ecc_bin_list(wildcards):
         enum_only = wildcards.enum[3:]
         bin_list = np.logspace(np.log2(float(wildcards.e1)), np.log2(float(wildcards.e2)), num=int(enum_only)+1, base=2)
     else:
-        bin_list = np.round(np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1), 2)
+        bin_list = np.linspace(float(wildcards.e1), float(wildcards.e2), int(wildcards.enum)+1)
+    bin_list = np.round(bin_list,2)
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
     return bin_list, bin_labels
 
@@ -75,8 +77,8 @@ def interpret_bin_nums(wildcards):
 
 rule make_df_for_all_subj:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.h5'),
-            stim_class=STIM_LIST, lr=LR, max_epoch=[10000], e1=[0.5], e2=[4], enum=['log3'], subj=make_subj_list('nsdsyn'), roi=['V1'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        stim_class=STIM_LIST, lr=LR, max_epoch=MAX_EPOCH, e1=[0.5], e2=[4], enum=[7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter','pRFsize'])
 
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
@@ -131,31 +133,16 @@ rule prep_data:
                                      inner_border=params.stim_size[0],
                                      outer_border=params.stim_size[1],
                                      to_group=['voxel'], return_voxel_list=False)
-        sf_df['subj'] = wildcards.subj
+        sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
-
-def get_stim_size_in_degree(dset):
-    if dset == 'nsdsyn':
-        fixation_radius = vs.pix_to_deg(42.878)
-        stim_radius = vs.pix_to_deg(714/2)
-    else:
-        fixation_radius = 1
-        stim_radius = 12
-    return fixation_radius, stim_radius
-
-def _get_boolean_for_vs(vs):
-    switcher = {'pRFcenter': False,
-                'pRFsize': True}
-    return switcher.get(vs, True)
-
-rule voxel_selection:
+rule binning:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.log')
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.log')
     params:
         bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
     run:
@@ -164,7 +151,7 @@ rule voxel_selection:
         df = df.query('~names.str.contains("intermediate").values')
         df['ecc_bin'] = tuning.bin_ecc(df['eccentricity'], bin_list=params.bin_info[0], bin_labels=params.bin_info[1])
         c_df = tuning.summary_stat_for_ecc_bin(df,
-                                               to_group= ['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
+                                               to_group= ['sub', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
                                                to_bin=['betas', 'local_sf'],
                                                central_tendency='mean')
         c_df.to_csv(output[0], index=False)
@@ -180,12 +167,12 @@ def get_trained_model_for_all_bins(wildcards):
 
 rule fit_tuning_curves_for_each_bin:
     input:
-        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.csv')
+        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D", 'nsdsyn', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.h5'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D", 'nsdsyn', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "nsdsyn", 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-pRFcenter.log')
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "nsdsyn", 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.log')
     resources:
         cpus_per_task = 1,
         mem_mb = 4000

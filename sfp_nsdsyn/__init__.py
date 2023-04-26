@@ -8,5 +8,9 @@ from . import preprocessing as prep
 from . import save_stimuli_description
 from . import simulation as sim
 from . import two_dimensional_model as model
-from .visualization import plot_1D_model_results, plot_2D_model_results, plot_basic_model_results as vis
+from .visualization import plot_1D_model_results as vis1D
+from .visualization import plot_2D_model_results as vis2D
+from .visualization import plot_basic_model_results as vis
+
+
 

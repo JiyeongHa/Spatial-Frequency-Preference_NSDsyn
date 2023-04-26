@@ -158,6 +158,7 @@ def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixa
         if len(task_keys) < 2:
             raise Exception('The task list length is less than 2!\n')
         betas_dict['avg_betas'] = np.mean([a for a in betas_dict.values()], axis=0)
+        betas_dict = {'avg_betas': betas_dict['avg_betas']}
     return betas_dict
 
 def melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True):

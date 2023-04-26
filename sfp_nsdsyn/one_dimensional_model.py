@@ -9,6 +9,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.patheffects as pe
+from .visualization import plot_2D_model_results as vis2D
 
 def torch_log_norm_pdf(x, slope, mode, sigma):
     """the pdf of the log normal distribution, with a scale factor
@@ -387,7 +388,7 @@ def _get_x_and_y_prediction_from_2D(sf_min, sf_max, fnl_param_df, voxel_info):
     sf_range = np.logspace(sf_min, sf_max, num=50, base=2)
     return x, y
 
-def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
+def plot_curves(df, fnl_param_df, title, save_path=None):
     subplot_list = df['names'].unique()
     fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
     ecc_list = df['ecc_bin'].unique()
@@ -405,7 +406,7 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
             axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
             axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             axes[g].set_title(subplot_list[g], fontsize=20)
-            sfp_nsdsyn.visualization.plot_2D_model_results.control_fontsize(25, 30, 40)
+            vis2D.control_fontsize(25, 30, 40)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
@@ -416,7 +417,7 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
     fig.suptitle(title, fontsize=20)
     plt.tight_layout(w_pad=2)
     fig.subplots_adjust(left=.08, bottom=0.13)
-    utils.save_fig(save_fig, save_path)
+    utils.save_fig(save_path)
 
 
 def plot_param_history(df,
@@ -450,7 +451,7 @@ def plot_param_history(df,
     utils.save_fig(save_fig, save_path)
 
 
-def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
+def plot_curves(df, fnl_param_df, title, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
     subplot_list = df['names'].unique()
     fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
     ecc_list = df['ecc_bin'].unique()
@@ -468,7 +469,7 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
             axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
             axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
             axes[g].set_title(subplot_list[g], fontsize=20)
-            sfp_nsdsyn.visualization.plot_2D_model_results.control_fontsize(25, 30, 40)
+            vis2D.control_fontsize(25, 30, 40)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
@@ -479,7 +480,7 @@ def plot_curves(df, fnl_param_df, title, save_fig=False, save_path='/Volumes/ser
     fig.suptitle(title, fontsize=20)
     plt.tight_layout(w_pad=2)
     fig.subplots_adjust(left=.08, bottom=0.13)
-    utils.save_fig(save_fig, save_path)
+    utils.save_fig(save_path)
 
 
 def plot_ecc_bin_prediction_from_2D(pred_df, pred_y, hue, lgd_title, title, save_path=None):
