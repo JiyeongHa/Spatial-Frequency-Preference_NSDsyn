@@ -37,7 +37,7 @@ def plot_loss_history(loss_history_df,
 def plot_param_history(df, params, group, ground_truth=False,
                        hue=None, hue_order=None, lgd_title=None,
                        save_path=None, height=5,
-                       log_y=False):
+                       log_y=False, **kwargs):
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Epoch"
     y_label = "Parameter value"
@@ -46,17 +46,16 @@ def plot_param_history(df, params, group, ground_truth=False,
                          hue_order=hue_order,
                          row="params",
                          height=height,
-                         palette=utils.color_palettes(hue, df[hue].nunique()),
                          legend_out=True,
                          aspect=3,
-                         sharex=True, sharey=False)
+                         sharex=True, sharey=False, **kwargs)
     g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2, ci=None)
     if log_y is True:
-        grid.set(yscale='log')
+        g.set(yscale='log')
     if ground_truth is True:
         #TODO: ground truth is for simulation
         pass
     grid.set_axis_labels(x_label, y_label)
     if lgd_title is not None:
-        grid.add_legend(title=lgd_title)
+        g.add_legend(title=lgd_title)
     utils.save_fig(save_path)

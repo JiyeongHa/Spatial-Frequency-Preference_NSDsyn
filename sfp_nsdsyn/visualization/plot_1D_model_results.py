@@ -8,6 +8,7 @@ import pandas as pd
 from sfp_nsdsyn.one_dimensional_model import np_log_norm_pdf
 from sfp_nsdsyn.one_dimensional_model import _get_x_and_y_prediction
 import matplotlib as mpl
+import matplotlib.patheffects as pe
 from sfp_nsdsyn.visualization import plot_2D_model_results as vis2D
 
 
