@@ -138,8 +138,7 @@ def trunc(values, decs=0):
 
 def load_R2(sn, R2_path='func1mm/nsdsyntheticbetas_fithrf_GLMdenoise_RR/R2_nsdsynthetic.nii.gz'):
     """load a variance explained file (nii.gz 3D) for a subject"""
-
-    subj = utils.sub_number_to_string(sn)
+    subj = sub_number_to_string(sn)
     R2_dir=f'/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/{subj}/'
     R2_path = os.path.join(R2_dir, R2_path)
     R2_file = nib.load(f'{R2_path}').get_fdata()
@@ -197,3 +196,20 @@ def color_husl_palette_different_shades(n_colors, hex_hue):
     """hue must be seaborn palettes._ColorPalette"""
     pal = sns.color_palette(f'light:{hex_hue}', n_colors=n_colors)
     return pal
+
+def subject_color_palettes(dset, sub_list):
+    if dset == 'nsdsyn':
+        subj_list = [sub_number_to_string(sn, dset) for sn in np.arange(1,9)]
+        pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+               (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0)]
+    elif dset == 'broderick':
+        broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
+        subj_list = [sub_number_to_string(sn, dset) for sn in  broderick_sn_list]
+        pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+               (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+               (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+               (189, 189, 189)]
+    sub_dict = dict(zip(subj_list, pal))
+    sub_list_pal = [c for k,c in sub_dict.items() if k in sub_list]
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    return sns.color_palette(np.array(sub_list_pal) / 255, len(sub_list))

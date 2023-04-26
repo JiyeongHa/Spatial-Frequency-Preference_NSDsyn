@@ -8,7 +8,8 @@ import pandas as pd
 from sfp_nsdsyn.one_dimensional_model import np_log_norm_pdf
 from sfp_nsdsyn.one_dimensional_model import _get_x_and_y_prediction
 import matplotlib as mpl
-import plot_2D_model_results as vis2D
+from sfp_nsdsyn.visualization import plot_2D_model_results as vis2D
+
 
 def _get_y_pdf(row):
     y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
@@ -23,7 +24,7 @@ def merge_pdf_values(subj_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
 
 def beta_vs_sf_scatterplot(df, pdf=None, hue="ecc_bin", hue_order=None, lgd_title='Eccentricity',
                            col='names', suptitle=None, height=5,
-                           save_path=None):
+                           save_path=None, **kwargs):
     col_order = utils.sort_a_df_column(df[col])
     grid = sns.FacetGrid(df,
                          col=col,
@@ -31,8 +32,7 @@ def beta_vs_sf_scatterplot(df, pdf=None, hue="ecc_bin", hue_order=None, lgd_titl
                          hue=hue,
                          height=height,
                          hue_order=hue_order,
-                         palette=sns.color_palette("rocket"),
-                         sharex=True, sharey=True)
+                         sharex=True, sharey=True, **kwargs)
     g = grid.map(sns.scatterplot, 'local_sf', 'betas')
     if pdf is not None:
         grid.map(sns.lineplot, 'local_sf', pdf)
