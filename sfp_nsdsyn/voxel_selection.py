@@ -154,12 +154,11 @@ def drop_voxels_near_border(df, inner_border, outer_border):
 def select_voxels(df,
                   drop_by,
                   inner_border, outer_border,
-                  to_group=['voxel'], return_voxel_list = False):
+                  to_group=['voxel'], return_voxel_list=False):
     vs_df = df.copy()
     if drop_by == 'pRFsize':
         vs_df = drop_voxels_near_border(vs_df, inner_border, outer_border)
     elif drop_by == 'pRFcenter':
         vs_df = vs_df.query('@inner_border < eccentricity < @outer_border')
-    else:
-        vs_df = drop_voxels_with_negative_mean_amplitudes(vs_df, to_group, return_voxel_list)
+    vs_df = drop_voxels_with_negative_mean_amplitudes(vs_df, to_group, return_voxel_list)
     return vs_df
