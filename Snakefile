@@ -77,8 +77,9 @@ def interpret_bin_nums(wildcards):
 
 rule make_df_for_all_subj:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        stim_class=STIM_LIST, lr=LR, max_epoch=MAX_EPOCH, e1=[0.5], e2=[4], enum=[7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter','pRFsize'])
+        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        #stim_class=STIM_LIST, lr=LR, max_epoch=MAX_EPOCH, e1=[0.5], e2=[4], enum=[7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter','pRFsize'])
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision_dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv'), dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize'])
 
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
@@ -193,21 +194,20 @@ rule fit_tuning_curves_for_each_bin:
 
 rule make_sigma_v_df:
     input:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_{subj}_roi-{roi}_vs-{vs}_precision-{precision}.csv')
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision_dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv')
     params:
         p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
     run:
         subj_vs_df = pd.read_csv(input[0])
-        power_val = [int(p) for p in wildcards.precision.split('-')]
+        power_val = [1,2]
         power_var = [col for p, col in params.p_dict.items() if p in power_val]
         sigma_v_df = bts.get_multiple_sigma_vs(subj_vs_df,
                                                power=power_val,
                                                columns=power_var,
-                                               to_sd='betas', to_group=['voxel'])
-        df = subj_vs_df.merge(sigma_v_df, on='voxel')
-        df.to_csv(output[0], index=False)
+                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
+        sigma_v_df.to_csv(output[0], index=False)
 
 
 rule plot_tuning_curves_all:

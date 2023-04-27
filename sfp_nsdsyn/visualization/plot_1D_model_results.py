@@ -45,11 +45,6 @@ def beta_vs_sf_scatterplot(df, pdf=None, hue="ecc_bin", hue_order=None, lgd_titl
     utils.save_fig(save_path)
 
     return grid
-def _get_middle_ecc(row):
-    label = row['ecc_bin']
-    e1 = float(label[0:3])
-    e2 = float(label[4:6])
-    return np.round((e1+e2)/2, 2)
 
 def plot_curves(df, fnl_param_df, title, save_path=None):
     subplot_list = df['names'].unique()
@@ -82,6 +77,12 @@ def plot_curves(df, fnl_param_df, title, save_path=None):
     fig.subplots_adjust(left=.08, bottom=0.13)
     utils.save_fig(save_path)
 
+def _get_middle_ecc(row):
+    label = row['ecc_bin']
+    e1 = float(label[0:3])
+    e2 = float(label[4:6])
+    return np.round((e1+e2)/2, 2)
+
 def preferred_period(df, hue="names", hue_order=None, lgd_title='Stimulus Class',
                            col=None, col_wrap=None, suptitle=None, height=5,
                            save_path=None):
@@ -96,7 +97,7 @@ def preferred_period(df, hue="names", hue_order=None, lgd_title='Stimulus Class'
                          height=height,
                          hue_order=hue_order,
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, 'ecc', 'pp', marker='o', ci=68, err_style='bars')
+    g = grid.map(sns.lineplot, 'ecc', 'pp', marker='o', estimator='mean', ci=68, err_style='bars')
     if lgd_title is not None:
         g.add_legend(title=lgd_title)
     grid.set_axis_labels('Eccentricity', 'Preferred period')
