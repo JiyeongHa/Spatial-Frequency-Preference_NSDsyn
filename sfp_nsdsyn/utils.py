@@ -213,3 +213,8 @@ def subject_color_palettes(dset, sub_list):
     sub_list_pal = [c for k,c in sub_dict.items() if k in sub_list]
     # expects RGB triplets to lie between 0 and 1, not 0 and 255
     return sns.color_palette(np.array(sub_list_pal) / 255, len(sub_list))
+
+
+def weighted_mean(x, **kws):
+    """store weights as imaginery number"""
+    return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))

@@ -83,13 +83,18 @@ def _get_middle_ecc(row):
     e2 = float(label[4:6])
     return np.round((e1+e2)/2, 2)
 
-def preferred_period(df, hue="names", hue_order=None, lgd_title='Stimulus Class',
-                           col=None, col_wrap=None, suptitle=None, height=5,
-                           save_path=None):
+
+def plot_preferred_period(df, precision_col=None,
+                          hue="names", hue_order=None, lgd_title='Stimulus Class',
+                          col=None, col_wrap=None, suptitle=None, height=5,
+                          save_path=None):
     sns.set_context("notebook", font_scale=1.5)
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
-    new_df['pp'] = 1/new_df['mode']
+    new_df['pp'] = 1 / new_df['mode']
+    if precision_col is not None:
+        new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df['pp'], new_df[precision_col])]
+
     grid = sns.FacetGrid(new_df,
                          col=col,
                          col_wrap=col_wrap,
@@ -97,7 +102,10 @@ def preferred_period(df, hue="names", hue_order=None, lgd_title='Stimulus Class'
                          height=height,
                          hue_order=hue_order,
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, 'ecc', 'pp', marker='o', estimator='mean', ci=68, err_style='bars')
+    g = grid.map(sns.lineplot, 'ecc', 'value_and_weight', marker='o',
+                 lw=3, markersize=10, estimator=utils.weighted_mean, ci=68,
+                 err_style='bars')
+    g.set(xticks=[0, 1, 2, 3, 4])
     if lgd_title is not None:
         g.add_legend(title=lgd_title)
     grid.set_axis_labels('Eccentricity', 'Preferred period')
@@ -158,10 +166,6 @@ def plot_parameter_mean(output_df, subj_to_run=None, to_subplot="vroinames", n_s
     grid.map(sns.lineplot, dp_to_x_axis, dp_to_y_axis, ci=68, marker='o', linestyle='', err_style='bars', hue_order=utils.sort_a_df_column(output_df[to_label]))
     grid.set_axis_labels(x_axis_label, y_axis_label)
     lgd = grid.fig.legend(title=legend_title, bbox_to_anchor=(1.05, 0.8), loc="upper left", labels=labels, fontsize=15)
-    # Put the legend out of the figure
-    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    #for subplot_title, ax in grid.axes_dict.items():
-    #    ax.set_title(f"{subplot_title.title()}")
     grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
     n_subj = len(output_df['subj'].unique())
     grid.fig.suptitle(f'N = {n_subj}', fontsize=18, fontweight="bold")
@@ -176,47 +180,6 @@ def plot_parameter_mean(output_df, subj_to_run=None, to_subplot="vroinames", n_s
         plt.show()
 
     return grid
-
-
-def plot_preferred_period(df, labels, to_subplot="vroinames", n_rows=4, to_label="names",
-                          dp_to_x_axis='eccentricity', dp_to_y_axis='mode',
-                          x_axis_label="Eccentricity", y_axis_label="Preferred period",
-                          legend_title="Stimulus class", title=None, legend=True,
-                          save_fig=False, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                          save_file_name='.png', ci=68, estimator=None):
-
-    df['preferred_period'] = 1 / df[dp_to_y_axis]
-    col_order = utils.sort_a_df_column(df[to_subplot])
-
-    grid = sns.FacetGrid(df,
-                         col=to_subplot,
-                         col_order=col_order,
-                         hue=to_label,
-                         col_wrap=n_rows,
-                         hue_order=labels,
-                         palette=sns.color_palette("Set1"),
-                         legend_out=True,
-                         sharex=True, sharey=False)
-    grid.map(sns.lineplot, dp_to_x_axis, 'preferred_period', estimator=estimator, ci=ci, marker='o',linestyle='', err_style='bars')
-    grid.set(xticks=[0, 1, 2, 3, 4])
-    grid.set_axis_labels(x_axis_label, y_axis_label)
-    if legend == True:
-        grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 0.9), labels=labels, fontsize=15)
-    # Put the legend out of the figure
-    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
-    grid.fig.subplots_adjust(top=0.8, right=0.82)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{title}', fontsize=18, fontweight="bold")
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{save_file_name}')
-        plt.savefig(save_path, bbox_inches='tight')
-    plt.show()
 
 
 def plot_dots(df, y, col, hue, lgd_title, height=5, save_path=None):

@@ -11,7 +11,8 @@ from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
 configfile:
     "config.json"
 
-STIM_LIST=['pinwheel','annulus','forward-spiral','reverse-spiral']
+STIM_LIST=['annulus', 'forward spiral', 'pinwheel', 'reverse spiral']
+TUNING_ARGS = ['class', 'lr', 'eph', 'dset', 'sub', 'roi']
 LR = [0.005]
 MAX_EPOCH = [8000]
 measured_noise_sd =0.03995  # unnormalized 1.502063
@@ -25,7 +26,6 @@ SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 ROIS = ["V1","V2","V3"]
-stim_list = ['pinwheel', 'annulus', 'forward-spiral', 'reverse-spiral']
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 params_group = [0,1,1,2,2,2,2,3,3]
 
@@ -79,7 +79,7 @@ rule make_df_for_all_subj:
     input:
         #expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
         #stim_class=STIM_LIST, lr=LR, max_epoch=MAX_EPOCH, e1=[0.5], e2=[4], enum=[7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter','pRFsize'])
-        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision_dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv'), dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize'])
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'), dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize'])
 
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
@@ -192,11 +192,11 @@ rule fit_tuning_curves_for_each_bin:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-rule make_sigma_v_df:
+rule make_precision_v_df:
     input:
         os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision_dset-{dset}_{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     params:
         p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
     run:
@@ -208,6 +208,36 @@ rule make_sigma_v_df:
                                                columns=power_var,
                                                to_sd='betas', to_group=['sub','voxel', 'vroinames'])
         sigma_v_df.to_csv(output[0], index=False)
+
+rule make_precision_s_df:
+    input:
+        precision_v = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{{dset}}','precision','precision-v_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.csv'), subj=make_subj_list(wildcards.dset), roi=ROIS)
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+    run:
+        sigma_v_df = pd.DataFrame({})
+        for subj_sigma_v_df in input.precision_v:
+            tmp = pd.read_csv(subj_sigma_v_df)
+            sigma_v_df = sigma_v_df.append(tmp)
+        precision_s = sigma_v_df.groupby('sub')['sigma_v_squared'].mean().reset_index()
+        precision_s['precision'] = 1 / precision_s['sigma_v_squared']
+        precision_s.to_csv(output[0], index=False)
+
+rule plot_preferred_period_1D:
+    input:
+        model_results = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-history_class-{stim_class}_lr-{{lr}}_eph-{{max_epoch}}_binned-ecc-{{e1}}-{{e2}}_nbin-{{enum}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), stim_class=STIM_LIST, subj=make_subj_list(wildcards.dset)),
+        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod-1D_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
+    run:
+        model_history_df = tuning.load_history_files(input.model_results, *TUNING_ARGS)
+        max_epoch = int(wildcards.max_epoch) - 1
+        final_params = model_history_df.query('epoch == @max_epoch')
+        precision_s = pd.read_csv(input.precision_s)
+        params_precision_df = final_params.merge(precision_s[['sub', 'precision']], on='sub')
+        vis1D.plot_preferred_period(params_precision_df, precision_col='precision',
+                                    hue='names', hue_order=STIM_LIST, lgd_title='Stimulus class',
+                                    height=5, save_path=output[0])
 
 
 rule plot_tuning_curves_all:
@@ -329,7 +359,7 @@ rule plot_loss_history:
             loss_history['max_epoch'] = int(wildcards.max_epoch)
             loss_history['full_ver'] = wildcards.full_ver
             loss_history['pw'] = wildcards.pw
-            vis.plot_2D_model_results.plot_loss_history(loss_history,hue=None,save_path=output.loss_fig,log_y=True)
+            vis2D.plot_loss_history(loss_history,hue=None,save_path=output.loss_fig,log_y=True)
 
 
 
@@ -350,7 +380,7 @@ rule plot_model_param_history:
             model_history['full_ver'] = wildcards.full_ver
         model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
         params_col, params_group = sim.get_params_name_and_group(params, (wildcards.full_ver=="True"))
-        sfp_nsdsyn.visualization.plot_2D_model_results.plot_param_history(model_history,params=params_col,group=params_group,hue=None,hue_order=None,ground_truth=True,lgd_title=None,save_fig=True,save_path=output.param_fig,ci=68,n_boot=100,log_y=True,sharey=False)
+        vis2D.plot_param_history(model_history,params=params_col,group=params_group,hue=None,hue_order=None,ground_truth=True,lgd_title=None,save_fig=True,save_path=output.param_fig,ci=68,n_boot=100,log_y=True,sharey=False)
 
 
 
