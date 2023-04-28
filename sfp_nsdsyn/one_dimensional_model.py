@@ -192,9 +192,10 @@ def get_bin_labels(e1, e2, enum):
 
     if 'log' in enum:
         enum_only = enum[3:]
-        bin_list = np.round(np.logspace(np.log2(float(e1)), np.log2(float(e2)), num=int(enum_only)+1, base=2), 2)
+        bin_list = np.logspace(np.log2(float(e1)), np.log2(float(e2)), num=int(enum_only)+1, base=2)
     else:
-        bin_list = np.round(np.linspace(float(e1), float(e2), int(enum)+1), 2)
+        bin_list = np.linspace(float(e1), float(e2), int(enum)+1)
+    bin_list = np.round(bin_list, 2)
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
     return bin_list, bin_labels
 
@@ -562,3 +563,24 @@ def load_history_files(file_list, *args):
                 tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
         history_df = history_df.append(tmp)
     return history_df
+
+def load_LogGaussianTuingModel(pt_file_path):
+    model = LogGaussianTuningModel()
+    model.load_state_dict(torch.load(pt_file_path))
+    model.eval()
+    return model
+
+def find_bin(bin_num, e1, e2, enum):
+    bin_list, bin_labels = get_bin_labels(e1, e2, enum)
+    return bin_labels[bin_num]
+
+def model_to_df(pt_file_path, *args):
+    model = load_LogGaussianTuingModel(pt_file_path)
+    model_dict = {}
+    for name, param in model.named_parameters():
+        model_dict[name] = param.detach().numpy()
+    model_df = pd.DataFrame(model_dict)
+    for arg in args:
+        model_df[match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+    #model_df['ecc_bin'] = model_df.apply(get_bin_labels(e1, e2, enum), axis=1)
+    return model_df
