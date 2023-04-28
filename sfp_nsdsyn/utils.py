@@ -218,3 +218,4 @@ def subject_color_palettes(dset, sub_list):
 def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
+

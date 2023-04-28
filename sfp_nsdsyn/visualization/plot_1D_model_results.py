@@ -78,41 +78,53 @@ def plot_curves(df, fnl_param_df, title, save_path=None):
     utils.save_fig(save_path)
 
 def _get_middle_ecc(row):
-    label = row['ecc_bin']
-    e1 = float(label[0:3])
-    e2 = float(label[4:6])
-    return np.round((e1+e2)/2, 2)
 
+    label = row['ecc_bin']
+    bin_e1 = float(label.split('-')[0])
+    bin_e2 = float(label.split('-')[1][:-4])
+    return np.round((bin_e1+bin_e2)/2, 2)
+
+def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
+    rand_vals = (0.5-np.random.random(df[subset].nunique()))*jitter_scale
+    jitters = dict(zip(df[subset].unique(), rand_vals))
+    new_col = df.apply(lambda row: row[to_jitter] + jitters[row[subset]], axis=1)
+    return new_col
 
 def plot_preferred_period(df, precision_col=None,
                           hue="names", hue_order=None, lgd_title='Stimulus Class',
                           col=None, col_wrap=None, suptitle=None, height=5,
                           save_path=None):
-    sns.set_context("notebook", font_scale=1.5)
+    rc = {'axes.labelpad': 25}
+    sns.set_context("notebook", font_scale=2, rc=rc)
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
+    new_df['ecc'] = _add_jitter(new_df, 'ecc', hue, jitter_scale=0.08)
+    new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc_bin', jitter_scale=0.05)
     new_df['pp'] = 1 / new_df['mode']
     if precision_col is not None:
         new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df['pp'], new_df[precision_col])]
-
     grid = sns.FacetGrid(new_df,
                          col=col,
                          col_wrap=col_wrap,
-                         hue=hue,
                          height=height,
-                         hue_order=hue_order,
+                         aspect=1.2,
+                         palette=sns.color_palette("tab10"),
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, 'ecc', 'value_and_weight', marker='o',
-                 lw=3, markersize=10, estimator=utils.weighted_mean, ci=68,
-                 err_style='bars')
-    g.set(xticks=[0, 1, 2, 3, 4])
+    g = grid.map(sns.lineplot, 'ecc', 'value_and_weight', hue, hue_order=hue_order, marker='o',
+                 lw=4, markersize=20, estimator=utils.weighted_mean, ci=68,
+                 err_style='bars', err_kws={'elinewidth': 4})
+    grid.set(xticks=[0,1,2,3,4], yticks=[0, 0.5, 1])
     if lgd_title is not None:
-        g.add_legend(title=lgd_title)
+        g.add_legend(title=lgd_title, bbox_to_anchor=(1.02, 0.7))
     grid.set_axis_labels('Eccentricity', 'Preferred period')
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
     grid.fig.suptitle(suptitle, fontweight="bold")
+    # set transparency
+    plt.setp(grid.ax.collections, alpha=.85)  # for the markers
+    #plt.setp(grid.ax.lines, alpha=.8)  # for the lines
     utils.save_fig(save_path)
+
     return grid
 
 def plot_beta_all_subj(subj_to_run, merged_df, to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
