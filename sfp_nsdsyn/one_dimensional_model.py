@@ -189,7 +189,6 @@ def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
     return model_history_df, loss_history_df, elapsed_time
 
 def get_bin_labels(e1, e2, enum):
-
     if 'log' in enum:
         enum_only = enum[3:]
         bin_list = np.logspace(np.log2(float(e1)), np.log2(float(e2)), num=int(enum_only)+1, base=2)
@@ -570,11 +569,11 @@ def load_LogGaussianTuingModel(pt_file_path):
     model.eval()
     return model
 
-def find_bin(bin_num, e1, e2, enum):
-    bin_list, bin_labels = get_bin_labels(e1, e2, enum)
-    return bin_labels[bin_num]
+def _find_bin(row):
+    _, bin_labels = get_bin_labels(row.e1, row.e2, row.nbin)
+    return bin_labels[int(row.curbin)]
 
-def model_to_df(pt_file_path, *args):
+def model_to_df(pt_file_path, args):
     model = load_LogGaussianTuingModel(pt_file_path)
     model_dict = {}
     for name, param in model.named_parameters():
@@ -582,5 +581,13 @@ def model_to_df(pt_file_path, *args):
     model_df = pd.DataFrame(model_dict)
     for arg in args:
         model_df[match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
-    #model_df['ecc_bin'] = model_df.apply(get_bin_labels(e1, e2, enum), axis=1)
+    return model_df
+
+def load_all_models(pt_file_path_list, args, ecc_bin=True):
+    model_df = pd.DataFrame({})
+    for pt_file_path in pt_file_path_list:
+        tmp = model_to_df(pt_file_path, args)
+        model_df = model_df.append(tmp)
+    if ecc_bin is True:
+        model_df['ecc_bin'] = model_df.apply(_find_bin, axis=1)
     return model_df
