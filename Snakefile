@@ -29,8 +29,6 @@ ROIS = ["V1","V2","V3"]
 params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 params_group = [0,1,1,2,2,2,2,3,3]
 
-ruleorder:
-    prep_data > binning > fit_tuning_curves_for_each_bin
 # small tests to make sure snakemake is playing nicely with the job management
 # system.
 rule test_run:
