@@ -256,11 +256,13 @@ class LogGaussianTuningModel(torch.nn.Module):
 
 
 def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, print_every=100,
-                      anomaly_detection=False, amsgrad=False, eps=1e-8, save_path=None):
+                      anomaly_detection=False, amsgrad=False, eps=1e-8, save_path=None, seed=None):
     """Fit log normal Gaussian tuning curves.
     This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
+    if seed is not None:
+        np.random.seed(seed)
     my_parameters = [p for p in my_model.parameters() if p.requires_grad]
     params_col = [name for name, param in my_model.named_parameters() if param.requires_grad]
     optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, amsgrad=amsgrad, eps=eps)
