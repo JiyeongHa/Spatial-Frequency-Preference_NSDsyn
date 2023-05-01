@@ -19,5 +19,6 @@ dependencies:
   - scikit-learn
   - snakemake>=5.4,<6.0
   - tqdm
+  - tables
   - pip:
       - neuropythy
