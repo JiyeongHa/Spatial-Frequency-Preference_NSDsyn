@@ -216,10 +216,6 @@ rule fit_tuning_curves_for_each_bin:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-rule tuning_curves_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'), stim_class='pinwheel', lr=LR, max_epoch=MAX_EPOCH, e1='0.5', e2='4', enum='7', curbin=np.arange(0,7), dset='nsdsyn', subj=['subj01'], roi=['V1'], vs=['pRFsize'])
-
 rule make_precision_v_df:
     input:
         os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
@@ -269,9 +265,6 @@ rule plot_preferred_period_1D:
                                     hue='names', hue_order=STIM_LIST, lgd_title='Stimulus class',
                                     height=8, save_path=output[0])
 
-rule bin_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','binned','binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'), dset='nsdsyn', e1='0.5', e2='4', enum=['log3', '7'], subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'])
 rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'), dset='nsdsyn', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3', '7'], roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'], fig_format=['svg'])
