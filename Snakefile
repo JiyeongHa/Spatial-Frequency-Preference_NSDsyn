@@ -57,10 +57,6 @@ def make_subj_list(dset):
     elif dset == "nsdsyn":
         return [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in get_sn_list(dset)]
 
-def get_ecc_bin_list(wildcards):
-    bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
-    return bin_list, bin_labels
-
 def interpret_bin_nums(wildcards):
     bin_list, bin_labels = get_ecc_bin_list(wildcards)
     if wildcards.ebin == "all":
@@ -131,13 +127,17 @@ rule prep_data:
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
+def get_ecc_bin_list(wildcards):
+    bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
+    return bin_list, bin_labels
+
 rule binning:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', 'nsdsyn', 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.log')
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', '{dset}', 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log')
     params:
         bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
     run:
@@ -270,6 +270,9 @@ rule plot_preferred_period_1D:
                                     hue='names', hue_order=STIM_LIST, lgd_title='Stimulus class',
                                     height=8, save_path=output[0])
 
+rule bin_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','binned','binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'), dset='nsdsyn', e1='0.5', e2='4', enum=['log3', '7'], roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'])
 rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'), dset='nsdsyn', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3', '7'], roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'], fig_format=['svg'])
