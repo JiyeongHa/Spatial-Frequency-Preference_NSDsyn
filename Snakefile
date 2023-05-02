@@ -28,8 +28,8 @@ SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 ROIS = ["V1","V2","V3"]
-params_list = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
-params_group = [0,1,1,2,2,2,2,3,3]
+PARAMS_2D = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+PARAMS_GROUP_2D = [0,1,1,2,2,2,2,3,3]
 
 # small tests to make sure snakemake is playing nicely with the job management
 # system.
@@ -303,15 +303,15 @@ rule run_model:
 
 rule plot_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}", 'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-all_vs-{vs}.{fig_format}'), dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg'])
+        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}", 'fig-{d_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), d_type=['model','loss'], roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg'])
 
 rule plot_2D_model_loss_history:
     input:
-        loss_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'loss-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset), roi=ROIS)
+        loss_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'loss-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
     output:
-        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-all_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "figures", "sfp_model", "results_2D", "{dset}",'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-all_vs-{vs}.{fig_format}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs", "figures", "sfp_model", "results_2D", "{dset}",'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}.log')
     params:
         args = ['dset', 'lr', 'eph', 'sub', 'roi']
     run:
@@ -322,31 +322,36 @@ rule plot_2D_model_loss_history:
                               hue='sub',
                               lgd_title='Subjects',
                               hue_order=subj_list,
-                              col='vroinames',
+                              col=None,
                               log_y=True,
+                              suptitle=wildcards.roi,
                               save_path=output[0],
                               **kwargs)
 
-
-
-rule plot_model_param_history:
+rule plot_2D_model_param_history:
     input:
-        model_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'model_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv')
+        model_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'model-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
     output:
-        param_fig = os.path.join(config['OUTPUT_DIR'], "figures", "simulation", "results_2D", 'Epoch_vs_Param_values', 'param_history_plot_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png')
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'fig-model-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', 'figures', 'Epoch_vs_Param_values','param_history_plot_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.log')
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'fig-model-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
+    params:
+        args=['dset','lr','eph','sub','roi'],
+        params_list = PARAMS_2D,
     run:
-        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
-        model_history = pd.read_csv(input.model_history)
-        if {'lr_rate', 'noise_sd', 'max_epoch'}.issubset(model_history.columns) is False:
-            model_history['lr_rate'] = float(wildcards.lr)
-            model_history['noise_sd'] = float(wildcards.n_sd_mtpl)
-            model_history['max_epoch'] = int(wildcards.max_epoch)
-            model_history['full_ver'] = wildcards.full_ver
-        model_history = sim.add_ground_truth_to_df(params, model_history, id_val='ground_truth')
-        params_col, params_group = sim.get_params_name_and_group(params, (wildcards.full_ver=="True"))
-        vis2D.plot_param_history(model_history,params=params_col,group=params_group,hue=None,hue_order=None,ground_truth=True,lgd_title=None,save_fig=True,save_path=output.param_fig,ci=68,n_boot=100,log_y=True,sharey=False)
+        model_history = utils.load_history_files(input.model_history, *params.args)
+        subj_list = make_subj_list(wildcards.dset)
+        kwargs = {'palette': utils.subject_color_palettes(wildcards.dset, subj_list)}
+        vis.plot_param_history(model_history,
+                               params.params_list,
+                               hue='sub',
+                               lgd_title='Subjects',
+                               hue_order=subj_list,
+                               col=None,
+                               height=4,
+                               suptitle=wildcards.roi,
+                               save_path=output[0],
+                               **kwargs)
 
 
 rule plot_all_loss_and_param_history:
@@ -739,8 +744,8 @@ rule plot_precision_weighted_2D_parameters:
     params:
         df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D"),
         sn_list = lambda wildcards: get_sn_list(wildcards.dset),
-        params_order = params_list,
-        params_group = params_group
+        params_order = PARAMS_2D,
+        params_group = PARAMS_GROUP_2D
     run:
         from sfp_nsdsyn import model
         from sfp_nsdsyn import bts
@@ -769,7 +774,7 @@ rule plot_2D_parameters_individual:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-params_avg-False_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}'),
     params:
         df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D"),
-        params_order = params_list,
+        params_order = PARAMS_2D,
         params_group = [1,2,3,4,4,4,4,4,4]
     run:
         from sfp_nsdsyn import model
