@@ -177,7 +177,7 @@ class SpatialFrequencyDataset:
         self.voxel_info = df.pivot('voxel', 'class_idx', beta_col).index.astype(int).to_list()
 
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, full_ver):
+    def __init__(self, full_ver=True):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.sigma = _cast_as_param(np.random.random(1))
@@ -240,14 +240,13 @@ def loss_fn(sigma_v_info, prediction, target):
     loss_all_voxels = torch.mean((1/sigma_v_info) * (norm_pred - norm_measured)**2, dim=1)
     return loss_all_voxels
 
-def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, print_every=100,
-              loss_all_voxels=True, anomaly_detection=True, amsgrad=False, eps=1e-8):
+def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_every=100, save_path=None,
+              loss_all_voxels=False, anomaly_detection=False, amsgrad=False, eps=1e-8):
     """Fit the model. This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
     torch.autograd.set_detect_anomaly(anomaly_detection)
     # [sigma, slope, intercept, p_1, p_2, p_3, p_4, A_1, A_2]
-    my_parameters = [p for p in model.parameters() if p.requires_grad]
-
+    my_parameters = [p for p in sfp_model.parameters() if p.requires_grad]
     optimizer = torch.optim.Adam(my_parameters, lr=learning_rate, amsgrad=amsgrad, eps=eps)
     losses_history = []
     loss_history = []
@@ -255,38 +254,34 @@ def fit_model(model, dataset, log_file, learning_rate=1e-4, max_epoch=1000, prin
     start = timer()
 
     for t in range(max_epoch):
-
-        pred = model.forward(theta_l=dataset.ori, theta_v=dataset.angle, r_v=dataset.eccen, w_l=dataset.sf)  # predictions should be put in here
+        pred = sfp_model.forward(theta_l=dataset.ori, theta_v=dataset.angle, r_v=dataset.eccen, w_l=dataset.sf)  # predictions should be put in here
         losses = loss_fn(dataset.sigma_v_squared, pred, dataset.target) # loss should be returned here
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
-        model_values = [p.detach().numpy().item() for p in model.parameters() if p.requires_grad]  # output needs to be put in there
+        model_values = [v.detach().numpy().item() for v in sfp_model.parameters() if v.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
         if (t + 1) % print_every == 0 or t == 0:
-            with open(log_file, "a") as file:
-                content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
-                file.write(content)
-                file.close()
-
+            print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
-        model.eval()
-    end = timer()
-    elapsed_time = end - start
-    params_col = [name for name, param in model.named_parameters() if param.requires_grad]
-    with open(log_file, "a") as file:
-        file.write(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, model_values))}\n')
-        file.write(f'Elapsed time: {np.round(end - start, 2)} sec \n')
-        file.close()
+    sfp_model.eval()
+    elapsed_time = timer() - start
+    if save_path is not None:
+        torch.save(sfp_model.state_dict(), save_path)
+    params_col = [name for name, param in sfp_model.named_parameters() if param.requires_grad]
+    params_val = [param for name, param in sfp_model.named_parameters() if param.requires_grad]
+    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, model_values))}')
+    print(f'Elapsed time: {np.round(elapsed_time, 2)} sec')
+
     voxel_list = dataset.voxel_info
     loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
     model_history = pd.DataFrame(model_history, columns=params_col).reset_index().rename(columns={'index': 'epoch'})
     if loss_all_voxels is True:
         losses_history = pd.DataFrame(np.asarray(losses_history), columns=voxel_list).reset_index().rename(columns={'index': 'epoch'})
-    return loss_history, model_history, elapsed_time, losses_history
+    return loss_history, model_history, losses_history
 
 def shape_losses_history(losses_history, syn_df):
     voxel_list = losses_history.drop(columns=['epoch']).columns.tolist()
