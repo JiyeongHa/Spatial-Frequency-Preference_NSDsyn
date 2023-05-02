@@ -303,7 +303,7 @@ rule run_model:
 
 rule run_model_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'), dset='nsdsyn', subj='subj01', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi=['V1'], vs=['pRFsize'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'), dset='nsdsyn', subj=make_subj_list('nsdsyn'), lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi=['V1','V2','V3'], vs=['pRFsize'])
 rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'), dset='nsdsyn', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3', '7'], roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'], fig_format=['svg'])
