@@ -15,3 +15,5 @@ notebooks/.ipynb_checkpoints/
 !/config.json
 /test_run.log
 /test_shell.log
+.config.json
+
