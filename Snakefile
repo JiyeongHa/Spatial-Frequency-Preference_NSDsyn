@@ -265,6 +265,35 @@ rule plot_preferred_period_1D:
                                     hue='names', hue_order=STIM_LIST, lgd_title='Stimulus class',
                                     height=8, save_path=output[0])
 
+rule run_model:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+    benchmark:
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
+    run:
+        subj_df = pd.read_csv(input.subj_df)
+        precision_df = pd.read_csv(input.precision)
+        df = subj_df.merge(precision_df, on=['subj', 'vroinames', 'voxel'])
+        subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
+        subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
+        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
+            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch),
+            print_every=100, loss_all_voxels=False,
+            anomaly_detection=False, amsgrad=False, eps=1e-8)
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+
 rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'), dset='nsdsyn', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3', '7'], roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'], fig_format=['svg'])
@@ -484,30 +513,7 @@ rule run_Broderick_subj:
         # utils.save_df_to_csv(loss_history, output.loss_history, indexing=False)
 
 
-rule run_model:
-    input:
-        input_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "{dset}", "{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}_{stat}_fix.csv")
-    output:
-        log_file = os.path.join(config['OUTPUT_DIR'], "logs","sfp_model", "results_2D",'log_dset-dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.txt'),
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D",'model_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'),
-    log:
-        os.path.join(config['OUTPUT_DIR'],"logs","sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.log')
-    benchmark:
-        os.path.join(config['OUTPUT_DIR'],"benchmark","sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.txt')
-    resources:
-        cpus_per_task = 1,
-        mem_mb = 4000
-    run:
-        subj_df = pd.read_csv(input.input_path)
-        subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
-        subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch),
-            print_every=100, loss_all_voxels=False,
-            anomaly_detection=False, amsgrad=False, eps=1e-8)
-        model_history.to_hdf(output.model_history, key='stage', mode='w')
-        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
 
 def get_df_type_and_subj_list(dset):
     if dset == "broderick":
