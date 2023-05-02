@@ -252,7 +252,6 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
     loss_history = []
     model_history = []
     start = timer()
-
     for t in range(max_epoch):
         pred = sfp_model.forward(theta_l=dataset.ori, theta_v=dataset.angle, r_v=dataset.eccen, w_l=dataset.sf)  # predictions should be put in here
         losses = loss_fn(dataset.sigma_v_squared, pred, dataset.target) # loss should be returned here
