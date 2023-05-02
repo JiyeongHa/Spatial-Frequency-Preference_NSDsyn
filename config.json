@@ -1,7 +1,0 @@
-{
-  "NSD_DIR": "/Volumes/sfp_nsd/natural-scenes-dataset",
-  "OUTPUT_DIR": "/Volumes/sfp_nsd/derivatives/",
-  "BD_DIR": "/Volumes/sfp_nsd/Broderick-dataset",
-  "PARAMS" : "Broderick_params.csv",
-  "INPUT_DIR": "/Volumes/sfp_nsd/derivatives/"
-}
