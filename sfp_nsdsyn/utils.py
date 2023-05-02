@@ -219,3 +219,24 @@ def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
 
+def match_wildcards_with_col(arg):
+    switcher = {'roi': 'vroinames',
+                'eph': 'max_epoch',
+                'lr': 'lr_rate',
+                'class': 'names'}
+    return switcher.get(arg, arg)
+
+def load_history_files(file_list, *args):
+    """args: ['subj', 'dset', 'lr_rate', 'max_epoch', 'vroinames', 'names'].
+    maybe I can make use of something like [k.split('-')[0] for k in file_name.split('_')] later"""
+    history_df = pd.DataFrame({})
+    for f in file_list:
+        f.split('.')[-1]
+        if f.split('.')[-1] == 'h5':
+            tmp = pd.read_hdf(f)
+        elif f.split('.')[-1] == 'csv':
+            tmp = pd.read_csv(f)
+        for arg in args:
+            tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+        history_df = history_df.append(tmp)
+    return history_df
