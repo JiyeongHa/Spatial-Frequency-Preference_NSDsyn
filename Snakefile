@@ -15,6 +15,8 @@ STIM_LIST=['annulus', 'forward spiral', 'pinwheel', 'reverse spiral']
 TUNING_ARGS = ['class', 'lr', 'eph', 'dset', 'sub', 'roi']
 LR = [0.005]
 MAX_EPOCH = [8000]
+LR_2D = [0.0005]
+MAX_EPOCH_2D = [30000]
 measured_noise_sd =0.03995  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
@@ -283,17 +285,25 @@ rule run_model:
     run:
         subj_df = pd.read_csv(input.subj_df)
         precision_df = pd.read_csv(input.precision)
-        df = subj_df.merge(precision_df, on=['subj', 'vroinames', 'voxel'])
-        subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
-        subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch),
-            print_every=100, loss_all_voxels=False,
-            anomaly_detection=False, amsgrad=False, eps=1e-8)
+        df = subj_df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
+        df = df.groupby(['sub','voxel','class_idx','vroinames']).mean().reset_index()
+        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
+        loss_history, model_history, _ = model.fit_model(subj_model, subj_dataset,
+                                                         learning_rate=float(wildcards.lr),
+                                                         max_epoch=int(wildcards.max_epoch),
+                                                         save_path=output.model,
+                                                         print_every=10000,
+                                                         loss_all_voxels=False,
+                                                         anomaly_detection=False,
+                                                         amsgrad=False,
+                                                         eps=1e-8)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-
+rule run_model_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'), dset='nsdsyn', subj='subj01', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi=['V1'], vs=['pRFsize'])
 rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'), dset='nsdsyn', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3', '7'], roi=['V1','V2','V3'], vs=['pRFcenter','pRFsize'], fig_format=['svg'])
@@ -384,8 +394,7 @@ rule run_simulation:
         syn_df = pd.read_csv(input.input_path)
         syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
         syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=(wildcards.full_ver=="True"))
-        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2000, anomaly_detection=False, amsgrad=False, eps=1e-8)
+        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model,syn_dataset,learning_rate=float(wildcards.lr),max_epoch=int(wildcards.max_epoch),print_every=2000,anomaly_detection=False,amsgrad=False,eps=1e-8)
         losses_history = model.shape_losses_history(losses, syn_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
         utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
@@ -408,8 +417,6 @@ rule plot_loss_history:
             loss_history['full_ver'] = wildcards.full_ver
             loss_history['pw'] = wildcards.pw
             vis2D.plot_loss_history(loss_history,hue=None,save_path=output.loss_fig,log_y=True)
-
-
 
 rule plot_model_param_history:
     input:
@@ -473,8 +480,7 @@ rule run_simulation_subj:
         syn_df = pd.read_csv(input.input_path)
         syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
         syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=(wildcards.full_ver=="True"))
-        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model, syn_dataset,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch), print_every=2000, anomaly_detection=False, amsgrad=False, eps=1e-8)
+        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model,syn_dataset,learning_rate=float(wildcards.lr),max_epoch=int(wildcards.max_epoch),print_every=2000,anomaly_detection=False,amsgrad=False,eps=1e-8)
         losses_history = model.shape_losses_history(losses, syn_df)
         utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
         utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
@@ -499,10 +505,7 @@ rule run_Broderick_subj:
         subj_df = pd.read_csv(input.input_path)
         subj_dataset = model.SpatialFrequencyDataset(subj_df, beta_col='betas')
         subj_model = model.SpatialFrequencyModel(full_ver=(wildcards.full_ver=="True"))
-        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model, subj_dataset, output.log_file,
-            learning_rate=float(wildcards.lr), max_epoch=int(wildcards.max_epoch),
-            print_every=100, loss_all_voxels=False,
-            anomaly_detection=False, amsgrad=False, eps=1e-8)
+        loss_history, model_history, elapsed_time, losses = model.fit_model(subj_model,subj_dataset,output.log_file,max_epoch=int(wildcards.max_epoch),print_every=100,loss_all_voxels=False,anomaly_detection=False,amsgrad=False,eps=1e-8)
         model_history.to_hdf(output.model_history, key='stage',mode='w')
         loss_history.to_hdf(output.loss_history, key='stage',mode='w')
         #losses_history = model.shape_losses_history(losses,subj_df)
