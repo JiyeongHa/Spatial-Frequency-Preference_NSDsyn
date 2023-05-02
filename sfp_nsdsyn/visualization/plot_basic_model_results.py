@@ -11,10 +11,10 @@ from sfp_nsdsyn.two_dimensional_model import group_params
 
 def plot_loss_history(loss_history_df,
                       hue=None, lgd_title=None, hue_order=None,
-                      col=None, height=3, save_path=None,
+                      col=None, height=4, save_path=None,
                       log_y=True, sharey=False,
                       suptitle=None, **kwargs):
-    sns.set_context("notebook", font_scale=2)
+    sns.set_context("notebook", font_scale=1.5)
     grid = sns.FacetGrid(loss_history_df,
                          hue=hue,
                          hue_order=hue_order,
