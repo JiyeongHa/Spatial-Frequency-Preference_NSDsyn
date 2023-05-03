@@ -362,3 +362,27 @@ def get_mean_and_error_for_each_param(df, err="sem", to_group=['params']):
     elif err == "sem":
         err_df = df.groupby(to_group)[val_name].sem().reset_index().rename(columns={val_name: 'std_value'})
     return m_df.merge(err_df, on=to_group)
+
+
+def load_SpatialFrequencyModel(pt_file_path):
+    model = SpatialFrequencyModel()
+    model.load_state_dict(torch.load(pt_file_path))
+    model.eval()
+    return model
+
+def model_to_df(pt_file_path, *args):
+    model = load_SpatialFrequencyModel(pt_file_path)
+    model_dict = {}
+    for name, param in model.named_parameters():
+        model_dict[name] = param.detach().numpy()
+    model_df = pd.DataFrame(model_dict)
+    for arg in args:
+        model_df[utils.match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+    return model_df
+
+def load_all_models(pt_file_path_list, *args):
+    model_df = pd.DataFrame({})
+    for pt_file_path in pt_file_path_list:
+        tmp = model_to_df(pt_file_path, *args)
+        model_df = model_df.append(tmp)
+    return model_df

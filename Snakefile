@@ -13,6 +13,7 @@ configfile:
 
 STIM_LIST=['annulus', 'forward spiral', 'pinwheel', 'reverse spiral']
 TUNING_ARGS = ['class', 'lr', 'eph', 'dset', 'sub', 'roi']
+ARGS_2D = ['lr','eph','sub','roi','dset']
 LR = [0.005]
 MAX_EPOCH = [8000]
 LR_2D = [0.0005]
@@ -29,7 +30,7 @@ broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
 SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 ROIS = ["V1","V2","V3"]
 PARAMS_2D = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
-PARAMS_GROUP_2D = [0,1,1,2,2,2,2,3,3]
+PARAMS_GROUP_2D = [0,1,1,2,2,3,3,4,4]
 
 # small tests to make sure snakemake is playing nicely with the job management
 # system.
@@ -301,10 +302,51 @@ rule run_model:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+rule plot_avg_model_parameters:
+    input:
+        model_params = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{{dset}}", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), subj=make_subj_list(wildcards.dset), roi=ROIS),
+        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-V1V2V3_vs-{vs}.{fig_format}')
+    params:
+        params_list = PARAMS_2D,
+        groups = PARAMS_GROUP_2D
+    run:
+        df = model.load_all_models(input.model_params, *ARGS_2D)
+        precision_s = pd.read_csv(input.precision_s)
+        final_params = df.merge(precision_s, on=['sub'])
+        vis2D.plot_precision_weighted_avg_parameters(final_params,
+                                                     params.params_list, params.groups,
+                                                     weight='precision',
+                                                     hue = 'vroinames', hue_order=ROIS,
+                                                     lgd_title='Visual areas',
+                                                     save_path=output[0])
+
+rule plot_individual_model_parameters:
+    input:
+        model_params = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{{dset}}", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.pt'), subj=make_subj_list(wildcards.dset)),
+        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
+    params:
+        params_list = PARAMS_2D,
+        groups = PARAMS_GROUP_2D,
+        subj_list = lambda wildcards: make_subj_list(wildcards.dset)
+    run:
+        df = model.load_all_models(input.model_params, *ARGS_2D)
+        precision_s = pd.read_csv(input.precision_s)
+        final_params = df.merge(precision_s, on=['sub'])
+        vis2D.plot_precision_weighted_avg_parameters(final_params,
+                                                     params.params_list, params.groups,
+                                                     weight='precision',
+                                                     hue = 'sub', hue_order= params.subj_list,
+                                                     lgd_title='Subjects',
+                                                     height=7, pal=utils.subject_color_palettes(wildcards.dset, params.subj_list),
+                                                     save_path=output[0], suptitle=wildcards.roi)
 rule plot_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}", 'fig-{d_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), d_type=['model','loss'], roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg'])
-
+        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}", 'fig-{d_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), d_type=['model','loss'], roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg']),
+        expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg'])
 rule plot_2D_model_loss_history:
     input:
         loss_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'loss-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
