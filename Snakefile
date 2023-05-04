@@ -343,10 +343,25 @@ rule plot_individual_model_parameters:
                                                      lgd_title='Subjects',
                                                      height=7, pal=utils.subject_color_palettes(wildcards.dset, params.subj_list),
                                                      save_path=output[0], suptitle=wildcards.roi)
+
+
+rule plot_model_parameter_comparison:
+    input:
+        broderick_model_params = expand(os.path.join(config['OUTPUT_OLD_DIR'], "sfp_model","results_2D", ' model_history_dset-broderick_bts-median_full_ver-True_{subj}_lr-0.0005_eph-30000_V1.h5'), subj=make_subj_list('broderick')),
+        broderick_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','broderick', 'precision', 'precision-v_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.csv'), subj=make_subj_list('broderick')),
+        nsd_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-V1_vs-{vs}.pt'), subj=make_subj_list('nsdsyn')),
+        nsd_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn', 'precision', 'precision-v_dset-nsdsyn_sub-{subj}_roi-V1_vs-{vs}.csv'), subj=make_subj_list('nsdsyn'))
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","all",'fig-params_lr-{lr}_eph-{max_epoch}_dset-all_sub-all_roi-V1_vs-{vs}.{fig_format}')
+    run:
+
+
+
 rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}", 'fig-{d_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), d_type=['model','loss'], roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg']),
         expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg'])
+
 rule plot_2D_model_loss_history:
     input:
         loss_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'loss-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))

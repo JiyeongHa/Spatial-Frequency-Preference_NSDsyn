@@ -14,7 +14,7 @@ def sub_number_to_string(sub_number, dataset="nsdsyn"):
     if dataset == "nsdsyn":
         return "subj%02d" % sub_number
     elif dataset == "broderick":
-        return "sub-wlsubj{:03d}".format(sub_number)
+        return "wlsubj{:03d}".format(sub_number)
 
 
 def remove_subj_strings(subj_list):

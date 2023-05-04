@@ -258,7 +258,6 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
-        model_values = [v.detach().numpy().item() for v in sfp_model.parameters() if v.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
         if (t + 1) % print_every == 0 or t == 0:
@@ -266,6 +265,7 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
+        model_values = [v.detach().numpy().item() for v in sfp_model.parameters() if v.requires_grad]  # output needs to be put in there
     sfp_model.eval()
     elapsed_time = timer() - start
     if save_path is not None:
