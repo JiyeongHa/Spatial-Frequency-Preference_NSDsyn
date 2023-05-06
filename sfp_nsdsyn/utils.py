@@ -197,22 +197,85 @@ def color_husl_palette_different_shades(n_colors, hex_hue):
     pal = sns.color_palette(f'light:{hex_hue}', n_colors=n_colors)
     return pal
 
-def subject_color_palettes(dset, sub_list):
-    if dset == 'nsdsyn':
-        subj_list = [sub_number_to_string(sn, dset) for sn in np.arange(1,9)]
-        pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
-               (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0)]
-    elif dset == 'broderick':
-        broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
-        subj_list = [sub_number_to_string(sn, dset) for sn in  broderick_sn_list]
-        pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+def make_dset_palettes(dset):
+    c_list = sns.diverging_palette(130, 300, s=100, l=30, n=2, as_cmap=False)
+    hex_color = c_list.as_hex()
+    if dset == 'broderick':
+        pal = color_husl_palette_different_shades(12, hex_color[1])
+        pal.reverse()
+    elif dset == 'nsdsyn':
+        pal = color_husl_palette_different_shades(8, hex_color[0])
+        pal.reverse()
+    else:
+        palette = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
                (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
                (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
                (189, 189, 189)]
-    sub_dict = dict(zip(subj_list, pal))
-    sub_list_pal = [c for k,c in sub_dict.items() if k in sub_list]
-    # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    return sns.color_palette(np.array(sub_list_pal) / 255, len(sub_list))
+        pal = convert_rgb_to_seaborn_color_palette(palette)
+    return pal
+
+def get_colors(to_color, to_plot):
+    if to_color == "dset":
+        return get_dset_colors(to_plot)
+    elif to_color == "subject":
+        return get_subject_colors('nsdsyn', to_plot)
+    elif to_color == "roi":
+        return get_roi_colors(to_plot)
+
+
+def _map_colors_and_list(pal_list, pal, convert_to_sns=True):
+    if convert_to_sns:
+        pal = convert_rgb_to_seaborn_color_palette(pal, len(pal))
+    map_dict = dict(zip(pal_list, pal))
+    return map_dict
+
+def get_dset_colors(to_plot):
+    dset_list = ['broderick', 'nsdsyn']
+    dset_pals = [(0, 60, 9), (88, 5, 145)]
+    map_dict = _map_colors_and_list(dset_list, dset_pals)
+    pal = [c for k,c in map_dict.items() if k in to_plot]
+    return pal
+
+def get_roi_colors(to_plot):
+    roi_list = ['V1', 'V2', 'V3']
+    roi_pals = [(88, 5, 145), (136, 28, 156), (164, 76, 166)]
+    map_dict = _map_colors_and_list(roi_list, roi_pals)
+    pal = [c for k, c in map_dict.items() if k in to_plot]
+    return pal
+
+def rgb_to_hex(r, g, b):
+    return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+def hex_to_rgb(hex):
+    rgb = []
+    for i in (0, 2, 4):
+        decimal = int(hex[i:i + 2], 16)
+        rgb.append(decimal)
+
+    return tuple(rgb)
+
+def get_subject_colors(to_plot, dset='nsdsyn'):
+    c_list = sns.diverging_palette(130, 300, s=100, l=30, n=2, as_cmap=False)
+    hex_color = c_list.as_hex()
+    subj_list = [sub_number_to_string(sn, dset) for sn in np.arange(1, 9)]
+    if dset == 'broderick':
+        pal = sns.color_palette("deep:{hex_code}", as_cmap=False)
+        #pal = color_husl_palette_different_shades(12, hex_color[1])
+        #pal.reverse()
+    elif dset == 'nsdsyn':
+        hex_code = rgb_to_hex(88, 5, 145)
+        pal = sns.color_palette(f"light:{hex_code}", n_colors=len(subj_list)+4, as_cmap=False)
+        pal = pal[4:]
+    else:
+        palette = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+                   (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+                   (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+                   (189, 189, 189)]
+        # expects RGB triplets to lie between 0 and 1, not 0 and 255
+        pal = convert_rgb_to_seaborn_color_palette(palette)
+    map_dict = _map_colors_and_list(subj_list, pal, False)
+    sub_list_pal = [c for k,c in map_dict.items() if k in to_plot]
+    return sub_list_pal
 
 
 def weighted_mean(x, **kws):

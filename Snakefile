@@ -347,13 +347,39 @@ rule plot_individual_model_parameters:
 
 rule plot_model_parameter_comparison:
     input:
-        broderick_model_params = expand(os.path.join(config['OUTPUT_OLD_DIR'], "sfp_model","results_2D", ' model_history_dset-broderick_bts-median_full_ver-True_{subj}_lr-0.0005_eph-30000_V1.h5'), subj=make_subj_list('broderick')),
-        broderick_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','broderick', 'precision', 'precision-v_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.csv'), subj=make_subj_list('broderick')),
-        nsd_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-V1_vs-{vs}.pt'), subj=make_subj_list('nsdsyn')),
-        nsd_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn', 'precision', 'precision-v_dset-nsdsyn_sub-{subj}_roi-V1_vs-{vs}.csv'), subj=make_subj_list('nsdsyn'))
+        broderick_model_params = expand(os.path.join(config['OUTPUT_OLD_DIR'], "sfp_model","results_2D", 'model_history_dset-broderick_bts-median_full_ver-True_sub-{subj}_lr-0.0005_eph-30000_V1.h5'), subj=make_subj_list('broderick')),
+        broderick_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','broderick', 'precision', 'precision-v_dset-broderick_sub-{subj}_roi-V1_vs-{{vs}}.csv'), subj=make_subj_list('broderick')),
+        nsd_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.pt'), subj=make_subj_list('nsdsyn')),
+        nsd_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn', 'precision', 'precision-v_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.csv'), subj=make_subj_list('nsdsyn'))
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","all",'fig-params_lr-{lr}_eph-{max_epoch}_dset-all_sub-all_roi-V1_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "dset_comparison", 'fig-params_lr-{lr}_eph-{max_epoch}_dset-all_sub-all_roi-V1_vs-{vs}.{fig_format}')
+    params:
+        param_list = PARAMS_2D,
+        param_group = PARAMS_GROUP_2D
     run:
+        broderick_model_df = utils.load_history_files(input.broderick_model_params, *['sub','dset'])
+        broderick_model_df['vroinames'] = 'V1'
+        broderick_model_df = broderick_model_df.query('epoch == 29999') #TODO: make it with new bd dataframes
+        broderick_precision_v = utils.load_history_files(input.broderick_precision_v)
+        broderick_precision_s = broderick_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
+        broderick_df = broderick_model_df.merge(broderick_precision_s[['sub', 'vroinames', 'sigma_v_squared']], on=['sub', 'vroinames'])
+
+        nsd_model_df = model.load_all_models(input.nsd_model_params, *ARGS_2D)
+        nsd_precision_v = utils.load_history_files(input.nsd_precision_v)
+        nsd_precision_s = nsd_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
+        nsd_df = nsd_model_df.merge(nsd_precision_s, on=['sub','vroinames'])
+
+        all_df = broderick_df.append(nsd_df)
+        all_df['precision'] = 1/all_df['sigma_v_squared']
+        vis2D.plot_precision_weighted_avg_parameters(all_df,
+                                                     params.param_list,
+                                                     params.param_group,
+                                                     hue='dset',
+                                                     hue_order=['broderick','nsdsyn'],
+                                                     lgd_title=['Dataset'],
+                                                     height=7,
+                                                     pal=utils.get_colors('dset', to_plot=['broderick','nsdsyn']),
+                                                     save_path=output[0])
 
 
 
@@ -439,8 +465,8 @@ rule run_simulation_all_subj:
 
 rule generate_synthetic_data:
     input:
-        stim_info_path=os.path.join(config['INPUT_DIR'], "dataframes", "nsdsyn", 'nsdsynthetic_sf_stim_description.csv'),
-        subj_df_dir = os.path.join(config['INPUT_DIR'], "dataframes", "nsdsyn")
+        stim_info_path=os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", 'nsdsynthetic_sf_stim_description.csv'),
+        subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn")
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_n_vox-{n_voxels}.csv")
     log:
@@ -501,7 +527,7 @@ rule run_simulation:
 
 rule generate_synthetic_data_subj:
     input:
-        subj_df_dir = os.path.join(config['INPUT_DIR'], "dataframes", "nsdsyn")
+        subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn")
     output:
         os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_subj-{sn}.csv")
     log:
@@ -596,7 +622,7 @@ rule plot_avg_subj_parameter_history:
     output:
         history_fig = os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D",'model_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_allsubj_lr-{lr}_eph-{max_epoch}_{roi}.png')
     run:
-        params = pd.read_csv(os.path.join(config['INPUT_DIR'], "dataframes", config['PARAMS']))
+        params = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "dataframes", config['PARAMS']))
         sn_list = get_sn_list(wildcards.dset)
         model_history = model.load_history_df_subj(input.df_dir, wildcards.dset, wildcards.stat, [wildcards.full_ver], sn_list, [float(wildcards.lr)], [int(wildcards.max_epoch)], "model", [wildcards.roi])
         subj_list = [utils.sub_number_to_string(sn, dataset=wildcards.dset) for sn in sn_list]
@@ -626,7 +652,7 @@ rule plot_avg_subj_loss_history:
 
 rule plot_scatterplot_subj:
     input:
-        bd_file = os.path.join(config['INPUT_DIR'], 'dataframes','Broderick_individual_subject_params_median_across_bootstraps.csv'),
+        bd_file = os.path.join(config['OUTPUT_DIR'], 'dataframes','Broderick_individual_subject_params_median_across_bootstraps.csv'),
         my_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'), subj=make_subj_list(wildcards)),
         df_dir= os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D")
     output:
@@ -656,7 +682,7 @@ rule plot_scatterplot_subj:
 
 rule plot_scatterplot_avgparams:
     input:
-        bd_file = os.path.join(config['INPUT_DIR'],'dataframes','Broderick_individual_subject_params_allbootstraps.csv'),
+        bd_file = os.path.join(config['OUTPUT_DIR'],'dataframes','Broderick_individual_subject_params_allbootstraps.csv'),
         my_files = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-{{full_ver}}_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
         df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D")
     output:
@@ -778,9 +804,9 @@ rule plot_tuning_curves:
 
 rule save_precision_s:
     input:
-        subj_df = lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards))
+        subj_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards))
     output:
-        os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
+        os.path.join(config['OUTPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     run:
         print(input.subj_df)
         from sfp_nsdsyn import bts
@@ -794,8 +820,8 @@ rule save_precision_s:
 rule plot_precision_weighted_2D_parameters:
     input:
         model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
-        #subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}.csv"),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
-        precision_df = lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","precision_s_{{dset}}_{roi}.csv"), roi=['V1','V2','V3'])
+        #subj_df=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}.csv"),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
+        precision_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"dataframes","{{dset}}","precision_s_{{dset}}_{roi}.csv"), roi=['V1','V2','V3'])
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-V1V2V3.{fig_format}'),
     params:
@@ -825,8 +851,8 @@ rule plot_precision_weighted_2D_parameters:
 rule plot_2D_parameters_individual:
     input:
         model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
-        #subj_df=lambda wildcards: expand(os.path.join(config['INPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
-        precision_df=os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
+        #subj_df=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{{roi}}.csv"),subj=make_subj_list(wildcards)),
+        precision_df=os.path.join(config['OUTPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-params_avg-False_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}'),
     params:
@@ -866,7 +892,7 @@ rule preferred_period:
     input:
         stim_info = '/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
         model_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{{roi}}.h5'),subj=make_subj_list(wildcards)),
-        precision_df = os.path.join(config['INPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
+        precision_df = os.path.join(config['OUTPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-{roi}.{fig_format}')
     params:
