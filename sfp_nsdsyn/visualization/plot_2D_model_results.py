@@ -775,7 +775,26 @@ def plot_vareas_lines(df, x, y, hue, hue_order=None, col=None, height=5, **kwarg
                        aspect=1.3,
                        **kwargs)
     grid.set_axis_labels("", "Value")
-
-    # grid.ax.set(xlim=new_lim, xticks=(np.round(np.linspace(new_lim[0], new_lim[0], 4),2)))
-    # grid.ax.set(ylim=new_lim, yticks=(np.round(np.linspace(new_lim[0], new_lim[0], 4),2)))
     return grid
+
+def make_multiple_xy(df, id_var, to_var, to_val):
+    pivot_df = df.pivot(id_var, to_var, to_val).reset_index()
+    var_list = df[to_var].unique()
+
+    multiple_xy_df = pd.DataFrame({})
+    for k, v in zip(var_list[0:], var_list[1:]):
+        tmp = pd.DataFrame({})
+        tmp[id_var] = pivot_df[id_var]
+        tmp['x'] = pivot_df[k]
+        tmp['y'] = pivot_df[v]
+        tmp[to_var] = f'{k}-{v}'
+        multiple_xy_df = multiple_xy_df.append(tmp)
+    return multiple_xy_df
+
+def make_multiple_xy_with_vars(df, id_var, to_var, to_vals, val_name='params'):
+    multiple_xy_dfs = pd.DataFrame({})
+    for to_val in to_vals:
+        tmp = make_multiple_xy(df, id_var, to_var, to_val)
+        tmp[val_name] = to_val
+        multiple_xy_dfs = multiple_xy_dfs.append(tmp)
+    return multiple_xy_dfs
