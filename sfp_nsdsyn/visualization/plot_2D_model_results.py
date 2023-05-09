@@ -37,15 +37,15 @@ def violinplot_parameters(df, params, subplot_group,
 
 
 def _change_params_to_math_symbols(params_col):
-    params_col = params_col.replace({'sigma': r"$Bandwidth$",
-                                     'intercept': r"$Intercept$",
-                                     'slope': r"$Slope$",
-                                     'p_1': r"$p_1$",
-                                     'p_2': r"$p_2$",
-                                     'p_3': r"$p_3$",
-                                     'p_4': r"$p_4$",
-                                     'A_1': r"$A_1$",
-                                     'A_2': r"$A_2$"})
+    params_col = params_col.replace({'sigma': r"$Bandwidth$" "\n" r"$\sigma$",
+                                     'slope': r"$Slope$" "\n" r"$a$",
+                                     'intercept': r"$Intercept$" "\n" r"$b$",
+                                     'p_1': r"$Horizontal$" "\n" r"$p_1$",
+                                     'p_2': r"$Oblique$" "\n"r"$p_2$",
+                                     'p_3': r"$Radial$" "\n"r"$p_3$",
+                                     'p_4': r"$Spiral$" "\n"r"$p_4$",
+                                     'A_1': r"$Horizontal$" "\n"r"$A_1$",
+                                     'A_2': r"$Oblique$" "\n"r"$A_2$"})
     return params_col
 
 def _find_ylim(ax, roi, avg=True):
@@ -100,21 +100,28 @@ def set_rcParams(rc):
 
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
-                                           weight='precision',
-                                           save_path=None, pal=None,
+                                           weight='precision', dodge=0.14,
+                                           save_path=None, pal=None, dot_scale=2.2,
                                            height=6, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
     sns.set_context("notebook", font_scale=4)
-    rc = {'axes.labelpad': 30, 'axes.linewidth': 3, 'grid.linewidth': 3, 'font.family': 'Helvetica', 'lines.linewidth': 2}
+    rc = {'axes.labelpad': 30,
+          'axes.linewidth': 3,
+          'xtick.major.pad': 20,
+          'xtick.major.width': 3,
+          'xtick.major.size': 20,
+          'grid.linewidth': 3,
+          'font.family': 'Helvetica',
+          'lines.linewidth': 2}
     set_rcParams(rc)
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
     groups, counts = np.unique(subplot_group, return_counts=True)
-    counts[0] = 1.55
-    counts[1] = 3
-    counts[2] = 2.7
-    counts[3] = 2.4
-    counts[4] = 2.7
+    counts[0] = 1.5
+    counts[1] = 2.8
+    counts[2] = 2.6
+    counts[3] = 2
+    counts[4] = 2.6
     if pal is None:
         pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
     grid = sns.FacetGrid(df,
@@ -123,30 +130,24 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                          legend_out=True,
                          sharex=False, sharey=False, aspect=0.53, gridspec_kws={'width_ratios': counts}, **kwargs)
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
-                 dodge=0.3, palette=pal, edgecolor='black', linewidth=20,
-                 estimator=weighted_mean, linestyles='', scale=2.2,
+                 dodge=dodge, palette=pal, edgecolor='black', linewidth=20,
+                 estimator=weighted_mean, linestyles='', scale=dot_scale,
                  joint=False, orient="v", errorbar=("ci", 68))
     for ax in grid.axes.flatten():
         ticks = [t.get_text() for t in ax.get_xticklabels()]
         if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
             ax.axhline(y=0, color='gray', linestyle='--', linewidth=2, alpha=0.9)
         if len(ticks) == 2:
-            ax.margins(x=0.2)
+            ax.margins(x=0.22)
+    grid.axes[0, 2].margins(x=0.16)
+    grid.axes[0, 4].margins(x=0.16)
     if ylim_list is not None:
         for ax in range(len(groups)):
             grid.axes[0, ax].set_ylim(ylim_list[ax])
     if ytick_list is not None:
         for ax in range(len(groups)):
             grid.axes[0, ax].set_yticks(ytick_list[ax])
-
-
-    # for ax in range(len(groups)):
-        # grid.axes[0, ax].set_ylim(_find_ylim(ax, 'etc', True))
-        # if roi is not None:
-        #     grid.axes[0, ax].set_ylim(_find_ylim(ax, roi))
-        # if counts[ax] == 2:
-        #     grid.axes[0, ax].margins(x=0.55)
-
+    grid.fig.subplots_adjust(wspace=0.4)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", 'Value')
@@ -154,7 +155,7 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
         g.add_legend(title=lgd_title)
     if suptitle is not None:
         g.fig.suptitle(suptitle, fontweight="bold")
-
+    grid.set_axis_labels("", "Parameter value")
     utils.save_fig(save_path)
     return grid
 
