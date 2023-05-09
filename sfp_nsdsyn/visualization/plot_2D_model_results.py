@@ -44,8 +44,8 @@ def _change_params_to_math_symbols(params_col):
                                      'p_2': r"$p_2$",
                                      'p_3': r"$p_3$",
                                      'p_4': r"$p_4$",
-                                     'A_1': r"$a_1$",
-                                     'A_2': r"$a_2$"})
+                                     'A_1': r"$A_1$",
+                                     'A_2': r"$A_2$"})
     return params_col
 
 def _find_ylim(ax, roi, avg=True):
@@ -92,36 +92,54 @@ def _find_ylim(ax, roi, avg=True):
                         3: [-1.5, 0.5]}
         return switcher.get(ax)
 
+def set_rcParams(rc):
+    for k, v in rc.items():
+        plt.rcParams[k] = v
+
+
 
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
                                            weight='precision',
                                            save_path=None, pal=None,
-                                           height=6, suptitle=None, roi=None, **kwargs):
-    rc = {'axes.labelpad': 25}
-    sns.set_context("notebook", font_scale=2.6, rc=rc)
-
+                                           height=6, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
+    sns.set_context("notebook", font_scale=4)
+    rc = {'axes.labelpad': 30, 'axes.linewidth': 3, 'grid.linewidth': 3, 'font.family': 'Helvetica', 'lines.linewidth': 2}
+    set_rcParams(rc)
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
     groups, counts = np.unique(subplot_group, return_counts=True)
+    counts[0] = 1.55
+    counts[1] = 3
+    counts[2] = 2.7
+    counts[3] = 2.4
+    counts[4] = 2.7
     if pal is None:
         pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
     grid = sns.FacetGrid(df,
                          col="group",
                          height=height,
                          legend_out=True,
-                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts}, **kwargs)
+                         sharex=False, sharey=False, aspect=0.53, gridspec_kws={'width_ratios': counts}, **kwargs)
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
-                 dodge=0.17, palette=pal, edgecolor='black', linewidth=10,
+                 dodge=0.3, palette=pal, edgecolor='black', linewidth=20,
                  estimator=weighted_mean, linestyles='', scale=2.2,
                  joint=False, orient="v", errorbar=("ci", 68))
     for ax in grid.axes.flatten():
         ticks = [t.get_text() for t in ax.get_xticklabels()]
-        if any('p_' in s for s in ticks) or any('a_' in s for s in ticks):
-            ax.axhline(y=0, color='gray', linestyle='--', alpha=0.9)
+        if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
+            ax.axhline(y=0, color='gray', linestyle='--', linewidth=2, alpha=0.9)
         if len(ticks) == 2:
-            ax.margins(x=0.55)
+            ax.margins(x=0.2)
+    if ylim_list is not None:
+        for ax in range(len(groups)):
+            grid.axes[0, ax].set_ylim(ylim_list[ax])
+    if ytick_list is not None:
+        for ax in range(len(groups)):
+            grid.axes[0, ax].set_yticks(ytick_list[ax])
+
+
     # for ax in range(len(groups)):
         # grid.axes[0, ax].set_ylim(_find_ylim(ax, 'etc', True))
         # if roi is not None:

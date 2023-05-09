@@ -231,14 +231,14 @@ def _map_colors_and_list(pal_list, pal, convert_to_sns=True):
 
 def get_dset_colors(to_plot):
     dset_list = ['broderick', 'nsdsyn']
-    dset_pals = [(0, 60, 9), (88, 5, 145)]
+    dset_pals = [(72, 122, 23), (81, 31, 127)]
     map_dict = _map_colors_and_list(dset_list, dset_pals)
     pal = [c for k,c in map_dict.items() if k in to_plot]
     return pal
 
 def get_roi_colors(to_plot):
     roi_list = ['V1', 'V2', 'V3']
-    roi_pals = [(88, 5, 145), (136, 28, 156), (164, 76, 166)]
+    roi_pals = [(76, 26, 113), (151, 62, 164), (206, 144, 201)]
     map_dict = _map_colors_and_list(roi_list, roi_pals)
     pal = [c for k, c in map_dict.items() if k in to_plot]
     return pal
