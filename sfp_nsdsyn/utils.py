@@ -267,12 +267,13 @@ def get_subject_colors(to_plot, dset='nsdsyn'):
         pal = sns.color_palette(f"light:{hex_code}", n_colors=len(subj_list)+4, as_cmap=False)
         pal = pal[4:]
     else:
+        subj_list = [sub_number_to_string(sn, 'nsdsyn') for sn in np.arange(1, 9)]
         palette = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
                    (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
                    (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
                    (189, 189, 189)]
         # expects RGB triplets to lie between 0 and 1, not 0 and 255
-        pal = convert_rgb_to_seaborn_color_palette(palette)
+        pal = convert_rgb_to_seaborn_color_palette(palette, len(subj_list))
     map_dict = _map_colors_and_list(subj_list, pal, False)
     sub_list_pal = [c for k,c in map_dict.items() if k in to_plot]
     return sub_list_pal

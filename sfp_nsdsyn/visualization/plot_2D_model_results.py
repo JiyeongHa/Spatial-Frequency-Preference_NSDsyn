@@ -513,10 +513,13 @@ def scatter_comparison(df, x, y, col, col_order,
     return grid
 
 
-def _get_common_lim(axes):
+def _get_common_lim(axes, round=False):
     xlim = axes.get_xlim()
     ylim = axes.get_ylim()
-    return [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
+    if round is True:
+        return [np.floor(min(xlim[0], ylim[0])), np.ceil(max(xlim[1], ylim[1]))]
+    else:
+        return [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
 
 
 def control_fontsize(small, medium, large):
@@ -730,3 +733,48 @@ def plot_sd_with_different_shades(df):
     sns.set_context('notebook', font_scale=3)
     sns.catplot(data=df, x='dset', y="sigma_v_squared", kind="point", hue='subj', hue_order=df.subj.unique(),
                 palette=broderick_pal, dodge=True, size=20, alpha=0.8, edgecolor="gray", linewidth=1)
+
+def plot_vareas(df, x, y, hue, style, hue_order=None, col=None, height=5, **kwargs):
+    sns.set_context('notebook', font_scale=2)
+    grid = sns.relplot(data=df,
+                       x=x, y=y,
+                       col=col,
+                       hue=hue, hue_order=hue_order,
+                       style=style,
+                       height=height,
+                       s=80,
+                       **kwargs)
+    min_val = min(min(df[x]), min(df[y]))
+    max_val = max(max(df[x]), max(df[y]))
+    new_lim=_get_common_lim(grid.ax, True)
+    new_ticks= np.arange(new_lim[0], new_lim[1]+1)
+    grid.ax.set(xlim=new_lim, ylim=new_lim, xticks=new_ticks, yticks=new_ticks)
+    grid.ax.plot(np.linspace(new_lim[0], new_lim[1], 10),
+                 np.linspace(new_lim[0], new_lim[1], 10),
+                 linestyle='--', color='gray', linewidth=1)
+    grid.ax.set_aspect('equal')
+    grid.ax.tick_params(right=True, top=True,
+                         labelrotation=0)
+    # grid.ax.xaxis.set_label_position('top')
+    # grid.ax.yaxis.set_label_position('right')
+    grid.ax.spines['bottom'].set_visible(False)
+    grid.ax.spines['top'].set_visible(True)
+    grid.set_axis_labels("", "")
+
+def plot_vareas_lines(df, x, y, hue, hue_order=None, col=None, height=5, **kwargs):
+    sns.set_context('notebook', font_scale=2)
+    grid = sns.relplot(data=df,
+                       x=x, y=y,
+                       col=col,
+                       hue=hue, hue_order=hue_order,
+                       height=height,
+                       kind='line',
+                       markers=True,
+                       sizes=100,
+                       aspect=1.3,
+                       **kwargs)
+    grid.set_axis_labels("", "Value")
+
+    # grid.ax.set(xlim=new_lim, xticks=(np.round(np.linspace(new_lim[0], new_lim[0], 4),2)))
+    # grid.ax.set(ylim=new_lim, yticks=(np.round(np.linspace(new_lim[0], new_lim[0], 4),2)))
+    return grid
