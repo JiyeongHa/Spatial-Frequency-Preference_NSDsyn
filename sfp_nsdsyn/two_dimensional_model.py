@@ -180,7 +180,7 @@ class SpatialFrequencyModel(torch.nn.Module):
     def __init__(self, full_ver=True):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
-        self.sigma = _cast_as_param(np.random.random(1))
+        self.sigma = _cast_as_param(np.random.random(1)+0.5)
         self.slope = _cast_as_param(np.random.random(1))
         self.intercept = _cast_as_param(np.random.random(1))
         self.full_ver = full_ver
@@ -258,14 +258,14 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
         loss = torch.mean(losses)
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
-        loss_history.append(loss.item())
-        model_history.append(model_values)  # more than one item here
         if (t + 1) % print_every == 0 or t == 0:
             print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
         model_values = [v.detach().numpy().item() for v in sfp_model.parameters() if v.requires_grad]  # output needs to be put in there
+        loss_history.append(loss.item())
+        model_history.append(model_values)  # more than one item here
     sfp_model.eval()
     elapsed_time = timer() - start
     if save_path is not None:
