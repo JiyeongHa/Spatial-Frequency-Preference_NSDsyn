@@ -97,7 +97,6 @@ def set_rcParams(rc):
         plt.rcParams[k] = v
 
 
-
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
                                            weight='precision', dodge=0.14,
@@ -129,6 +128,7 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                          height=height,
                          legend_out=True,
                          sharex=False, sharey=False, aspect=0.53, gridspec_kws={'width_ratios': counts}, **kwargs)
+
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
                  dodge=dodge, palette=pal, edgecolor='black', linewidth=20,
                  estimator=weighted_mean, linestyles='', scale=dot_scale,
@@ -514,15 +514,6 @@ def scatter_comparison(df, x, y, col, col_order,
     return grid
 
 
-def _get_common_lim(axes, round=False):
-    xlim = axes.get_xlim()
-    ylim = axes.get_ylim()
-    if round is True:
-        return [np.floor(min(xlim[0], ylim[0])), np.ceil(max(xlim[1], ylim[1]))]
-    else:
-        return [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
-
-
 def control_fontsize(small, medium, large):
     plt.rc('font', size=small)  # controls default text sizes
     plt.rc('axes', titlesize=small, labelsize=medium)
@@ -735,32 +726,129 @@ def plot_sd_with_different_shades(df):
     sns.catplot(data=df, x='dset', y="sigma_v_squared", kind="point", hue='subj', hue_order=df.subj.unique(),
                 palette=broderick_pal, dodge=True, size=20, alpha=0.8, edgecolor="gray", linewidth=1)
 
-def plot_vareas(df, x, y, hue, style, hue_order=None, col=None, height=5, **kwargs):
+
+def _get_common_lim(axes, round=False):
+    xlim = axes.get_xlim()
+    ylim = axes.get_ylim()
+    if round is True:
+        new_lim = [utils.decimal_floor(min(xlim[0], ylim[0]), precision=2),
+                   utils.decimal_ceil(max(xlim[1], ylim[1]), precision=2)]
+    else:
+        new_lim = [min(xlim[0], ylim[0]), max(xlim[1], ylim[1])]
+    new_lim[0] = max(new_lim[0], 0)
+    new_ticks = np.linspace(new_lim[0], new_lim[1], 5)
+    return new_lim, new_ticks
+
+def plot_vareas(df, x, y, hue, style,
+                hue_order=None,
+                col=None,
+                new_ticks_list=None,
+                save_path=None,
+                height=5, **kwargs):
     sns.set_context('notebook', font_scale=2)
+    rc = {'axes.titlepad': 40,
+          'axes.labelpad': 20,
+          'axes.linewidth': 2,
+          'xtick.major.pad': 10,
+          'xtick.major.width': 2,
+          'ytick.major.width': 2,
+          'xtick.major.size': 10,
+          'ytick.major.size': 10,
+          'grid.linewidth': 2,
+          'font.family': 'Helvetica',
+          'lines.linewidth': 2}
+    set_rcParams(rc)
     grid = sns.relplot(data=df,
                        x=x, y=y,
                        col=col,
                        hue=hue, hue_order=hue_order,
                        style=style,
                        height=height,
-                       s=80,
+                       facet_kws={'sharey': False, 'sharex': False},
                        **kwargs)
-    min_val = min(min(df[x]), min(df[y]))
-    max_val = max(max(df[x]), max(df[y]))
-    new_lim=_get_common_lim(grid.ax, True)
-    new_ticks= np.arange(new_lim[0], new_lim[1]+1)
-    grid.ax.set(xlim=new_lim, ylim=new_lim, xticks=new_ticks, yticks=new_ticks)
-    grid.ax.plot(np.linspace(new_lim[0], new_lim[1], 10),
-                 np.linspace(new_lim[0], new_lim[1], 10),
-                 linestyle='--', color='gray', linewidth=1)
-    grid.ax.set_aspect('equal')
-    grid.ax.tick_params(right=True, top=True,
-                         labelrotation=0)
-    # grid.ax.xaxis.set_label_position('top')
-    # grid.ax.yaxis.set_label_position('right')
-    grid.ax.spines['bottom'].set_visible(False)
-    grid.ax.spines['top'].set_visible(True)
-    grid.set_axis_labels("", "")
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+
+    for i in range(len(grid.axes.flatten())):
+        if new_ticks_list is None:
+            new_lim, new_ticks = _get_common_lim(grid.axes[0,i], True)
+        else:
+            new_ticks = new_ticks_list[i]
+            new_lim = (new_ticks[0], new_ticks[-1])
+        grid.axes[0,i].set(xlim=new_lim, ylim=new_lim,
+                           xticks=new_ticks, yticks=new_ticks)
+        grid.axes[0,i].plot(np.linspace(new_lim[0], new_lim[1], 10),
+                            np.linspace(new_lim[0], new_lim[1], 10),
+                            linestyle='--', color='gray', linewidth=1)
+        grid.axes[0,i].set_aspect('equal')
+        grid.axes[0,i].tick_params(right=True, top=True,
+                                   labelleft=True, labelbottom=True,
+                                   labelright=True, labeltop=True,
+                                   labelrotation=0)
+        grid.axes[0,i].spines['right'].set_visible(True)
+        grid.axes[0,i].spines['top'].set_visible(True)
+        grid.fig.subplots_adjust(wspace=.4, right=0.86)
+        grid.set_axis_labels('V1', 'V2')
+        grid.axes[0,-1].set_ylabel('V3', rotation=270)
+        grid.axes[0,-1].yaxis.set_label_position("right")
+        grid.axes[0,-1].set(xticks=new_ticks[1:], yticks=new_ticks[1:])
+        utils.save_fig(save_path)
+    return grid
+
+def plot_varea(df, x, y, hue, style,
+                hue_order=None,
+                col=None,
+                new_ticks_list=None,
+                save_path=None,
+                height=5, **kwargs):
+    sns.set_context('notebook', font_scale=2)
+    rc = {'axes.titlepad': 40,
+          'axes.labelpad': 20,
+          'axes.linewidth': 2,
+          'xtick.major.pad': 10,
+          'xtick.major.width': 2,
+          'ytick.major.width': 2,
+          'xtick.major.size': 10,
+          'ytick.major.size': 10,
+          'grid.linewidth': 2,
+          'font.family': 'Helvetica',
+          'lines.linewidth': 2}
+    set_rcParams(rc)
+    grid = sns.relplot(data=df,
+                       x=x, y=y,
+                       col=col,
+                       hue=hue, hue_order=hue_order,
+                       style=style,
+                       height=height,
+                       facet_kws={'sharey': False, 'sharex': False},
+                       **kwargs)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+
+    for i in range(len(grid.axes.flatten())):
+        if new_ticks_list is None:
+            new_lim, new_ticks = _get_common_lim(grid.axes[0,i], True)
+        else:
+            new_ticks = new_ticks_list[i]
+            new_lim = (new_ticks[0], new_ticks[-1])
+        grid.axes[0,i].set(xlim=new_lim, ylim=new_lim,
+                           xticks=new_ticks, yticks=new_ticks)
+        grid.axes[0,i].plot(np.linspace(new_lim[0], new_lim[1], 10),
+                            np.linspace(new_lim[0], new_lim[1], 10),
+                            linestyle='--', color='gray', linewidth=1)
+        grid.axes[0,i].set_aspect('equal')
+        grid.axes[0,i].tick_params(right=False, top=False,
+                                   labelleft=True, labelbottom=True,
+                                   labelright=False, labeltop=False,
+                                   labelrotation=0)
+        grid.axes[0,i].spines['right'].set_visible(False)
+        grid.axes[0,i].spines['top'].set_visible(False)
+        grid.fig.subplots_adjust(wspace=.4, right=0.86)
+        grid.set_axis_labels('V1', 'V2')
+        grid.axes[0,-1].set(xticks=new_ticks[1:], yticks=new_ticks[1:])
+        utils.save_fig(save_path)
+    return grid
+
 
 def plot_vareas_lines(df, x, y, hue, hue_order=None, col=None, height=5, **kwargs):
     sns.set_context('notebook', font_scale=2)

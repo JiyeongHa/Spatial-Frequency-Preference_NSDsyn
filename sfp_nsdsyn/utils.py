@@ -304,3 +304,9 @@ def load_history_files(file_list, *args):
             tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
         history_df = history_df.append(tmp)
     return history_df
+
+def decimal_ceil(a, precision=0):
+    return np.true_divide(np.ceil(a * 10**precision), 10**precision)
+
+def decimal_floor(a, precision=0):
+    return np.true_divide(np.floor(a * 10**precision), 10**precision)
