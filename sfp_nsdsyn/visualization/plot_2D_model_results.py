@@ -92,10 +92,6 @@ def _find_ylim(ax, roi, avg=True):
                         3: [-1.5, 0.5]}
         return switcher.get(ax)
 
-def set_rcParams(rc):
-    for k, v in rc.items():
-        plt.rcParams[k] = v
-
 
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
@@ -111,7 +107,7 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
           'grid.linewidth': 3,
           'font.family': 'Helvetica',
           'lines.linewidth': 2}
-    set_rcParams(rc)
+    utils.set_rcParams(rc)
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
@@ -849,21 +845,6 @@ def plot_varea(df, x, y, hue, style,
         utils.save_fig(save_path)
     return grid
 
-
-def plot_vareas_lines(df, x, y, hue, hue_order=None, col=None, height=5, **kwargs):
-    sns.set_context('notebook', font_scale=2)
-    grid = sns.relplot(data=df,
-                       x=x, y=y,
-                       col=col,
-                       hue=hue, hue_order=hue_order,
-                       height=height,
-                       kind='line',
-                       markers=True,
-                       sizes=100,
-                       aspect=1.3,
-                       **kwargs)
-    grid.set_axis_labels("", "Value")
-    return grid
 
 def make_multiple_xy(df, id_var, to_var, to_val):
     pivot_df = df.pivot(id_var, to_var, to_val).reset_index()
