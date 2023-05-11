@@ -17,11 +17,6 @@ def _get_y_pdf(row):
     return y_pdf
 
 
-def merge_pdf_values(subj_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
-    merge_df = subj_df.merge(model_df, on=on)
-    merge_df['pdf'] = merge_df.apply(_get_y_pdf, axis=1)
-    return merge_df
-
 
 def beta_vs_sf_scatterplot(df, pdf=None, hue="ecc_bin", hue_order=None, lgd_title='Eccentricity',
                            col='names', suptitle=None, height=5,
@@ -46,35 +41,88 @@ def beta_vs_sf_scatterplot(df, pdf=None, hue="ecc_bin", hue_order=None, lgd_titl
 
     return grid
 
-def plot_curves(df, fnl_param_df, title, save_path=None):
-    subplot_list = df['names'].unique()
-    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
-    ecc_list = df['ecc_bin'].unique()
-    colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
 
+def merge_pdf_values(bin_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
+    merge_df = bin_df.merge(model_df, on=on)
+    merge_df['pdf'] = merge_df.apply(_get_y_pdf, axis=1)
+    return merge_df
+
+
+
+def plot_curves_sns(df, x, y, hue, hue_order=None,
+                    height=5, col=None, col_wrap=None, pal=None):
+    sns.set_context("notebook", font_scale=2.5)
+    grid = sns.FacetGrid(df,
+                         col=col,
+                         col_wrap=col_wrap,
+                         height=height,
+                         hue=hue,
+                         hue_order=hue_order,
+                         aspect=1,
+                         palette=sns.color_palette("tab10"),
+                         sharex=True, sharey=False)
+    g = grid.map(sns.scatterplot, x, y, linestyle='-',
+                 edgecolor='black', estimator=np.mean, ci='sd')
+    grid.set(xscale='log')
+
+
+def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, save_path=None):
+    rc = {'axes.labelpad': 20,
+          'axes.linewidth': 3,
+          'axes.titlepad': 40,
+          'axes.titleweight': "bold",
+          'xtick.major.pad': 10,
+          'ytick.major.pad': 10,
+          'xtick.major.width': 3,
+          'xtick.minor.width': 3,
+          'ytick.major.width': 3,
+          'xtick.major.size': 10,
+          'xtick.minor.size': 6,
+          'ytick.major.size': 10,
+          'grid.linewidth': 3,
+          'font.family': 'Helvetica',
+          'lines.linewidth': 2}
+    large_fontsize = 50
+    utils.set_fontsize(25, 30, large_fontsize)
+    utils.set_rcParams(rc)
+    subplot_list = df[col].unique()
+    hue_list = df[hue].unique()
+    fig, axes = plt.subplots(1, len(subplot_list),
+                             figsize=(height*1.9, height),
+                             sharex=True, sharey=False)
+
+    colors = utils.get_continuous_colors(len(hue_list), '#471871')
     for g in range(len(subplot_list)):
-        for ecc in range(len(ecc_list)):
-            tmp = df[df.names == subplot_list[g]]
-            tmp = tmp[tmp.ecc_bin == ecc_list[ecc]]
-            x = tmp['local_sf']
-            y = tmp['betas']
-            tmp_history = fnl_param_df[fnl_param_df.names == subplot_list[g]]
-            tmp_history = tmp_history[tmp_history.ecc_bin == ecc_list[ecc]]
-            pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
-            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
-            axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
-            axes[g].set_title(subplot_list[g], fontsize=20)
-            vis2D.control_fontsize(25, 30, 40)
+        subplot_tmp = df[df[col] == subplot_list[g]]
+        for c in range(len(hue_list)):
+            tmp = subplot_tmp[subplot_tmp[hue] == hue_list[c]]
+            xx = tmp[x]
+            yy = tmp[y]
+            tmp_history = params_df[params_df[col] == subplot_list[g]]
+            tmp_history = tmp_history[tmp_history[hue] == hue_list[c]]
+            pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(), tmp_history)
+            axes[g].set_title(subplot_list[g])
+            axes[g].plot(pred_x, pred_y,
+                         color=colors[c],
+                         linewidth=3.5,
+                         path_effects=[pe.Stroke(linewidth=4, foreground='black'),
+                                       pe.Normal()],
+                         zorder=0)
+            axes[g].scatter(xx, yy,
+                            s=160,
+                            color=colors[c],
+                            alpha=0.95,
+                            label=hue_list[c],
+                            edgecolors='black',
+                            zorder=10)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
-        axes[g].tick_params(axis='both', labelsize=22)
-    axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    fig.supxlabel('Spatial Frequency', fontsize=25)
-    fig.supylabel('Beta', fontsize=25)
-    fig.suptitle(title, fontsize=20)
-    plt.tight_layout(w_pad=2)
-    fig.subplots_adjust(left=.08, bottom=0.13)
+        axes[g].tick_params(axis='both')
+    axes[len(subplot_list)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(1, 0.7), frameon=False)
+    fig.supxlabel('Spatial Frequency', fontsize=large_fontsize)
+    fig.supylabel('Beta', fontsize=large_fontsize)
+    fig.subplots_adjust(wspace=0.4, left=.11, bottom=0.14)
     utils.save_fig(save_path)
 
 def _get_middle_ecc(row):
