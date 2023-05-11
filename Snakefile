@@ -212,8 +212,11 @@ rule plot_tuning_curves:
     run:
         final_params = tuning.load_all_models(input.model_df, *ARGS_1D)
         bin_df = tuning.load_history_files(input.binned_df, *['sub','dset','roi'])
-        stim_class = wildcards.stim_class.replace('-', ' ')
-        bin_df = bin_df.query('names == @stim_class')
+        if wildcards.stim_class == "avg":
+            bin_df = bin_df.groupby(['sub', 'ecc_bin', 'vroinames', 'freq_lvl'],group_keys=False).mean().reset_index()
+        else:
+            save_stim_type_name = wildcards.stim_class.replace('-',' ')
+            bin_df = bin_df.query('names == @save_stim_type_name')
         vis1D.plot_sf_curves(df=bin_df,
                              params_df=final_params,
                              x='local_sf', y='betas', hue='ecc_bin',

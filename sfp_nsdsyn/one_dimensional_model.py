@@ -380,7 +380,7 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
     return grid
 
 def _get_x_and_y_prediction(min, max, fnl_param_df):
-    x = np.linspace(min, max, 30)
+    x = np.linspace(min, max, 100)
     y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for k in x]
     return x, y
 
@@ -585,11 +585,10 @@ def model_to_df(pt_file_path, args):
         model_df[match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
     return model_df
 
-def load_all_models(pt_file_path_list, args, ecc_bin=True):
+def load_all_models(pt_file_path_list, *args):
     model_df = pd.DataFrame({})
     for pt_file_path in pt_file_path_list:
-        tmp = model_to_df(pt_file_path, args)
+        tmp = model_to_df(pt_file_path, *args)
         model_df = model_df.append(tmp)
-    if ecc_bin is True:
-        model_df['ecc_bin'] = model_df.apply(_find_bin, axis=1)
+    model_df['ecc_bin'] = model_df.apply(_find_bin, axis=1)
     return model_df
