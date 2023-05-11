@@ -83,15 +83,16 @@ def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, sav
           'font.family': 'Helvetica',
           'lines.linewidth': 2}
     large_fontsize = 50
-    utils.set_fontsize(25, 30, large_fontsize)
+    utils.set_fontsize(30, 35, large_fontsize)
     utils.set_rcParams(rc)
     subplot_list = df[col].unique()
-    hue_list = df[hue].unique()
+    hue_list = np.flip(df[hue].unique())
     fig, axes = plt.subplots(1, len(subplot_list),
                              figsize=(height*1.9, height),
                              sharex=True, sharey=False)
 
-    colors = utils.get_continuous_colors(len(hue_list), '#471871')
+    colors = utils.get_continuous_colors(len(hue_list)+1, '#3f0377')
+    colors = colors[1:]
     for g in range(len(subplot_list)):
         subplot_tmp = df[df[col] == subplot_list[g]]
         for c in range(len(hue_list)):
@@ -104,12 +105,12 @@ def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, sav
             axes[g].set_title(subplot_list[g])
             axes[g].plot(pred_x, pred_y,
                          color=colors[c],
-                         linewidth=3.5,
-                         path_effects=[pe.Stroke(linewidth=4, foreground='black'),
+                         linewidth=5,
+                         path_effects=[pe.Stroke(linewidth=5.6, foreground='black'),
                                        pe.Normal()],
                          zorder=0)
             axes[g].scatter(xx, yy,
-                            s=160,
+                            s=200,
                             color=colors[c],
                             alpha=0.95,
                             label=hue_list[c],
@@ -118,6 +119,8 @@ def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, sav
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
+        if len(axes[g].get_yticks()) > 4:
+            axes[g].set_yticks(axes[g].get_yticks()[::2])
         axes[g].tick_params(axis='both')
     axes[len(subplot_list)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(1, 0.7), frameon=False)
     fig.supxlabel('Spatial Frequency', fontsize=large_fontsize)

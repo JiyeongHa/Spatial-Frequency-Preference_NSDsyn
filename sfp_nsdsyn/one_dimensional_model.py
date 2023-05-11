@@ -390,37 +390,6 @@ def _get_x_and_y_prediction_from_2D(sf_min, sf_max, fnl_param_df, voxel_info):
     sf_range = np.logspace(sf_min, sf_max, num=50, base=2)
     return x, y
 
-def plot_curves(df, fnl_param_df, title, save_path=None):
-    subplot_list = df['names'].unique()
-    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
-    ecc_list = df['ecc_bin'].unique()
-    colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
-
-    for g in range(len(subplot_list)):
-        for ecc in range(len(ecc_list)):
-            tmp = df[df.names == subplot_list[g]]
-            tmp = tmp[tmp.ecc_bin == ecc_list[ecc]]
-            x = tmp['local_sf']
-            y = tmp['betas']
-            tmp_history = fnl_param_df[fnl_param_df.names == subplot_list[g]]
-            tmp_history = tmp_history[tmp_history.ecc_bin == ecc_list[ecc]]
-            pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
-            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
-            axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
-            axes[g].set_title(subplot_list[g], fontsize=20)
-            vis2D.control_fontsize(25, 30, 40)
-            plt.xscale('log')
-        axes[g].spines['top'].set_visible(False)
-        axes[g].spines['right'].set_visible(False)
-        axes[g].tick_params(axis='both', labelsize=22)
-    axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    fig.supxlabel('Spatial Frequency', fontsize=25)
-    fig.supylabel('Beta', fontsize=25)
-    fig.suptitle(title, fontsize=20)
-    plt.tight_layout(w_pad=2)
-    fig.subplots_adjust(left=.08, bottom=0.13)
-    utils.save_fig(save_path)
-
 
 def plot_param_history(df,
                        to_label=None, label_order=None,
@@ -451,38 +420,6 @@ def plot_param_history(df,
     if log_y is True:
         plt.semilogy()
     utils.save_fig(save_fig, save_path)
-
-
-def plot_curves(df, fnl_param_df, title, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/figure.png'):
-    subplot_list = df['names'].unique()
-    fig, axes = plt.subplots(1, len(subplot_list), figsize=(22, 8), dpi=400, sharex=True, sharey=True)
-    ecc_list = df['ecc_bin'].unique()
-    colors = mpl.cm.magma(np.linspace(0, 1, len(ecc_list)))
-
-    for g in range(len(subplot_list)):
-        for ecc in range(len(ecc_list)):
-            tmp = df[df.names == subplot_list[g]]
-            tmp = tmp[tmp.ecc_bin == ecc_list[ecc]]
-            x = tmp['local_sf']
-            y = tmp['betas']
-            tmp_history = fnl_param_df[fnl_param_df.names == subplot_list[g]]
-            tmp_history = tmp_history[tmp_history.ecc_bin == ecc_list[ecc]]
-            pred_x, pred_y = _get_x_and_y_prediction(x.min(), x.max(), tmp_history)
-            axes[g].plot(pred_x, pred_y, color=colors[ecc,:], linewidth=3, path_effects=[pe.Stroke(linewidth=4, foreground='gray'), pe.Normal()])
-            axes[g].scatter(x, y, s=160, color=colors[ecc,:], alpha=0.9, label=ecc_list[ecc], edgecolors='gray')
-            axes[g].set_title(subplot_list[g], fontsize=20)
-            vis2D.control_fontsize(25, 30, 40)
-            plt.xscale('log')
-        axes[g].spines['top'].set_visible(False)
-        axes[g].spines['right'].set_visible(False)
-        axes[g].tick_params(axis='both', labelsize=22)
-    axes[len(subplot_list)-1].legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    fig.supxlabel('Spatial Frequency', fontsize=25)
-    fig.supylabel('Beta', fontsize=25)
-    fig.suptitle(title, fontsize=20)
-    plt.tight_layout(w_pad=2)
-    fig.subplots_adjust(left=.08, bottom=0.13)
-    utils.save_fig(save_path)
 
 
 def plot_ecc_bin_prediction_from_2D(pred_df, pred_y, hue, lgd_title, title, save_path=None):
@@ -575,7 +512,7 @@ def _find_bin(row):
     _, bin_labels = get_bin_labels(row.e1, row.e2, row.nbin)
     return bin_labels[int(row.curbin)]
 
-def model_to_df(pt_file_path, args):
+def model_to_df(pt_file_path, *args):
     model = load_LogGaussianTuingModel(pt_file_path)
     model_dict = {}
     for name, param in model.named_parameters():

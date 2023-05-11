@@ -279,7 +279,7 @@ def get_subject_colors(to_plot, dset='nsdsyn'):
     return sub_list_pal
 
 def get_continuous_colors(n, hex_code):
-    pal = sns.color_palette(f"light:{hex_code}_r", n_colors=2*n, as_cmap=False)
+    pal = sns.color_palette(f"light:{hex_code}", n_colors=2*n, as_cmap=False)
     pal = pal[::2]
     return pal
 
