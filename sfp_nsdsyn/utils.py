@@ -103,7 +103,7 @@ def save_fig(save_path):
         parent_path = Path(save_path)
         if not os.path.exists(parent_path.parent.absolute()):
             os.makedirs(parent_path.parent.absolute())
-        plt.savefig(save_path, bbox_inches='tight')
+        plt.savefig(save_path, bbox_inches='tight', transparent=True)
 
 def plot_voxels(df, n_voxels=1, to_plot="normed_beta", save_fig=False, save_path=None):
     x = np.arange(df[to_plot].shape[0])
@@ -278,6 +278,10 @@ def get_subject_colors(to_plot, dset='nsdsyn'):
     sub_list_pal = [c for k,c in map_dict.items() if k in to_plot]
     return sub_list_pal
 
+def get_continuous_colors(n, hex_code):
+    pal = sns.color_palette(f"light:{hex_code}_r", n_colors=2*n, as_cmap=False)
+    pal = pal[::2]
+    return pal
 
 def weighted_mean(x, **kws):
     """store weights as imaginery number"""
@@ -310,3 +314,21 @@ def decimal_ceil(a, precision=0):
 
 def decimal_floor(a, precision=0):
     return np.true_divide(np.floor(a * 10**precision), 10**precision)
+
+
+def set_rcParams(rc):
+    if rc is None:
+        pass
+    else:
+        for k, v in rc.items():
+            plt.rcParams[k] = v
+
+def set_fontsize(small, medium, large):
+    font_rc = {'font.size': medium,
+          'axes.titlesize': large,
+          'axes.labelsize': medium,
+          'xtick.labelsize': small,
+          'ytick.labelsize': small,
+          'legend.fontsize': small,
+          'figure.titlesize': large}
+    set_rcParams(font_rc)
