@@ -212,20 +212,26 @@ def merge_all(stim_df,
     betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
     return betas_prf_stim_df
 
-def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True):
+def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, reference_frame='relative'):
     # calculate distance
     frequency_ratio = np.arctan2(w_a, w_r)
     if angle_in_radians is False:
         if (np.max(retinotopic_angle) - 2*np.pi) < 1:
             raise Exception('It seems like the angle is already in radians!')
         retinotopic_angle = np.deg2rad(retinotopic_angle)
-    local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
+    if reference_frame == 'relative':
+        local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
+    else:
+        local_ori = frequency_ratio
     return np.remainder(local_ori, np.pi)
 
-def calculate_local_sf(w_a, w_r, eccentricity):
+def calculate_local_sf(w_a, w_r, eccentricity, reference_frame='relative'):
     # calculate local frequency
     l2_norm = np.sqrt((w_r ** 2 + w_a ** 2))
-    local_sf = l2_norm / eccentricity
+    if reference_frame == 'relative':
+        local_sf = l2_norm / eccentricity
+    else:
+        local_sf = l2_norm
     #TODO: ask about this
     # to convert this from radians per pixel to cycles per degrees,
     # we multiply by a conversion factor c = 1/2pi
@@ -264,7 +270,6 @@ def make_sf_dataframe(stim_info,
 
 
 def concat_lh_rh_df(lh_df, rh_df):
-    #TODO: why do lh_df and rh_df change when I only return df
     lh = lh_df.copy()
     rh = rh_df.copy()
     lh['hemi'] = 'lh'
@@ -273,83 +278,6 @@ def concat_lh_rh_df(lh_df, rh_df):
     return pd.concat((lh, rh), ignore_index=True)
 
 
-### old functions
-#
-# def sub_main(sn,
-#              freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
-#              betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
-#              beta_version=3,
-#              stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
-#              design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
-#              task_from="both",
-#              prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
-#              vroi_range=[1, 2, 3, 4, 5, 6, 7],
-#              eroi_range=[1, 2, 3, 4, 5],
-#              mask_type=['visroi', 'eccroi'],
-#              df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
-#              save_df=True, voxel_criteria='pRFcenter'):
-#     subj = utils.sub_number_to_string(sn, dataset="nsdsyn")
-#     print(f'*** creating a dataframe for subject no.{sn} ***')
-#     mask = _masking(freesurfer_dir=freesurfer_dir, subj=subj,
-#                     visroi_range=vroi_range, eccroi_range=eroi_range, mask_type=mask_type)
-#     mgzs = _load_prf_properties(freesurfer_dir=freesurfer_dir, subj=subj, prf_label_names=prf_label_list, mask=mask,
-#                                 apply_mask=True)
-#     stim_df = load_stim_info_as_df(stim_description_path=stim_description_path)
-#     stim_df = _find_beta_index_for_spiral_stimuli(design_mat_path, stim_df=stim_df)
-#     beta_mgzs = _load_betas(beta_dir=betas_dir, subj=subj, beta_version=beta_version, task_from=task_from, sf_stim_df=stim_df, mask=mask)
-#     df = _melt_2D_beta_mgzs_into_df(beta_mgzs=beta_mgzs)
-#     df = _add_prf_columns_to_df(prf_mgzs=mgzs, df=df, prf_label_names=prf_label_list)
-#     df = _concat_lh_rh_df(df=df)
-#     df['angle'] = np.deg2rad(df['angle'])
-#     df = df.rename(columns={'size': 'sigma'})
-#     df = _add_stim_info_to_df(df=df, stim_description_df=stim_df)
-#     df = vs.select_voxels(df, vs.pix_to_deg(42.878), vs.pix_to_deg(714/2), ['voxel'], 'betas', near_border=True)
-#     df['subj'] = subj
-#     sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas', to_group=['voxel'])
-#     df = df.merge(sigma_v_df, on=['voxel'])
-#     df = calculate_local_orientation(,
-#     df = calculate_local_sf(df=df)
-#     fnl_df = df.groupby(['voxel', 'names', 'class_idx', 'vroinames']).mean().reset_index()
-#     fnl_df = fnl_df.drop(['phase', 'phase_idx', 'stim_idx', 'image_idx', 'fixation_task', 'memory_task'], axis=1)
-#     fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=False)
-#     if save_df:
-#         if not os.path.exists(df_save_dir):
-#             os.makedirs(df_save_dir)
-#         for roi in df.vroinames.unique():
-#             roi_df = df.query('vroinames == @roi')
-#             roi_fnl_df = fnl_df.query('vroinames == @roi')
-#             df_save_path = os.path.join(df_save_dir, f'{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv')
-#             roi_df.to_csv(df_save_path, index=False)
-#             print(f'... {subj} {roi} dataframe saved.')
-#             fnl_df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_mean.csv")
-#             roi_fnl_df.to_csv(fnl_df_save_path, index=False)
-#             print(f'... {subj} {roi} mean dataframe dataframe saved.')
-#     return fnl_df
-#
-#
-# def main(sn_list, freesurfer_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/freesurfer/',
-#          betas_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata_betas/ppdata/',
-#          beta_version=3,
-#          stim_description_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsynthetic_sf_stim_description.csv',
-#          design_mat_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsddata/experiments/nsdsynthetic/nsdsynthetic_expdesign.mat',
-#          task_from="both",
-#          prf_label_list=["prf-visualrois", "prf-eccrois", "prfeccentricity", "prfangle", "prfsize"],
-#          vroi_range=[1, 2, 3, 4, 5, 6, 7],
-#          eroi_range=[1, 2, 3, 4, 5],
-#          mask_type=['visroi', 'eccroi'],
-#          df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/nsdsyn',
-#          save_df=True):
-#     print(f'*** subject list: {sn_list} ***')
-#     if save_df:
-#         print(f'save mode: on')
-#         print(f'.... Each dataframe will be saved in dir=\n{df_save_dir}.')
-#     print(f'\n')
-#     df = {}
-#     for sn in sn_list:
-#         df[sn] = sub_main(sn, freesurfer_dir, betas_dir, beta_version, stim_description_path, design_mat_path,
-#                           task_from, prf_label_list, vroi_range, eroi_range, mask_type, df_save_dir, save_df)
-#     all_subj = pd.concat(df, ignore_index=True)
-#     return all_subj
 
 def add_class_idx_to_stim_df(save=True):
     nsd_stim_df = pd.read_csv('/Users/jh7685/Dropbox/NYU/Projects/SF/natural-scenes-dataset/nsddata/stimuli/nsdsynthetic/nsdsynthetic_sf_stim_description.csv')
