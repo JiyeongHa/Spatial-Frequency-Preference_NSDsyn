@@ -214,13 +214,17 @@ def make_dset_palettes(dset):
         pal = convert_rgb_to_seaborn_color_palette(palette)
     return pal
 
-def get_colors(to_color, to_plot):
+def get_colors(to_color, to_plot=None):
     if to_color == "dset":
         return get_dset_colors(to_plot)
-    elif to_color == "subject":
+    elif to_color == "sub":
         return get_subject_colors('nsdsyn', to_plot)
-    elif to_color == "roi":
+    elif to_color == "vroinames":
         return get_roi_colors(to_plot)
+    elif to_color == "names":
+        return get_stim_colors(to_plot)
+    elif to_color is None:
+        return sns.color_palette("magma")
 
 
 def _map_colors_and_list(pal_list, pal, convert_to_sns=True):
@@ -253,6 +257,15 @@ def hex_to_rgb(hex):
         rgb.append(decimal)
 
     return tuple(rgb)
+
+def get_stim_colors(to_plot):
+    if to_plot is None:
+        pal = ['k']
+    else:
+        default_palette = dict(zip(['annulus', 'reverse spiral', 'pinwheel', 'forward spiral'],
+                           sns.color_palette("deep", 4)))
+        pal = [v for k,v in default_palette.items() if k in to_plot]
+    return pal
 
 def get_subject_colors(to_plot, dset='nsdsyn'):
     c_list = sns.diverging_palette(130, 300, s=100, l=30, n=2, as_cmap=False)
