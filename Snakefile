@@ -1030,8 +1030,6 @@ rule preferred_period:
                                   despine=params.properties[1])
         utils.save_fig(save_fig=True, save_path=output[0])
 
-#TODO: violinplot
-
 
 rule svg_all:
     input:
