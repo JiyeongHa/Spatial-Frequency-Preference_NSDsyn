@@ -312,21 +312,21 @@ rule run_model:
 rule calculate_Pv_based_on_model:
     input:
         stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
-        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'model-params_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
         final_params = model.model_to_df(input.model, *ARGS_2D)
-        syn_df = vis2D.make_synthetic_dataframe_for_2D(stim_info,
-                                                       ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
-                                                       n_ecc=int(wildcards.n_ecc),
-                                                       angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
-                                                       n_angle=int(wildcards.n_ang),
-                                                       ecc_col='eccentricity',
-                                                       angle_col='angle',
-                                                       angle_in_radians=True)
-        syn_df['Pv'] = vis2D.calculate_preferred_period(syn_df, final_params)
+        syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info, final_params,
+                                                                   ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
+                                                                   n_ecc=int(wildcards.n_ecc),
+                                                                   angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
+                                                                   n_angle=int(wildcards.n_ang),
+                                                                   ecc_col='eccentricity',
+                                                                   angle_col='angle',
+                                                                   angle_in_radians=True,
+                                                                   reference_frame=wildcards.frame)
         syn_df.to_hdf(output[0], key='stage', mode='w')
 #TODO: combine these two rules (Pv calculation rules) later
 
@@ -335,29 +335,30 @@ rule calculate_broderick_Pv_based_on_model:
         stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
         model = os.path.join(config['OUTPUT_OLD_DIR'], "sfp_model","results_2D",'model_history_dset-broderick_bts-median_full_ver-True_sub-{subj}_lr-0.0005_eph-30000_V1.h5'),
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5')
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
-        broderick_model_df = utils.load_history_files([input.model], *['sub', 'dset'])
+        broderick_model_df = utils.load_history_files([input.model], *['dset','sub'])
         broderick_model_df['vroinames'] = 'V1'
         final_params = broderick_model_df.query('epoch == 29999')  #TODO: make it with new bd dataframes
-        syn_df = vis2D.make_synthetic_dataframe_for_2D(stim_info,
-                                                       ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
-                                                       n_ecc=int(wildcards.n_ecc),
-                                                       angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
-                                                       n_angle=int(wildcards.n_ang),
-                                                       ecc_col='eccentricity',
-                                                       angle_col='angle',
-                                                       angle_in_radians=True)
-        syn_df['Pv'] = vis2D.calculate_preferred_period(syn_df, final_params)
+        syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info, final_params,
+                                                                   ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
+                                                                   n_ecc=int(wildcards.n_ecc),
+                                                                   angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
+                                                                   n_angle=int(wildcards.n_ang),
+                                                                   ecc_col='eccentricity',
+                                                                   angle_col='angle',
+                                                                   angle_in_radians=True,
+                                                                   reference_frame=wildcards.frame)
+
         syn_df.to_hdf(output[0], key='stage', mode='w')
 
 rule calculate_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        subj=make_subj_list('nsdsyn'), xaxis='eccentricity', ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', dset='nsdsyn', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi='V1'),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5'),
-            subj=make_subj_list('broderick'), xaxis='eccentricity', ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', dset='broderick')
+        # expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        #        subj=make_subj_list('nsdsyn'), frame=['relative', 'absolute'], xaxis='eccentricity', ecc1='0', ecc2='4', n_ecc='4', ang1='0', ang2='360', n_ang='360', dset='nsdsyn', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi=ROIS),
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5'),
+               subj=make_subj_list('broderick'), frame=['relative', 'absolute'], ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', roi='V1', vs='pRFsize')
 
 def Pv_projection(xaxis):
     if xaxis == "angle":
@@ -367,10 +368,10 @@ def Pv_projection(xaxis):
 
 rule plot_preferred_period_2D:
     input:
-        model_prediction = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{{dset}}",'prediction_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset)),
+        model_prediction = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{{dset}}",'prediction_frame-{frame}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset)),
         precision = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{{dset}}', 'precision', 'precision-v_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.csv'), subj=make_subj_list(wildcards.dset))
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-pperiod-prediction_xaxis-{xaxis}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-pperiod-prediction_frame-{frame}_xaxis-{xaxis}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
     params:
         projection = lambda wildcards: Pv_projection(wildcards.xaxis)
     run:
@@ -390,36 +391,37 @@ rule plot_preferred_period_2D:
 
 rule plot_preferred_period_comparison:
     input:
-        broderick_model_prediction=expand(os.path.join(config['OUTPUT_OLD_DIR'],"sfp_model","results_2D",'model_history_dset-broderick_bts-median_full_ver-True_sub-{subj}_lr-0.0005_eph-30000_V1.h5'),subj=make_subj_list('broderick')),
-        broderick_precision_v=expand(os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','precision-v_dset-broderick_sub-{subj}_roi-V1_vs-{{vs}}.csv'),subj=make_subj_list('broderick')),
-        nsd_model_params=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.pt'),subj=make_subj_list('nsdsyn')),
-        nsd_precision_v=expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-v_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.csv'),subj=make_subj_list('nsdsyn'))
+        broderick_model_prediction=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_frame-{{frame}}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5'), subj=make_subj_list('broderick')),
+        broderick_precision_v=expand(os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','precision-v_dset-broderick_sub-{subj}_roi-V1_vs-{{vs}}.csv'), subj=make_subj_list('broderick')),
+        nsd_model_params=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{{frame}}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list('nsdsyn')),
+        nsd_precision_v=expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-v_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.csv'), subj=make_subj_list('nsdsyn'))
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","dset_comparison",'fig-params_lr-{lr}_eph-{max_epoch}_dset-all_sub-all_roi-V1_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","dset_comparison",'fig-pperiod-prediction_frame-{frame}_col-{col}_xaxis-{xaxis}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-all_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
     params:
-        param_list = PARAMS_2D,
-        param_group=PARAMS_GROUP_2D
+        col = lambda wildcards: None if wildcards.col == 'None' else wildcards.col
     run:
-        broderick_model_df = utils.load_history_files(input.broderick_model_params,*['sub', 'dset'])
-        broderick_model_df['vroinames'] = 'V1'
-        broderick_model_df = broderick_model_df.query('epoch == 29999')  #TODO: make it with new bd dataframes
+        broderick_model_df = utils.load_history_files(input.broderick_model_prediction, *PARAMS_2D)
         broderick_precision_v = utils.load_history_files(input.broderick_precision_v)
-        broderick_precision_s = broderick_precision_v.groupby(['sub','vroinames'],group_keys=False).mean().reset_index()
-        broderick_df = broderick_model_df.merge(broderick_precision_s[['sub','vroinames','sigma_v_squared']],on=['sub',
-                                                                                                                 'vroinames'])
+        broderick_precision_s = broderick_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
+        broderick_df = broderick_model_df.merge(broderick_precision_s[['sub','vroinames','sigma_v_squared']],
+                                                on=['sub', 'vroinames'])
 
-        nsd_model_df = model.load_all_models(input.nsd_model_params,*ARGS_2D)
+        nsd_model_df = utils.load_history_files(input.nsd_model_params, *ARGS_2D)
         nsd_precision_v = utils.load_history_files(input.nsd_precision_v)
-        nsd_precision_s = nsd_precision_v.groupby(['sub','vroinames'],group_keys=False).mean().reset_index()
-        nsd_df = nsd_model_df.merge(nsd_precision_s,on=['sub', 'vroinames'])
+        nsd_precision_s = nsd_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
+        nsd_df = nsd_model_df.merge(nsd_precision_s, on=['sub', 'vroinames'])
 
         all_df = broderick_df.append(nsd_df)
         all_df['precision'] = 1 / all_df['sigma_v_squared']
+        vis2D.plot_preferred_period(all_df, x=wildcards.xaxis,
+                                    hue='dset', hue_order=['broderick', 'nsdsyn'],
+                                    col=params.col,
+                                    lgd_title='Dataset', xlim=(0,10), save_path=output[0])
 
 rule plot_pp:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-pperiod-prediction_xaxis-{xaxis}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'),
-        xaxis='eccentricity', ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', dset='nsdsyn', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi='V1', fig_format='svg')
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","dset_comparison",'fig-pperiod-prediction_frame-{frame}_col-{col}_xaxis-{xaxis}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-all_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'),
+        frame=['relative', 'absolute'], col=['None', 'names'], xaxis='eccentricity', ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', dset='nsdsyn', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi='V1', fig_format='svg')
 
 rule plot_avg_model_parameters:
     input:
@@ -499,6 +501,8 @@ rule plot_model_parameter_comparison:
                                                      height=7,
                                                      pal=utils.get_colors('dset', to_plot=['broderick','nsdsyn']),
                                                      save_path=output[0])
+
+
 
 
 

@@ -204,45 +204,64 @@ def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj', 
     grid.set_axis_labels("", y_label)
     return grid
 
-def get_color(hue_list, hue_type='stim'):
-    if hue_type == 'stim':
-        default_palette = dict(zip(['annulus', 'reverse spiral', 'pinwheel', 'forward spiral'],
-                           sns.color_palette("deep", 4)))
-        pal = [v for k,v in default_palette.items() if k in hue_list]
-    return pal
-
 def plot_preferred_period(df,
-                          x='angle',
-                          height=6,
-                          hue='names', hue_order=['annulus', 'reverse spiral', 'pinwheel', 'forward spiral'],
+                          x, y='Pv', precision='precision',
+                          hue=None, hue_order=None,
                           col=None, col_wrap=None,
-                          lgd_title='Stimulus',
-                          projection='polar', **kwarg):
+                          lgd_title=None, height=7,
+                          xlim=(0,10),
+                          projection=None, save_path=None,
+                          **kwarg):
     sns.set_context("notebook", font_scale=2)
+    if projection == 'polar':
+        despine = False
+        xticks = []
+    else:
+        despine = True
+        xticks=[0, 5, 10]
+    yticks = [0, 0.5, 1, 1.5, 2]
+    rc = {'axes.labelpad': 15,
+          'axes.linewidth': 2,
+          'axes.titlepad': 40,
+          'axes.titleweight': "bold",
+          'xtick.major.pad': 8,
+          'ytick.major.pad': 8,
+          'xtick.major.width': 2,
+          'xtick.minor.width': 2,
+          'ytick.major.width': 2,
+          'xtick.major.size': 7,
+          'ytick.major.size': 7,
+          'grid.linewidth': 2,
+          'font.family': 'Helvetica',
+          'lines.linewidth': 2}
+    utils.set_rcParams(rc)
     x_label = x.title()
     y_label = "Preferred period"
-    df['value_and_weights'] = [v + w * 1j for v, w in zip(df.Pv, df.precision)]
+    df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     # plotting average of prediction, not the prediction of average
+    if hue_order is None:
+        pal = utils.get_colors(hue, df[hue].unique())
+    else:
+        pal = utils.get_colors(to_color=hue, to_plot=hue_order)
     grid = sns.FacetGrid(df,
-                         hue=hue, palette=get_color(hue_order, hue_type='stim'),
+                         hue=hue, palette=pal,
                          hue_order=hue_order,
                          height=height,
                          col=col, col_wrap=col_wrap,
                          aspect=1.2,
                          subplot_kws={'projection': projection},
-                         legend_out=True,
+                         legend_out=True, despine=despine,
                          sharex=True, sharey=True,
                          **kwarg)
-
-    grid = grid.map(sns.lineplot, x, "value_and_weights", linewidth=2, estimator=weighted_mean, n_boot=100, err_style='band', ci=68)
-    grid.set_axis_labels(x.title(), 'Preferred period')
-    if projection == 'polar':
-        grid.set(xlim=(0, 2*np.pi),
-                 xticklabels=[], yticks=[0, 0.5, 1, 1.5])
-    else:
-        grid.set(xlim=(0,10), ylim=(0,2), yticks=[0, 0.5, 1, 1.5, 2])
+    grid = grid.map(sns.lineplot, x, "value_and_weights",
+                    linewidth=2, estimator=weighted_mean,
+                    n_boot=100, err_style='band', ci=68)
+    grid.set_axis_labels(x.title(), y_label)
+    grid.set(xlim=xlim, xticks=xticks, yticks=yticks)
+    utils.set_rcParams(rc)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title)
+    utils.save_fig(save_path)
     return grid
 
 
@@ -275,8 +294,6 @@ def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
-        # ax.set_xlim(ax.get_ylim())
-        # ax.set_xticks(ax.get_yticks())
         ax.set_aspect('equal', adjustable='box')
     grid.fig.subplots_adjust(top=0.8, right=0.9)  # adjust the Figure in rp
     grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
@@ -336,112 +353,6 @@ def beta_2Dhist(sn, df, to_subplot="vroinames", to_label="eccrois",
         plt.savefig(save_path)
     plt.show()
 
-#
-#
-# def plot_loss_history(loss_history_df,
-#                       to_label=None, label_order=None, to_row=None, to_col=None, height=5,
-#                       lgd_title=None, save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/loss.png',
-#                        ci=68, n_boot=100, log_y=True, sharey=False):
-#     sns.set_context("notebook", font_scale=1.5)
-#     #sns.set(font_scale=1.5)
-#     x_label = 'Epoch'
-#     y_label = 'Loss'
-#     grid = sns.FacetGrid(loss_history_df,
-#                          hue=to_label,
-#                          hue_order=label_order,
-#                          row=to_row,
-#                          col=to_col,
-#                          height=height,
-#                          palette=sns.color_palette("rocket", loss_history_df[to_label].nunique()),
-#                          legend_out=True,
-#                          sharex=True, sharey=sharey)
-#     g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=ci, n_boot=n_boot)
-#     grid.set_axis_labels(x_label, y_label)
-#     if lgd_title is not None:
-#         grid.add_legend(title=lgd_title)
-#     #grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=18)
-#     #grid.fig.suptitle(f'{title}', fontweight="bold")
-#     if log_y is True:
-#         plt.semilogy()
-#     utils.save_fig(save_fig, save_path)
-
-
-
-
-def plot_param_history(df, params, group,
-                       to_label=None, label_order=None, ground_truth=True, to_col=None,
-                       lgd_title=None,
-                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                       ci=68, n_boot=100, log_y=True, sharey=True):
-    df = group_params(df, params, group)
-    sns.set_context("notebook", font_scale=1.5)
-    x_label = "Epoch"
-    y_label = "Parameter value"
-    grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
-                         hue=to_label,
-                         hue_order=label_order,
-                         row="params",
-                         col=to_col,
-                         height=7,
-                         palette=sns.color_palette("rocket"),
-                         legend_out=True,
-                         sharex=True, sharey=sharey)
-    g = grid.map(sns.lineplot, 'epoch', "value", linewidth=2, ci=ci, n_boot=n_boot)
-    if ground_truth is True:
-        for x_param, ax in g.axes_dict.items():
-            #ax.set_aspect('auto')
-            g_value = df.query('params == @x_param[0] & lr_rate == "ground_truth"').value.item()
-            ax.axhline(g_value, ls="--", linewidth=3, c="black")
-    grid.set_axis_labels(x_label, y_label)
-    if lgd_title is not None:
-        grid.add_legend(title=lgd_title)
-    #grid.fig.suptitle(f'{title}', fontweight="bold")
-    if log_y is True:
-        plt.semilogy()
-    utils.save_fig(save_fig, save_path)
-
-
-def plot_param_history_horizontal(df, params, group,
-                                  to_label=None, label_order=None, ground_truth=True,
-                                  lgd_title=None, height=5, col_wrap=3,
-                                  save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/.png',
-                                  ci=68, n_boot=100, log_y=True):
-    df = group_params(df, params, group)
-    sns.set_context("notebook", font_scale=1.5)
-    to_x = "epoch"
-    to_y = "value"
-    x_label = "Epoch"
-    y_label = "Parameter value"
-    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
-           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
-           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
-           (189, 189, 189)]
-    n_labels = df[to_label].nunique()
-    # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    pal = sns.color_palette(np.array(pal) / 255, n_labels)
-    grid = sns.FacetGrid(df.query('lr_rate != "ground_truth"'),
-                         hue=to_label,
-                         hue_order=label_order,
-                         col="params",
-                         col_wrap=col_wrap,
-                         height=height,
-                         palette=pal,
-                         legend_out=True,
-                         sharex=True, sharey=False)
-    g = grid.map(sns.lineplot, to_x, to_y, linewidth=2, ci=ci, n_boot=n_boot)
-    if ground_truth is True:
-        for x_param, ax in g.axes_dict.items():
-            # ax.set_aspect('auto')
-            g_value = df.query('params == @x_param & lr_rate == "ground_truth"').value.item()
-            ax.axhline(g_value, ls="--", linewidth=2, c="black")
-    grid.set_axis_labels(x_label, y_label)
-    if lgd_title is not None:
-        grid.add_legend(title=lgd_title)
-    # grid.fig.suptitle(f'{title}', fontweight="bold")
-    if log_y is True:
-        plt.semilogy()
-    utils.save_fig(save_fig, save_path)
-
 
 def plot_grouped_parameters_subj(df, params, col_group,
                             to_label="study_type", lgd_title="Study", label_order=None,
@@ -472,8 +383,6 @@ def plot_grouped_parameters_subj(df, params, col_group,
         ax.set_title(f" ")
     grid.fig.legend(title=lgd_title, labels=label_order)
     grid.set_axis_labels("", y_label)
-    #grid.fig.subplots_adjust(top=0.85, right=0.75)  # adjust the Figure in rp
-    #grid.fig.suptitle(f'{title}', fontweight="bold")
     utils.save_fig(save_fig, save_path)
 
 
@@ -509,16 +418,6 @@ def scatter_comparison(df, x, y, col, col_order,
     #grid.fig.legend(title=lgd_title, labels=label_order)
     utils.save_fig(save_fig, save_path)
     return grid
-
-
-def control_fontsize(small, medium, large):
-    plt.rc('font', size=small)  # controls default text sizes
-    plt.rc('axes', titlesize=small, labelsize=medium)
-    plt.rc('xtick', labelsize=small)  # fontsize of the tick labels
-    plt.rc('ytick', labelsize=small)  # fontsize of the tick labels
-    plt.rc('legend', fontsize=small)  # legend fontsize
-    plt.rc('figure', titlesize=large)  # fontsize of the figure title
-
 
 def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='Broderick et al.(2022) values',
                                y_label = 'My values',
@@ -679,44 +578,6 @@ def SD_histogram(df, col='dset', save_fig=False, save_path='/',
     utils.save_fig(save_fig, save_path)
     return grid
 
-    #
-    #
-    # def beta_1Dhist(df, to_subplot="vroinames",
-    #                 x_axis_label='Beta', y_axis_label="Probability",
-    #                 legend_title="Beta type", labels=['measured betas', 'model prediction'],
-    #                 n_row=4, legend_out=True, alpha=0.5, bins=30,
-    #                 save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
-    #                 save_file_name='model_pred.png'):
-    #     cur_df = df.query('subj == @subj')
-    #     melt_df = pd.melt(cur_df, id_vars=['subj', 'voxel', 'vroinames'], value_vars=['norm_betas', 'norm_pred'],
-    #                       var_name='beta_type', value_name='beta_value')
-    #     col_order = utils.sort_a_df_column(cur_df[to_subplot])
-    #     grid = sns.FacetGrid(melt_df,
-    #                          col=to_subplot,
-    #                          col_order=col_order,
-    #                          hue="beta_type",
-    #                          palette=sns.color_palette("husl"),
-    #                          col_wrap=n_row,
-    #                          legend_out=legend_out)
-    #     g = grid.map(sns.histplot, "beta_value", stat="probability")
-    #     grid.set_axis_labels(x_axis_label, y_axis_label)
-    #     grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
-    #     # Put the legend out of the figure
-    #     # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    #     for subplot_title, ax in grid.axes_dict.items():
-    #         ax.set_title(f"{subplot_title.title()}")
-    #     grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
-    #     grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
-    #     grid.tight_layout()
-    #     if save_fig:
-    #         if not save_dir:
-    #             raise Exception("Output directory is not defined!")
-    #         fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-    #         if not os.path.exists(fig_dir):
-    #             os.makedirs(fig_dir)
-    #         save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
-    #         plt.savefig(save_path)
-    #     plt.show()
 
 def plot_sd_with_different_shades(df):
     sns.set_context('notebook', font_scale=3)
@@ -754,7 +615,7 @@ def plot_vareas(df, x, y, hue, style,
           'grid.linewidth': 2,
           'font.family': 'Helvetica',
           'lines.linewidth': 2}
-    set_rcParams(rc)
+    utils.set_rcParams(rc)
     grid = sns.relplot(data=df,
                        x=x, y=y,
                        col=col,
@@ -810,7 +671,7 @@ def plot_varea(df, x, y, hue, style,
           'grid.linewidth': 2,
           'font.family': 'Helvetica',
           'lines.linewidth': 2}
-    set_rcParams(rc)
+    utils.set_rcParams(rc)
     grid = sns.relplot(data=df,
                        x=x, y=y,
                        col=col,
@@ -868,3 +729,68 @@ def make_multiple_xy_with_vars(df, id_var, to_var, to_vals, val_name='params'):
         tmp[val_name] = to_val
         multiple_xy_dfs = multiple_xy_dfs.append(tmp)
     return multiple_xy_dfs
+
+
+def merge_continuous_values_to_the_df(df, val_range=(0,6), n=100, col_name='eccentricity', endpoint=True):
+
+    val_range = np.linspace(val_range[0], val_range[-1], n, endpoint=endpoint)
+    all_ecc_df = pd.DataFrame({})
+    for val in val_range:
+        df[col_name] = val
+        all_ecc_df = all_ecc_df.append(df, ignore_index=True)
+    return all_ecc_df
+
+def get_w_a_and_w_r_for_each_stim_class(stim_description_path,
+                                        stim_class=['pinwheel','annulus','forward spiral', 'reverse spiral']):
+    stim_info = pd.read_csv(stim_description_path)
+    stim_info = stim_info.query('names in @stim_class')
+    stim_info = stim_info.drop_duplicates('names')
+    stim_info = stim_info[['names', 'w_r', 'w_a']]
+    return stim_info
+
+def make_synthetic_dataframe_for_2D(stim_info,
+                                    ecc_range, n_ecc,
+                                    angle_range, n_angle,
+                                    ecc_col='eccentricity', angle_col='angle'):
+    merged_df = stim_info.copy()
+    for val, n, col in zip([ecc_range, angle_range], [n_ecc, n_angle], [ecc_col, angle_col]):
+        merged_df = merge_continuous_values_to_the_df(merged_df,
+                                                      val_range=val,
+                                                      n=n,
+                                                      col_name=col)
+    return merged_df
+
+
+def calculate_preferred_period_for_synthetic_df(stim_info, final_params,
+                                                ecc_range, n_ecc,
+                                                angle_range, n_angle,
+                                                ecc_col='eccentricity', angle_col='angle',
+                                                angle_in_radians=True,
+                                                reference_frame='relative'):
+    merged_df = make_synthetic_dataframe_for_2D(stim_info,
+                                                ecc_range, n_ecc,
+                                                angle_range, n_angle,
+                                                ecc_col, angle_col)
+    merged_df['local_ori'] = calculate_local_orientation(merged_df['w_a'],
+                                                         merged_df['w_r'],
+                                                         retinotopic_angle=merged_df[angle_col],
+                                                         angle_in_radians=angle_in_radians,
+                                                         reference_frame=reference_frame)
+    merged_df['Pv'] = merged_df.apply(get_Pv_row, params=final_params, axis=1)
+    if reference_frame == 'absolute':
+        rename_cols = {'forward spiral': 'left oblique',
+                       'reverse spiral': 'right oblique',
+                       'annulus': 'horizontal',
+                       'pinwheel': 'vertical'}
+        merged_df = merged_df.replace({'names': rename_cols})
+    return merged_df
+
+def calculate_preferred_period_for_all_subjects(subj_list, synthetic_df, final_params):
+    all_subj_df = pd.DataFrame({})
+    for s in subj_list:
+        tmp = synthetic_df.copy()
+        tmp_params = final_params.query('sub == @s')
+        tmp['sub'] = s
+        tmp['Pv'] = tmp.apply(get_Pv_row, params=tmp_params, axis=1)
+        all_subj_df = all_subj_df.append(tmp, ignore_index=True)
+    return all_subj_df
