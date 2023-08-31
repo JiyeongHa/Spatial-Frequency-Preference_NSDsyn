@@ -219,7 +219,7 @@ def get_colors(to_color, to_plot=None):
         return get_dset_colors(to_plot)
     elif to_color == "sub":
         return get_subject_colors('nsdsyn', to_plot)
-    elif to_color == "vroinames":
+    elif to_color == "roi":
         return get_roi_colors(to_plot)
     elif to_color == "names":
         return get_stim_colors(to_plot)
