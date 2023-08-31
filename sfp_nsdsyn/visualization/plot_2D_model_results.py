@@ -97,17 +97,21 @@ def _find_ylim(ax, roi, avg=True):
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
                                            weight='precision', dodge=0.14,
-                                           save_path=None, pal=None, dot_scale=2.2,
+                                           save_path=None, pal=None, dot_scale=1,
                                            height=6, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
-    sns.set_context("notebook", font_scale=4)
-    rc = {'axes.labelpad': 30,
-          'axes.linewidth': 3,
-          'xtick.major.pad': 20,
-          'xtick.major.width': 3,
-          'xtick.major.size': 20,
-          'grid.linewidth': 3,
+    sns.set_context("notebook", font_scale=2.9)
+    rc = {'axes.labelpad': 15,
+          'axes.linewidth': 2.5,
+          'xtick.major.pad': 15,
+          'xtick.major.width': 2.5,
+          'xtick.major.size': 15,
+          'ytick.major.pad': 8,
+          'ytick.major.width': 2,
+          'ytick.major.size': 10,
+          'grid.linewidth': 2.5,
           'font.family': 'Helvetica',
-          'lines.linewidth': 2}
+          'lines.linewidth': 2.5,
+          "figure.subplot.wspace": 0.7}
     utils.set_rcParams(rc)
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
@@ -124,7 +128,7 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                          col="group",
                          height=height,
                          legend_out=True,
-                         sharex=False, sharey=False, aspect=0.53, gridspec_kws={'width_ratios': counts}, **kwargs)
+                         sharex=False, sharey=False, aspect=0.59, gridspec_kws={'width_ratios': counts}, **kwargs)
 
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
                  dodge=dodge, palette=pal, edgecolor='black', linewidth=20,
@@ -136,20 +140,19 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
             ax.axhline(y=0, color='gray', linestyle='--', linewidth=2, alpha=0.9)
         if len(ticks) == 2:
             ax.margins(x=0.22)
-    grid.axes[0, 2].margins(x=0.16)
-    grid.axes[0, 4].margins(x=0.16)
+    grid.axes[0, 2].margins(x=0.1)
+    grid.axes[0, 4].margins(x=0.1)
     if ylim_list is not None:
         for ax in range(len(groups)):
             grid.axes[0, ax].set_ylim(ylim_list[ax])
     if ytick_list is not None:
         for ax in range(len(groups)):
             grid.axes[0, ax].set_yticks(ytick_list[ax])
-    grid.fig.subplots_adjust(wspace=0.4)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f" ")
     grid.set_axis_labels("", 'Value')
     if lgd_title is not None:
-        g.add_legend(title=lgd_title)
+        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.725))
     if suptitle is not None:
         g.fig.suptitle(suptitle, fontweight="bold")
     grid.set_axis_labels("", "Parameter value")
