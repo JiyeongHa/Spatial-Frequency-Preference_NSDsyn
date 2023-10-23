@@ -8,6 +8,7 @@ import matplotlib as mpl
 from sfp_nsdsyn.two_dimensional_model import group_params
 from sfp_nsdsyn.preprocessing import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
+
 def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
@@ -786,6 +787,7 @@ def calculate_preferred_period_for_synthetic_df(stim_info, final_params,
                        'annulus': 'horizontal',
                        'pinwheel': 'vertical'}
         merged_df = merged_df.replace({'names': rename_cols})
+    merged_df['frame'] = reference_frame
     return merged_df
 
 def calculate_preferred_period_for_all_subjects(subj_list, synthetic_df, final_params):
