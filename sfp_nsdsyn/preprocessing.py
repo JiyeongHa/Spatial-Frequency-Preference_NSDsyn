@@ -145,6 +145,8 @@ def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixa
     with h5py.File(betas_path, 'r') as f:
         # betas[hemi].shape shows 784 x # of voxels
         tmp_betas = f.get('betas')
+        if mask is None:
+            mask = np.ones((tmp_betas.shape[-1],), bool)
         tmp_betas = tmp_betas[:, mask]
         n_image = design_df.shape[0]
         for task_name in task_keys:
