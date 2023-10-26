@@ -1,4 +1,7 @@
 import os
+import sys
+sys.path.append('/Users/jh7685/Documents/Projects/pysurfer')
+from pysurfer import mgz_helper as fs
 from scipy.stats import f_oneway
 from sfp_nsdsyn import preprocessing as prep
 
@@ -14,9 +17,43 @@ def get_whole_brain_betas(betas_path, design_mat_path,
     betas_df = prep.merge_stim_df_and_betas_df(stim_df, betas_dict, on='stim_idx')
     return betas_df
 
-def sf_one_way_anova(df, to_test, test_unique=None):
+def sf_one_way_anova(df, to_test, values, test_unique=None):
     if test_unique is None:
         test_unique = df[to_test].unique().tolist()
-    test = [df[df[to_test] == k].betas for k in test_unique]
+    test = [df[df[to_test] == k][values] for k in test_unique]
     F, p =f_oneway(*test)
     return F, p
+
+def  _organize_df_into_wide_format(sub_df, identifier_list, columns, values):
+    sub_df['identifier'] = sub_df[identifier_list].apply(lambda x: '_'.join(map(str, x)), axis=1)
+    return sub_df.pivot(columns=columns, index='identifier', values=values)
+
+
+def sf_multiple_one_way_anova(df, to_test, values, on, identifier_list,
+                              test_unique=None, return_identifiers=True):
+    if test_unique is None:
+        test_unique = df[to_test].unique().tolist()
+    test = []
+    for i in test_unique:
+        sub_df = df[df[to_test] == i]
+        tmp = _organize_df_into_wide_format(sub_df, identifier_list, columns=on, values=values)
+        test.append(tmp)
+    ref = test[0].index.tolist()
+    same_identifiers = [t.index.tolist() for t in test]
+    if all([ref==t for t in same_identifiers]) is False:
+        raise Exception('Identifier lists are different between to_test variables!\n')
+    F, p = f_oneway(*test)
+    if return_identifiers is True:
+        identifiers = ref
+        return F, p, identifiers
+    else:
+        return F, p
+
+
+def map_stats_as_mgz(template, data, save_path=None):
+    template_mgz = fs.load_mgzs(template, fdata_only=False)
+    stat_mgz = fs.make_mgzs(data=data,
+                       header=template_mgz.header,
+                       affine=template_mgz.affine,
+                       save_path=save_path)
+    return stat_mgz

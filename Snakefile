@@ -1,4 +1,9 @@
+configfile:
+    "config.json"
+
 import os
+import sys
+sys.path.append(config['PYSURFER_DIR'])
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -8,10 +13,8 @@ pickle.HIGHEST_PROTOCOL = 4
 from sfp_nsdsyn import *
 from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
 
-configfile:
-    "config.json"
 
-STIM_LIST=['annulus', 'forward-spiral', 'pinwheel', 'reverse-spiral', 'avg']
+STIM_LIST=['annulus', 'forward-spiral', 'pinwheel', 'reverse-spiral'] #'avg'
 ARGS_1D = ['sub', 'class', 'dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
 ARGS_2D = ['lr','eph','sub','roi','dset']
 LR = [0.005]
@@ -1040,3 +1043,34 @@ rule svg_all:
         a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-20000_vs-pRFsigma_roi-{roi}.png'), roi=['V1V2V3']),
         b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'y-preferred-period_x-{x}_stim-{stim}_avg-True_dset-nsdsyn_bts-mean_lr-0.0005_eph-20000_vs-pRFsigma_roi-{roi}.png'), x=['eccentricity','angle'], stim=['all'], roi=['V1', 'V2', 'V3'])
 
+rule sfp_anova_test:
+    input:
+        design_mat=os.path.join(config['NSD_DIR'],'nsddata','experiments','nsdsynthetic','nsdsynthetic_expdesign.mat'),
+        stim_info=os.path.join(config['NSD_DIR'],'nsdsyn_stim_description.csv'),
+        template=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
+        betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
+    output:
+        F_map = os.path.join(config['OUTPUT_DIR'], "sfp_anova", "brain_maps","{dset}","{hemi}.sub-{sub}_stat-anova_value-F.mgz"),
+        p_map = os.path.join(config['OUTPUT_DIR'],"sfp_anova","brain_maps","{dset}","{hemi}.sub-{sub}_stat-anova_value-p.mgz")
+
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
+                                             design_mat_path=input.design_mat,
+                                             stim_info_path=input.stim_info,
+                                             task_keys=['fixation_task', 'memory_task'],
+                                             task_average=True,
+                                             x_axis='voxel', y_axis='stim_idx', long_format=True)
+        stim_list = [s.replace('-', ' ') for s in STIM_LIST]
+        F, p, identifiers = sfm.sf_multiple_one_way_anova(betas_df.query('names in @stim_list'),
+                                                          to_test='freq_lvl',
+                                                          values='betas',
+                                                          on='voxel',
+                                                          identifier_list=['names', 'phase'],
+                                                          test_unique=None)
+        map_values_as_mgz(input.template, F, save_path=output.F_map)
+        map_values_as_mgz(input.template, p, save_path=output.p_map)
+
+rule test_F_map:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_anova","brain_maps","{dset}","{hemi}.sub-{sub}_stat-anova_value-F.mgz"), dset='nsdsyn', hemi='rh', sub='subj01')
