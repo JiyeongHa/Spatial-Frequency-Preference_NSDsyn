@@ -1073,4 +1073,4 @@ rule sfp_anova_test:
 
 rule test_F_map:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_anova","brain_maps","{dset}","{hemi}.sub-{sub}_stat-anova_value-F.mgz"), dset='nsdsyn', hemi='rh', sub='subj01')
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_anova","brain_maps","{dset}","{hemi}.sub-{sub}_stat-anova_value-F.mgz"), dset='nsdsyn', hemi=['lh','rh'], sub=make_subj_list('nsdsyn'))
