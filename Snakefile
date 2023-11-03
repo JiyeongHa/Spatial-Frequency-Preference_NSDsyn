@@ -1071,6 +1071,71 @@ rule sfp_anova_test:
         map_values_as_mgz(input.template, F, save_path=output.F_map)
         map_values_as_mgz(input.template, p, save_path=output.p_map)
 
+rule save_all_voxel_df_into_different_bins:
+    input:
+        design_mat = os.path.join(config['NSD_DIR'],'nsddata','experiments','nsdsynthetic','nsdsynthetic_expdesign.mat'),
+        stim_info = os.path.join(config['NSD_DIR'],'nsdsyn_stim_description.csv'),
+        eccentricity = os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
+        betas = os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
+    output:
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'all_voxels', 'binned_nbin-{nbin}_curbin-{curbin}_dset-nsdsyn_sub-{sub}_roi-wholebrain.h5')
+    run:
+        betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
+                                             design_mat_path=input.design_mat,
+                                             stim_info_path=input.stim_info,
+                                             task_keys=['fixation_task', 'memory_task'],
+                                             task_average=True, eccentricity_path=input.eccentricity,
+                                             x_axis='voxel',y_axis='stim_idx',long_format=True)
+        stim_list = [s.replace('-',' ') for s in STIM_LIST]
+        random_voxels = utils.pick_random_voxels(betas_df.voxel.unique(), 100)
+        betas_df = betas_df.query('names in @stim_list & voxel in @random_voxels')
+        avg_betas_df = betas_df.groupby(['voxel','freq_lvl']).mean().reset_index()
+        avg_betas_df['bins'] = sfm.divide_df_into_n_bins(avg_betas_df, 'voxel', int(wildcards.nbin))
+        avg_betas_df = avg_betas_df[avg_betas_df['bins'] == int(wildcards.curbin)]
+        avg_betas_df.to_hdf(output[0], key='stage', mode='w')
+
+rule sfp_voxel_wise_log_gaussian_tuning:
+    input:
+        design_mat = os.path.join(config['NSD_DIR'],'nsddata','experiments','nsdsynthetic','nsdsynthetic_expdesign.mat'),
+        stim_info = os.path.join(config['NSD_DIR'],'nsdsyn_stim_description.csv'),
+        eccentricity = os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
+        betas = os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
+    output:
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_anova", "voxel-tuning", "train_history", "{dset}","loss-history_voxel-test100_hemi-{hemi}_sub-{sub}.hdf"),
+        model_history= os.path.join(config['OUTPUT_DIR'],"sfp_anova","voxel-tuning","train_history","{dset}","model-history_voxel-test100_hemi-{hemi}_sub-{sub}.hdf"),
+    #model= os.path.join(config['OUTPUT_DIR'],"sfp_anova","voxel-tuning", "model", "{dset}", "model-logG_voxel-test100_hemi-{hemi}_sub-{sub}.pt")
+    run:
+        betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
+                                             design_mat_path=input.design_mat,
+                                             stim_info_path=input.stim_info,
+                                             task_keys=['fixation_task', 'memory_task'],
+                                             task_average=True, eccentricity_path=input.eccentricity,
+                                             x_axis='voxel',y_axis='stim_idx',long_format=True)
+        stim_list = [s.replace('-',' ') for s in STIM_LIST]
+        random_voxels = utils.pick_random_voxels(betas_df.voxel.unique(), 100)
+        betas_df = betas_df.query('names in @stim_list & voxel in @random_voxels')
+        avg_betas_df = betas_df.groupby(['voxel','freq_lvl']).mean().reset_index()
+        all_models_history = pd.DataFrame({})
+        all_losses_history = pd.DataFrame({})
+        for v in random_voxels:
+            print(f'sub {wildcards.sub}, voxel num: {v}\n')
+            tmp = avg_betas_df.query('voxel == @v')
+            my_model = tuning.LogGaussianTuningModel()
+            my_dataset = tuning.LogGaussianTuningDataset(tmp['local_sf'], tmp['betas'])
+            loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset,
+                                                       learning_rate=0.001,
+                                                       max_epoch=10000,
+                                                       print_every=10000,
+                                                       save_path=None)
+            loss_history['voxel'] = v
+            model_history['voxel'] = v
+            all_models_history = pd.concat((all_models_history, model_history), axis=0)
+            all_losses_history = pd.concat((all_losses_history, loss_history), axis=0)
+
+        all_losses_history.to_hdf(output.loss_history, key='stage', mode='w')
+        all_models_history.to_hdf(output.model_history,key='stage',mode='w')
+
 rule test_F_map:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_anova","brain_maps","{dset}","{hemi}.sub-{sub}_stat-anova_value-F.mgz"), dset='nsdsyn', hemi=['lh','rh'], sub=make_subj_list('nsdsyn'))
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_anova", "voxel-tuning", "train_history", "{dset}","loss-history_voxel-test100_hemi-{hemi}_sub-{sub}.hdf"), dset='nsdsyn', hemi=['lh', 'rh'], sub=make_subj_list('nsdsyn'))
+

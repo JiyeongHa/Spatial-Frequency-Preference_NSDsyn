@@ -11,6 +11,7 @@ import matplotlib as mpl
 import matplotlib.patheffects as pe
 from .visualization import plot_2D_model_results as vis2D
 
+
 def torch_log_norm_pdf(x, slope, mode, sigma):
     """the pdf of the log normal distribution, with a scale factor
     """
@@ -139,9 +140,9 @@ def run_1D_model(df, sn_list, stim_class_list, varea_list, ecc_bins="bins", n_pr
 
     return model_history_df, loss_history_df
 
-def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
-                 initial_val="random", epoch=5000, lr=1e-3):
 
+def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
+                     initial_val="random", epoch=5000, lr=1e-3):
     eroi_list = utils.sort_a_df_column(cur_df[ecc_bins])
 
     # Initialize output df
@@ -188,15 +189,17 @@ def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
     loss_history_df['lr'] = lr
     return model_history_df, loss_history_df, elapsed_time
 
+
 def get_bin_labels(e1, e2, enum):
     if 'log' in enum:
         enum_only = enum[3:]
-        bin_list = np.logspace(np.log2(float(e1)), np.log2(float(e2)), num=int(enum_only)+1, base=2)
+        bin_list = np.logspace(np.log2(float(e1)), np.log2(float(e2)), num=int(enum_only) + 1, base=2)
     else:
-        bin_list = np.linspace(float(e1), float(e2), int(enum)+1)
+        bin_list = np.linspace(float(e1), float(e2), int(enum) + 1)
     bin_list = np.round(bin_list, 2)
     bin_labels = [f'{str(a)}-{str(b)} deg' for a, b in zip(bin_list[:-1], bin_list[1:])]
     return bin_list, bin_labels
+
 
 def bin_ecc(to_bin, bin_list, bin_labels=None):
     if bin_labels is None:
@@ -204,11 +207,11 @@ def bin_ecc(to_bin, bin_list, bin_labels=None):
     ecc_bin = pd.cut(to_bin, bins=bin_list, include_lowest=True, labels=bin_labels)
     return ecc_bin
 
+
 def summary_stat_for_ecc_bin(df,
-                             to_group= ['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
+                             to_group=['subj', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
                              to_bin=["betas", "local_sf"],
                              central_tendency="mean"):
-
     if central_tendency == "mode":
         c_df = df.groupby(to_group)[to_bin].agg(lambda x: pd.Series.mode(x)[0]).reset_index()
     else:
@@ -219,9 +222,10 @@ def summary_stat_for_ecc_bin(df,
 
 class LogGaussianTuningDataset:
     """Tranform dataframes to pivot style. x axis represents ecc_bin, y axis is freq_lvl."""
-    def __init__(self, df):
-        self.target = torch.tensor(df.pivot('ecc_bin', 'freq_lvl', 'betas').to_numpy())
-        self.sf = torch.tensor(df.pivot('ecc_bin', 'freq_lvl', 'local_sf').to_numpy())
+
+    def __init__(self, local_sf, betas):
+        self.target = torch.tensor(betas.to_numpy()).double()
+        self.sf = torch.tensor(local_sf.to_numpy()).double()
 
 
 # numpy to torch function
@@ -238,12 +242,13 @@ def _cast_as_param(x, requires_grad=True):
     """ Change input x to parameter"""
     return torch.nn.Parameter(_cast_as_tensor(x), requires_grad=requires_grad)
 
+
 class LogGaussianTuningModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.slope = _cast_as_param(np.random.random(1))
-        self.mode = _cast_as_param(np.random.random(1)+0.5)
-        self.sigma = _cast_as_param(np.random.random(1)+0.5)
+        self.mode = _cast_as_param(np.random.random(1) + 0.5)
+        self.sigma = _cast_as_param(np.random.random(1) + 0.5)
 
     def forward(self, x):
         """the pdf of the log normal distribution, with a scale factor
@@ -277,15 +282,15 @@ def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, 
         param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
         loss_history.append(loss.item())
         model_history.append(param_values)  # more than one item here
-        optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
 
         if (t + 1) % print_every == 0 or t == 0:
-            content = f'**epoch no.{t} loss: {np.round(loss.item(), 3)} \n'
+            content = f'**epoch no.{t} loss: {np.round(loss.item(), 5)} \n'
             print(content)
     elapsed_time = timer() - start
-    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, param_values))}\n')
+    param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
+    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, np.round(param_values,3)))}\n')
     print(f'Elapsed time: {np.round(elapsed_time, 2)} sec \n')
     if save_path is not None:
         torch.save(my_model.state_dict(), save_path)
@@ -302,10 +307,12 @@ def fit_tuning_curves_for_each_bin(bin_labels, df, learning_rate=1e-4, max_epoch
         c_df = df.query('ecc_bin == @bin')
         my_dataset = LogGaussianTuningDataset(c_df)
         my_model = LogGaussianTuningModel()
-        loss_history[bin], model_history[bin] = fit_tuning_curves(my_model, my_dataset, learning_rate, max_epoch, print_every,
+        loss_history[bin], model_history[bin] = fit_tuning_curves(my_model, my_dataset, learning_rate, max_epoch,
+                                                                  print_every,
                                                                   anomaly_detection, amsgrad, eps, save_path)
     loss_history = pd.concat(loss_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
-    model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(columns={'level_0': 'ecc_bin'})
+    model_history = pd.concat(model_history).reset_index().drop(columns='level_1').rename(
+        columns={'level_0': 'ecc_bin'})
     return loss_history, model_history
 
 
@@ -314,12 +321,14 @@ def load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2,
     f_name = f'allstim_{df_type}_history_dset-{dset}_bts-{stat}_{subj}_lr-{lr_rate}_eph-{max_epoch}_{roi}_vs-pRFcenter_e{e1}-{e2}_nbin-{nbin}.h5'
     return pd.read_hdf(os.path.join(df_dir, f_name))
 
+
 def load_history_1D_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, df_dir):
     df = pd.DataFrame({})
     for sn in sn_list:
         tmp = load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, df_dir)
         df = pd.concat((df, tmp), axis=0)
     return df
+
 
 def load_binned_df_1D(sn, dset, stat, roi, e1, e2, nbin, df_dir):
     subj = utils.sub_number_to_string(sn, dataset=dset)
@@ -329,6 +338,7 @@ def load_binned_df_1D(sn, dset, stat, roi, e1, e2, nbin, df_dir):
         df['subj'] = subj
     return df
 
+
 def load_binned_df_1D_all_subj(sn_list, dset, stat, roi, e1, e2, nbin, df_dir):
     df = pd.DataFrame({})
     for sn in sn_list:
@@ -336,26 +346,32 @@ def load_binned_df_1D_all_subj(sn_list, dset, stat, roi, e1, e2, nbin, df_dir):
         df = pd.concat((df, tmp), axis=0)
     return df
 
-def _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=["subj","vroinames", "ecc_bin", 'names']):
+
+def _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=["subj", "vroinames", "ecc_bin", 'names']):
     max_epoch = model_history.epoch.max()
     model_history = model_history.query('epoch == @max_epoch')
     merged_df = binned_df.merge(model_history, on=merge_on)
     return merged_df
 
+
 def load_and_merge_1D_df(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, input_dir, output_dir):
     model_history = load_history_df_1D(sn, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, output_dir)
     binned_df = load_binned_df_1D(sn, dset, stat, roi, e1, e2, nbin, input_dir)
-    return _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=['ecc_bin','names'])
+    return _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=['ecc_bin', 'names'])
 
-def load_and_merge_1D_df_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, input_dir, output_dir):
-    model_history = load_history_1D_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, output_dir)
+
+def load_and_merge_1D_df_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin, input_dir,
+                                  output_dir):
+    model_history = load_history_1D_all_subj(sn_list, dset, stat, df_type, roi, lr_rate, max_epoch, e1, e2, nbin,
+                                             output_dir)
     binned_df = load_binned_df_1D_all_subj(sn_list, dset, stat, roi, e1, e2, nbin, input_dir)
-    return _merge_fitting_output_df_to_subj_df(model_history, binned_df, merge_on=['subj', 'vroinames', 'ecc_bin','names'])
+    return _merge_fitting_output_df_to_subj_df(model_history, binned_df,
+                                               merge_on=['subj', 'vroinames', 'ecc_bin', 'names'])
 
 
-
-def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', height=5, subplot_right=0.9, sup_title=None,
-                save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/1D_results.png'):
+def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', height=5, subplot_right=0.9,
+                    sup_title=None,
+                    save_fig=False, save_path='/Volumes/server/Project/sfp_nsd/derivatives/figures/1D_results.png'):
     col_order = utils.sort_a_df_column(df[col])
     sns.set_context("notebook", font_scale=1.5)
     grid = sns.FacetGrid(df,
@@ -379,10 +395,13 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
     utils.save_fig(save_fig, save_path)
     return grid
 
+
 def _get_x_and_y_prediction(min, max, fnl_param_df):
     x = np.linspace(min, max, 100)
-    y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for k in x]
+    y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
+         k in x]
     return x, y
+
 
 def _get_x_and_y_prediction_from_2D(sf_min, sf_max, fnl_param_df, voxel_info):
     voxel_info = voxel_info.drop_duplicates(subset=['subj', 'voxel'])
@@ -434,7 +453,6 @@ def plot_ecc_bin_prediction_from_2D(pred_df, pred_y, hue, lgd_title, title, save
     plt.show()
 
 
-
 def plot_sf_curves_from_2D(pred_df, pred_y, y, hue, lgd_title, t, save_path=None, lines="data"):
     sns.set_context("notebook", font_scale=1.5)
     grid = sns.FacetGrid(pred_df,
@@ -448,11 +466,11 @@ def plot_sf_curves_from_2D(pred_df, pred_y, y, hue, lgd_title, t, save_path=None
     if lines == "data":
         grid.map(sns.lineplot, "local_sf", y, marker='o', ci=68, linestyle='-', err_style='bars', linewidth=3)
     elif lines == "pred":
-        grid.map(sns.lineplot, "local_sf", y, marker='o',  ci=None, linestyle='', linewidth=2)
+        grid.map(sns.lineplot, "local_sf", y, marker='o', ci=None, linestyle='', linewidth=2)
         grid.map(sns.lineplot, "local_sf", pred_y, marker='', ci=68, err_style='band', linestyle='-', linewidth=2)
     grid.set_axis_labels('Spatial Frequency', 'Betas')
     grid.add_legend(title=lgd_title)
-    grid.set(ylim=(0.06, 0.32), xlim=(0.08, 35)) #y=0.05, 20
+    grid.set(ylim=(0.06, 0.32), xlim=(0.08, 35))  # y=0.05, 20
     grid.fig.suptitle(t)
     plt.xscale('log')
     grid.fig.subplots_adjust(top=0.8)
@@ -480,12 +498,14 @@ def plot_sf_curves_from_2D_voxel(df, y, pred_df, pred_y, hue, lgd_title, t, save
     grid.fig.suptitle(t)
     utils.save_fig(save_path != None, save_path)
 
+
 def match_wildcards_with_col(arg):
     switcher = {'roi': 'vroinames',
                 'eph': 'max_epoch',
                 'lr': 'lr_rate',
                 'class': 'names'}
     return switcher.get(arg, arg)
+
 
 def load_history_files(file_list, *args):
     """args: ['subj', 'dset', 'lr_rate', 'max_epoch', 'vroinames', 'names'].
@@ -498,9 +518,11 @@ def load_history_files(file_list, *args):
         elif f.split('.')[-1] == 'csv':
             tmp = pd.read_csv(f)
         for arg in args:
-                tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+            tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg) + 1:].replace('-',
+                                                                                                                 ' ')
         history_df = history_df.append(tmp)
     return history_df
+
 
 def load_LogGaussianTuingModel(pt_file_path):
     model = LogGaussianTuningModel()
@@ -508,9 +530,11 @@ def load_LogGaussianTuingModel(pt_file_path):
     model.eval()
     return model
 
+
 def _find_bin(row):
     _, bin_labels = get_bin_labels(row.e1, row.e2, row.nbin)
     return bin_labels[int(row.curbin)]
+
 
 def model_to_df(pt_file_path, *args):
     model = load_LogGaussianTuingModel(pt_file_path)
@@ -519,8 +543,10 @@ def model_to_df(pt_file_path, *args):
         model_dict[name] = param.detach().numpy()
     model_df = pd.DataFrame(model_dict)
     for arg in args:
-        model_df[match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+        model_df[match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][
+                                                  len(arg) + 1:].replace('-', ' ')
     return model_df
+
 
 def load_all_models(pt_file_path_list, *args):
     model_df = pd.DataFrame({})

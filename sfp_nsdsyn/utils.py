@@ -316,13 +316,13 @@ def load_history_files(file_list, *args):
     maybe I can make use of something like [k.split('-')[0] for k in file_name.split('_')] later"""
     history_df = pd.DataFrame({})
     for f in file_list:
-        f.split('.')[-1]
-        if f.split('.')[-1] == 'h5':
+        if f.split('.')[-1] == 'h5'or f.split('.')[-1] == 'hdf':
             tmp = pd.read_hdf(f)
         elif f.split('.')[-1] == 'csv':
             tmp = pd.read_csv(f)
         for arg in args:
-            tmp[match_wildcards_with_col(arg)] = [k for k in f.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+            ff = f.split('.')[0]
+            tmp[match_wildcards_with_col(arg)] = [k for k in ff.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
         history_df = history_df.append(tmp)
     return history_df
 
@@ -349,3 +349,6 @@ def set_fontsize(small, medium, large):
           'legend.fontsize': small,
           'figure.titlesize': large}
     set_rcParams(font_rc)
+
+def pick_random_voxels(voxel_list, n):
+    return np.random.randint(min(voxel_list), max(voxel_list), n)

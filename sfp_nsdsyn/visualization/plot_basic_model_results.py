@@ -12,7 +12,7 @@ from sfp_nsdsyn.two_dimensional_model import group_params
 def plot_loss_history(loss_history_df,
                       hue=None, lgd_title=None, hue_order=None,
                       col=None, height=4, save_path=None,
-                      log_y=True, sharey=False,
+                      log_y=True, sharey=False, ci=None,
                       suptitle=None, **kwargs):
     sns.set_context("notebook", font_scale=1.5)
     grid = sns.FacetGrid(loss_history_df,
@@ -24,7 +24,7 @@ def plot_loss_history(loss_history_df,
                          aspect=2.5,
                          sharey=sharey,
                          **kwargs)
-    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=None)
+    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=ci)
     if log_y is True:
         g.set(yscale='log')
     grid.set_axis_labels('Epoch', 'Loss')

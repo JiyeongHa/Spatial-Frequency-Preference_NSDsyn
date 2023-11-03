@@ -50,7 +50,7 @@ def merge_pdf_values(bin_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
 
 
 def plot_curves_sns(df, x, y, hue, hue_order=None,
-                    height=5, col=None, col_wrap=None, pal=None):
+                    height=5, col=None, col_wrap=None, to_logscale=True, **kwargs):
     sns.set_context("notebook", font_scale=2.5)
     grid = sns.FacetGrid(df,
                          col=col,
@@ -60,10 +60,11 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
                          hue_order=hue_order,
                          aspect=1,
                          palette=sns.color_palette("tab10"),
-                         sharex=True, sharey=False)
-    g = grid.map(sns.scatterplot, x, y, linestyle='-',
-                 edgecolor='black', estimator=np.mean, ci='sd')
-    grid.set(xscale='log')
+                         sharex=True, sharey=False, **kwargs)
+    g = grid.map(sns.lineplot, x, y, linestyle='-', marker='o',
+                 estimator=np.mean, ci='sd')
+    if to_logscale:
+        grid.set(xscale='log')
 
 
 def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, save_path=None):
@@ -251,7 +252,7 @@ def plot_dots(df, y, col, hue, lgd_title, height=5, save_path=None):
                          col_order=df[col].unique(),
                          hue=hue,
                          hue_order=df[hue].unique(),
-                         height=5,
+                         height=height,
                          palette=sns.color_palette("rocket", df[hue].nunique()),
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, 'local_sf', y, marker='o', err_style='bars', linestyle='')

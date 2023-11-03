@@ -1,5 +1,7 @@
 import os
 import sys
+import numpy as np
+import pandas as pd
 sys.path.append('/Users/jh7685/Documents/Projects/pysurfer')
 from pysurfer import mgz_helper as fs
 from scipy.stats import f_oneway
@@ -7,7 +9,7 @@ from sfp_nsdsyn import preprocessing as prep
 
 def get_whole_brain_betas(betas_path, design_mat_path,
                           stim_info_path,
-                          task_keys, task_average,
+                          task_keys, task_average, eccentricity_path=None,
                           x_axis='voxel', y_axis='stim_idx', long_format=True):
     stim_df = prep.load_stim_info_as_df(stim_info_path, drop_phase=False)
     betas_dict = prep.load_betas_as_dict(betas_path, design_mat_path,
@@ -15,7 +17,25 @@ def get_whole_brain_betas(betas_path, design_mat_path,
                                          task_keys, task_average)
     betas_dict = prep.melt_2D_betas_dict_into_df(betas_dict, x_axis, y_axis, long_format)
     betas_df = prep.merge_stim_df_and_betas_df(stim_df, betas_dict, on='stim_idx')
+    if eccentricity_path is not None:
+        prf_dict = prep.load_prf_properties_as_dict([eccentricity_path], mask=None, angle_to_radians=False)
+        betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, on='voxel')
+        betas_df['local_sf'] = prep.calculate_local_sf(w_a=betas_df['w_a'],
+                                                       w_r=betas_df['w_r'],
+                                                       eccentricity=betas_df['eccentricity'])
     return betas_df
+
+def divide_df_into_n_bins(df, to_bin, n_bins, return_step=False):
+    assert df[to_bin].min() == 0
+    step = np.floor(df[to_bin].nunique()/n_bins).astype(int)
+    bin_list = np.arange(0, df[to_bin].nunique(), step).astype(int)
+    bin_labels = np.arange(0, len(bin_list)-1)
+    bins = pd.cut(df[to_bin], bins=bin_list, include_lowest=True, labels=bin_labels)
+    if return_step:
+        return bins, step
+    else:
+        return bins
+
 
 def sf_one_way_anova(df, to_test, values, test_unique=None):
     if test_unique is None:
