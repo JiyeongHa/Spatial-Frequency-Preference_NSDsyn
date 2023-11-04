@@ -1078,7 +1078,7 @@ rule save_all_voxel_df_into_different_bins:
         eccentricity = os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
         betas = os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'all_voxels', 'binned_nbin-{nbin}_curbin-{curbin}_dset-nsdsyn_sub-{sub}_roi-wholebrain.h5')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'all_voxels', 'binned_hemi-{hemi}_nbin-{nbin}_curbin-{curbin}_dset-nsdsyn_sub-{sub}_roi-wholebrain.h5')
     run:
         betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
                                              design_mat_path=input.design_mat,
@@ -1087,12 +1087,20 @@ rule save_all_voxel_df_into_different_bins:
                                              task_average=True, eccentricity_path=input.eccentricity,
                                              x_axis='voxel',y_axis='stim_idx',long_format=True)
         stim_list = [s.replace('-',' ') for s in STIM_LIST]
-        random_voxels = utils.pick_random_voxels(betas_df.voxel.unique(), 100)
-        betas_df = betas_df.query('names in @stim_list & voxel in @random_voxels')
+        betas_df = betas_df.query('names in @stim_list')
         avg_betas_df = betas_df.groupby(['voxel','freq_lvl']).mean().reset_index()
-        avg_betas_df['bins'] = sfm.divide_df_into_n_bins(avg_betas_df, 'voxel', int(wildcards.nbin))
+        total_n_voxels = avg_betas_df.voxel.nunique()
+        avg_betas_df['bins'], step = sfm.divide_df_into_n_bins(avg_betas_df,
+                                                               to_bins='voxel',
+                                                               n_bins=int(wildcards.nbin),
+                                                               return_step=True)
         avg_betas_df = avg_betas_df[avg_betas_df['bins'] == int(wildcards.curbin)]
         avg_betas_df.to_hdf(output[0], key='stage', mode='w')
+        print(f'{wildcards.sub} - total n voxels: {total_n_voxels}, step: {step}')
+
+rule save_all_voxels:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'all_voxels', 'binned_hemi-{hemi}_nbin-{nbin}_curbin-{curbin}_dset-nsdsyn_sub-{sub}_roi-wholebrain.h5'), hemi='lh', sub=['subj01'], nbin=20, curbin=np.arange(0,20))
 
 rule sfp_voxel_wise_log_gaussian_tuning:
     input:
