@@ -7,8 +7,7 @@ from . import utils as utils
 from timeit import default_timer as timer
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-import matplotlib.patheffects as pe
+from scipy import optimize
 from .visualization import plot_2D_model_results as vis2D
 
 
@@ -45,13 +44,17 @@ def _track_loss_df(values, create_loss_df=True, loss_df=None,
     return loss_df
 
 
-def _set_initial_params(init_list):
+def set_initial_params(init_list, to_torch=True):
     if init_list == "random":
         init_list = np.random.random(3)
-
-    slope = torch.tensor([init_list[0]], dtype=torch.float32, requires_grad=True)
-    mode = torch.tensor([init_list[1]], dtype=torch.float32, requires_grad=True)
-    sigma = torch.tensor([init_list[2]], dtype=torch.float32, requires_grad=True)
+    if to_torch:
+        slope = torch.tensor([init_list[0]], dtype=torch.float32, requires_grad=True)
+        mode = torch.tensor([init_list[1]], dtype=torch.float32, requires_grad=True)
+        sigma = torch.tensor([init_list[2]], dtype=torch.float32, requires_grad=True)
+    else:
+        slope = np.random.random(1)
+        mode = np.random.random(1) + 0.5
+        sigma = np.random.random(1) + 0.5
     return slope, mode, sigma
 
 
@@ -555,3 +558,22 @@ def load_all_models(pt_file_path_list, *args):
         model_df = model_df.append(tmp)
     model_df['ecc_bin'] = model_df.apply(_find_bin, axis=1)
     return model_df
+
+def fit_logGaussian_curves(df,
+                           local_sf, betas,
+                           initial_params,
+                           maxfev=100000,
+                           tol = 1.5e-08,
+                           amp_bounds=(0,10),
+                           mode_bounds=(2**(-5), 2**11),
+                           sigma_bounds=(0,10)):
+
+    p_opt, p_cov = optimize.curve_fit(f=np_log_norm_pdf,
+                                      xdata=local_sf,
+                                      ydata=betas,
+                                      maxfev=maxfev,
+                                      ftol=tol, xtol=tol,
+                                      p0=initial_params,
+                                      bounds=list(zip(amp_bounds, mode_bounds, sigma_bounds))
+                                      )
+    return p_opt, p_cov

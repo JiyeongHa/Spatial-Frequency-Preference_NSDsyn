@@ -351,4 +351,4 @@ def set_fontsize(small, medium, large):
     set_rcParams(font_rc)
 
 def pick_random_voxels(voxel_list, n):
-    return np.random.randint(min(voxel_list), max(voxel_list), n)
+    return np.random.choice(voxel_list, n,replace=False)
