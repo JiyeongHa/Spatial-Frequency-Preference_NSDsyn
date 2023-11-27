@@ -11,13 +11,13 @@ from scipy import optimize
 from .visualization import plot_2D_model_results as vis2D
 
 
-def torch_log_norm_pdf(x, slope, mode, sigma):
+def torch_log_norm_pdf(x, amp, mode, sigma):
     """the pdf of the log normal distribution, with a scale factor
     """
     # note that mode here is the actual mode, for us, the peak spatial frequency. this differs from
     # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is the inverse of
     # the preferred period, the ivnerse of the mode / the peak spatial frequency.
-    pdf = slope * torch.exp(-(torch.log2(x) - torch.log2(mode)) ** 2 / (2 * sigma ** 2))
+    pdf = amp * torch.exp(-(torch.log2(x) - torch.log2(mode)) ** 2 / (2 * sigma ** 2))
 
     return pdf
 
@@ -48,14 +48,14 @@ def set_initial_params(init_list, to_torch=True):
     if init_list == "random":
         init_list = np.random.random(3)
     if to_torch:
-        slope = torch.tensor([init_list[0]], dtype=torch.float32, requires_grad=True)
+        amp = torch.tensor([init_list[0]], dtype=torch.float32, requires_grad=True)
         mode = torch.tensor([init_list[1]], dtype=torch.float32, requires_grad=True)
         sigma = torch.tensor([init_list[2]], dtype=torch.float32, requires_grad=True)
     else:
-        slope = np.random.random(1)
+        amp = np.random.random(1)
         mode = np.random.random(1) + 0.5
         sigma = np.random.random(1) + 0.5
-    return slope, mode, sigma
+    return amp, mode, sigma
 
 
 def _df_column_to_torch(df, column):
@@ -81,9 +81,9 @@ def fit_1D_model(df, sn, stim_class, varea, ecc_bins="bins", n_print=1000,
         x = _df_column_to_torch(tmp_df, "local_sf")
         y = _df_column_to_torch(tmp_df, "betas")
         # set initial parameters
-        slope, mode, sigma = _set_initial_params(initial_val)
+        amp, mode, sigma = _set_initial_params(initial_val)
         # select an optimizer
-        optimizer = torch.optim.Adam([slope, mode, sigma], lr=lr)
+        optimizer = torch.optim.Adam([amp, mode, sigma], lr=lr)
         # set a loss function - mean squared error
         criterion = torch.nn.MSELoss()
 
@@ -91,18 +91,18 @@ def fit_1D_model(df, sn, stim_class, varea, ecc_bins="bins", n_print=1000,
         model_history = []
         for t in range(epoch):
             optimizer.zero_grad()
-            loss = criterion(torch_log_norm_pdf(x, slope, mode, sigma), y)
+            loss = criterion(torch_log_norm_pdf(x, amp, mode, sigma), y)
             loss.backward()
             optimizer.step()
             loss_history.append(loss.item())
-            model_history.append([slope.item(), mode.item(), sigma.item()])
+            model_history.append([amp.item(), mode.item(), sigma.item()])
             if (t + 1) % n_print == 0:
                 print(f'Loss at epoch {str(t + 1)}: {str(round(loss.item(), 3))}')
 
         print(f'###Eccentricity bin {str(eroi_list.index(cur_ecc) + 1)} out of {len(eroi_list)} finished!###')
         print(
-            f'Final parameters: slope {slope.item()}, mode {mode.item()}, sigma {sigma.item()}\n')
-        model_history_df[cur_ecc] = pd.DataFrame(model_history, columns=['slope', 'mode', 'sigma'])
+            f'Final parameters: amp {amp.item()}, mode {mode.item()}, sigma {sigma.item()}\n')
+        model_history_df[cur_ecc] = pd.DataFrame(model_history, columns=['amp', 'mode', 'sigma'])
         loss_history_df[cur_ecc] = pd.DataFrame(loss_history, columns=['loss'])
     end = timer()
     elapsed_time = end - start
@@ -179,7 +179,7 @@ def sim_fit_1D_model(cur_df, ecc_bins="bins", n_print=1000,
 
         print(f'###Eccentricity bin {str(eroi_list.index(cur_ecc) + 1)} out of {len(eroi_list)} finished!###')
         print(
-            f'Final parameters: slope {amp.item()}, mode {mode.item()}, sigma {sigma.item()}\n')
+            f'Final parameters: amp {amp.item()}, mode {mode.item()}, sigma {sigma.item()}\n')
         model_history_df[cur_ecc] = pd.DataFrame(model_history, columns=['amp', 'mode', 'sigma'])
         loss_history_df[cur_ecc] = pd.DataFrame(loss_history, columns=['loss'])
     end = timer()
@@ -249,7 +249,7 @@ def _cast_as_param(x, requires_grad=True):
 class LogGaussianTuningModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.slope = _cast_as_param(np.random.random(1))
+        self.amp = _cast_as_param(np.random.random(1))
         self.mode = _cast_as_param(np.random.random(1) + 0.5)
         self.sigma = _cast_as_param(np.random.random(1) + 0.5)
 
@@ -259,12 +259,12 @@ class LogGaussianTuningModel(torch.nn.Module):
         # note that mode here is the actual mode, for us, the peak spatial frequency. this differs from
         # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is the inverse of
         # the preferred period, the inverse of the mode / the peak spatial frequency.
-        pdf = self.slope * torch.exp(-(torch.log2(x) - torch.log2(self.mode)) ** 2 / (2 * self.sigma ** 2))
+        pdf = self.amp * torch.exp(-(torch.log2(x) - torch.log2(self.mode)) ** 2 / (2 * self.sigma ** 2))
         return torch.clamp(pdf, min=1e-6)
 
 
 def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, print_every=100,
-                      anomaly_detection=False, amsgrad=False, eps=1e-8, save_path=None, seed=None):
+                      anomaly_detection=False, amsgrad=False, eps=1e-8, save_path=None, seed=None, verbose=True):
     """Fit log normal Gaussian tuning curves.
     This function will allow you to run a for loop for N times set as max_epoch,
     and return the output of the training; loss history, model history."""
@@ -289,12 +289,14 @@ def fit_tuning_curves(my_model, my_dataset, learning_rate=1e-4, max_epoch=5000, 
         optimizer.step()  # perform updates using calculated gradients
 
         if (t + 1) % print_every == 0 or t == 0:
-            content = f'**epoch no.{t} loss: {np.round(loss.item(), 5)} \n'
+            content = f'**epoch no.{t} loss: {np.round(loss.item(), 5)}'
             print(content)
     elapsed_time = timer() - start
+    my_model.eval()
     param_values = [p.detach().numpy().item() for p in my_model.parameters() if p.requires_grad]
-    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, np.round(param_values,3)))}\n')
-    print(f'Elapsed time: {np.round(elapsed_time, 2)} sec \n')
+    if verbose:
+        print(f'**epoch no.{max_epoch}: Finished! final params {dict(zip(params_col, np.round(param_values,3)))}')
+        print(f'Elapsed time: {np.round(elapsed_time, 2)} sec \n')
     if save_path is not None:
         torch.save(my_model.state_dict(), save_path)
     loss_history = pd.DataFrame(loss_history, columns=['loss']).reset_index().rename(columns={'index': 'epoch'})
@@ -401,7 +403,7 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
 
 def _get_x_and_y_prediction(min, max, fnl_param_df):
     x = np.linspace(min, max, 100)
-    y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
+    y = [np_log_norm_pdf(k, fnl_param_df['amp'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
          k in x]
     return x, y
 
@@ -527,11 +529,11 @@ def load_history_files(file_list, *args):
     return history_df
 
 
-def load_LogGaussianTuingModel(pt_file_path):
-    model = LogGaussianTuningModel()
-    model.load_state_dict(torch.load(pt_file_path))
-    model.eval()
-    return model
+def load_LogGaussianTuningModel(pt_file_path):
+    my_model = LogGaussianTuningModel()
+    my_model.load_state_dict(torch.load(pt_file_path))
+    my_model.eval()
+    return my_model
 
 
 def _find_bin(row):
@@ -539,10 +541,11 @@ def _find_bin(row):
     return bin_labels[int(row.curbin)]
 
 
-def model_to_df(pt_file_path, *args):
-    model = load_LogGaussianTuingModel(pt_file_path)
+def model_to_df(my_model=None, pt_file_path=None, *args):
+    if pt_file_path is not None:
+        my_model = load_LogGaussianTuningModel(pt_file_path)
     model_dict = {}
-    for name, param in model.named_parameters():
+    for name, param in my_model.named_parameters():
         model_dict[name] = param.detach().numpy()
     model_df = pd.DataFrame(model_dict)
     for arg in args:
@@ -560,20 +563,21 @@ def load_all_models(pt_file_path_list, *args):
     return model_df
 
 def fit_logGaussian_curves(df,
-                           local_sf, betas,
+                           x, y,
                            initial_params,
                            maxfev=100000,
                            tol = 1.5e-08,
                            amp_bounds=(0,10),
                            mode_bounds=(2**(-5), 2**11),
                            sigma_bounds=(0,10)):
-
+    tmp = df.sort_values(x)
     p_opt, p_cov = optimize.curve_fit(f=np_log_norm_pdf,
-                                      xdata=local_sf,
-                                      ydata=betas,
+                                      xdata=tmp[x].to_list(),
+                                      ydata=tmp[y].to_list(),
                                       maxfev=maxfev,
                                       ftol=tol, xtol=tol,
                                       p0=initial_params,
                                       bounds=list(zip(amp_bounds, mode_bounds, sigma_bounds))
                                       )
+    p_opt = pd.DataFrame(p_opt.reshape(1,-1), columns=['amp','mode','sigma'])
     return p_opt, p_cov

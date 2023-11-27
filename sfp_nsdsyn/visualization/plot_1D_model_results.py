@@ -50,8 +50,10 @@ def merge_pdf_values(bin_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
 
 
 def plot_curves_sns(df, x, y, hue, hue_order=None,
-                    height=5, col=None, col_wrap=None, to_logscale=True, **kwargs):
-    sns.set_context("notebook", font_scale=2.5)
+                    height=5, col=None, col_wrap=None,
+                    to_logscale=True, save_path=None,
+                    **kwargs):
+    sns.set_context("notebook", font_scale=2)
     grid = sns.FacetGrid(df,
                          col=col,
                          col_wrap=col_wrap,
@@ -62,12 +64,15 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
                          palette=sns.color_palette("tab10"),
                          sharex=True, sharey=False, **kwargs)
     g = grid.map(sns.lineplot, x, y, linestyle='-', marker='o',
-                 estimator=np.mean, ci='sd')
+                 estimator=np.mean, ci='sd', linewidth=2, markersize=10)
+    g.add_legend(bbox_to_anchor=(1.02, 0.7))
     if to_logscale:
         grid.set(xscale='log')
+    utils.save_fig(save_path)
 
 
-def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, save_path=None):
+def plot_sf_curves(df, x, y,
+                   params_df, col, hue, height=13, lgd_title=None, save_path=None):
     rc = {'axes.labelpad': 20,
           'axes.linewidth': 3,
           'axes.titlepad': 40,
@@ -87,7 +92,7 @@ def plot_sf_curves(df, params_df, x, y, col, hue, height=13, lgd_title=None, sav
     utils.set_fontsize(30, 35, large_fontsize)
     utils.set_rcParams(rc)
     subplot_list = df[col].unique()
-    hue_list = np.flip(df[hue].unique())
+    hue_list = df[hue].unique()
     fig, axes = plt.subplots(1, len(subplot_list),
                              figsize=(height*1.9, height),
                              sharex=True, sharey=False)
