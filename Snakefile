@@ -1145,5 +1145,49 @@ rule sfp_voxel_wise_log_gaussian_tuning:
 
 rule test_F_map:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_anova", "voxel-tuning", "train_history", "{dset}","loss-history_voxel-test100_hemi-{hemi}_sub-{sub}.hdf"), dset='nsdsyn', hemi=['lh', 'rh'], sub=make_subj_list('nsdsyn'))
+        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_anova", "voxel-tuning", "train_history", "{dset}","loss-history_voxel-test100_hemi-{hemi}_sub-{sub}.hdf"), dset='nsdsyn', hemi=['lh', 'rh'], sub=make_subj_list('nsdsyn'))
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","method-curvefit_hemi-{hemi}_sub-{sub}.hdf"), dset='nsdsyn', hemi=['lh', 'rh'], sub=make_subj_list('nsdsyn'))
 
+rule voxel_wise_tuning:
+    input:
+        design_mat=os.path.join(config['NSD_DIR'],'nsddata','experiments','nsdsynthetic','nsdsynthetic_expdesign.mat'),
+        stim_info=os.path.join(config['NSD_DIR'],'nsdsyn_stim_description.csv'),
+        eccentricity=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
+        betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
+        template=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
+    output:
+        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","method-curvefit_hemi-{hemi}_sub-{sub}.hdf"),
+        amp_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-amp.mgz"),
+        mode_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-mode.mgz"),
+        sigma_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-sigma.mgz"),
+    params:
+        p0 = np.random.random(3) + [0, 0.5, 0.5]
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from timeit import default_timer as timer
+        betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
+                                             design_mat_path=input.design_mat,
+                                             stim_info_path=input.stim_info,
+                                             task_keys=['fixation_task', 'memory_task'],
+                                             task_average=True,eccentricity_path=input.eccentricity,
+                                             x_axis='voxel',y_axis='stim_idx',long_format=True)
+        stim_list = [s.replace('-',' ') for s in STIM_LIST]
+        betas_df = betas_df.query('names in @stim_list')
+        avg_betas_df = betas_df.groupby(['voxel', 'freq_lvl']).mean().reset_index()
+
+        p_opt = pd.DataFrame({})
+        start = timer()
+        print(f'subject {wildcards.sub} {wildcards.hemi}')
+        for v in avg_betas_df.voxel.unique().tolist():
+            v_tmp = avg_betas_df.query('voxel == @v')
+            tmp, _ = tuning.fit_logGaussian_curves(v_tmp, x='local_sf', y='betas',
+                                                   initial_params=params.p0)
+            tmp['voxel'] = v
+            p_opt = pd.concat((tmp, p_opt))
+        print(f'Elapsed time: {np.round(timer() - start,2)} sec')
+        p_opt = p_opt.sort_values('voxel').set_index('voxel').reset_index()
+        p_opt['sub'] = wildcards.sub
+        p_opt.to_hdf(output.df, key='stage',mode='w')
+        map_values_as_mgz(input.template, p_opt['amp'].to_numpy(), save_path=output.amp_map)
+        map_values_as_mgz(input.template, p_opt['mode'].to_numpy(), save_path=output.mode_map)
+        map_values_as_mgz(input.template, p_opt['sigma'].to_numpy(), save_path=output.sigma_map)
