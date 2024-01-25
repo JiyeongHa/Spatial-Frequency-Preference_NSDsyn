@@ -1191,3 +1191,30 @@ rule voxel_wise_tuning:
         map_values_as_mgz(input.template, p_opt['amp'].to_numpy(), save_path=output.amp_map)
         map_values_as_mgz(input.template, p_opt['mode'].to_numpy(), save_path=output.mode_map)
         map_values_as_mgz(input.template, p_opt['sigma'].to_numpy(), save_path=output.sigma_map)
+
+
+rule precision_v_map:
+    input:
+        design_mat=os.path.join(config['NSD_DIR'],'nsddata','experiments','nsdsynthetic','nsdsynthetic_expdesign.mat'),
+        stim_info=os.path.join(config['NSD_DIR'],'nsdsyn_stim_description.csv'),
+        eccentricity=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
+        betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
+    output:
+        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-precision.mgz"),
+    params:
+        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
+    run:
+        betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
+                                            design_mat_path=input.design_mat,
+                                            stim_info_path=input.stim_info,
+                                            task_keys=['fixation_task', 'memory_task'],
+                                            task_average=True,eccentricity_path=input.eccentricity,
+                                            x_axis='voxel',y_axis='stim_idx',long_format=True)
+        betas_df = betas_df.query('names in @stim_list')
+        power_val = [1,2]
+        power_var = [col for p, col in params.p_dict.items() if p in power_val]
+        sigma_v_df = bts.get_multiple_sigma_vs(betas_df,
+                                               power=power_val,
+                                               columns=power_var,
+                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
+        sigma_v_df.to_csv(output[0], index=False)
