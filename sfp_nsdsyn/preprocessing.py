@@ -232,12 +232,13 @@ def calculate_local_sf(w_a, w_r, eccentricity, reference_frame='relative'):
     l2_norm = np.sqrt((w_r ** 2 + w_a ** 2))
     if reference_frame == 'relative':
         local_sf = l2_norm / eccentricity
+        local_sf = np.divide(local_sf, 2*np.pi)
     else:
         local_sf = l2_norm
     #TODO: ask about this
     # to convert this from radians per pixel to cycles per degrees,
     # we multiply by a conversion factor c = 1/2pi
-    return np.divide(local_sf, 2*np.pi)
+    return local_sf
 
 def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False):
     local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity)

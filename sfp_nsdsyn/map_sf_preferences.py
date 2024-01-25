@@ -10,7 +10,8 @@ from sfp_nsdsyn import preprocessing as prep
 def get_whole_brain_betas(betas_path, design_mat_path,
                           stim_info_path,
                           task_keys, task_average, eccentricity_path=None,
-                          x_axis='voxel', y_axis='stim_idx', long_format=True):
+                          x_axis='voxel', y_axis='stim_idx', long_format=True,
+                          reference_frame='absolute'):
     stim_df = prep.load_stim_info_as_df(stim_info_path, drop_phase=False)
     betas_dict = prep.load_betas_as_dict(betas_path, design_mat_path,
                                          stim_df['image_idx'], None,
@@ -22,7 +23,8 @@ def get_whole_brain_betas(betas_path, design_mat_path,
         betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, on='voxel')
         betas_df['local_sf'] = prep.calculate_local_sf(w_a=betas_df['w_a'],
                                                        w_r=betas_df['w_r'],
-                                                       eccentricity=betas_df['eccentricity'])
+                                                       eccentricity=betas_df['eccentricity'],
+                                                       reference_frame=reference_frame)
     return betas_df
 
 def divide_df_into_n_bins(df, to_bin, n_bins, return_step=False):
