@@ -1143,7 +1143,7 @@ rule sfp_voxel_wise_log_gaussian_tuning:
         all_losses_history.to_hdf(output.loss_history, key='stage', mode='w')
         all_models_history.to_hdf(output.model_history,key='stage',mode='w')
 
-rule test_F_map:
+rule voxel_wise_tuning_all:
     input:
         #expand(os.path.join(config['OUTPUT_DIR'], "sfp_anova", "voxel-tuning", "train_history", "{dset}","loss-history_voxel-test100_hemi-{hemi}_sub-{sub}.hdf"), dset='nsdsyn', hemi=['lh', 'rh'], sub=make_subj_list('nsdsyn'))
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","method-curvefit_hemi-{hemi}_sub-{sub}.hdf"), dset='nsdsyn', hemi=['lh', 'rh'], sub=make_subj_list('nsdsyn'))
@@ -1164,19 +1164,17 @@ rule voxel_wise_tuning:
         p0 = np.random.random(3) + [0, 0.5, 0.5]
     run:
         from pysurfer.mgz_helper import map_values_as_mgz
-        from timeit import default_timer as timer
         betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
                                              design_mat_path=input.design_mat,
                                              stim_info_path=input.stim_info,
                                              task_keys=['fixation_task', 'memory_task'],
                                              task_average=True,eccentricity_path=input.eccentricity,
-                                             x_axis='voxel',y_axis='stim_idx',long_format=True)
+                                             x_axis='voxel',y_axis='stim_idx', long_format=True, reference_frame='absolute')
         stim_list = [s.replace('-',' ') for s in STIM_LIST]
         betas_df = betas_df.query('names in @stim_list')
         avg_betas_df = betas_df.groupby(['voxel', 'freq_lvl']).mean().reset_index()
-
+        avg_betas_df = avg_betas_df[['voxel', 'freq_lvl', 'betas', 'local_sf']]
         p_opt = pd.DataFrame({})
-        start = timer()
         print(f'subject {wildcards.sub} {wildcards.hemi}')
         for v in avg_betas_df.voxel.unique().tolist():
             v_tmp = avg_betas_df.query('voxel == @v')
@@ -1184,7 +1182,6 @@ rule voxel_wise_tuning:
                                                    initial_params=params.p0)
             tmp['voxel'] = v
             p_opt = pd.concat((tmp, p_opt))
-        print(f'Elapsed time: {np.round(timer() - start,2)} sec')
         p_opt = p_opt.sort_values('voxel').set_index('voxel').reset_index()
         p_opt['sub'] = wildcards.sub
         p_opt.to_hdf(output.df, key='stage',mode='w')
@@ -1200,21 +1197,33 @@ rule precision_v_map:
         eccentricity=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
         betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
     output:
-        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-precision.mgz"),
-    params:
-        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
+        os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-precision.mgz"),
     run:
+        from pysurfer.mgz_helper import map_values_as_mgz
         betas_df = sfm.get_whole_brain_betas(betas_path=input.betas,
                                             design_mat_path=input.design_mat,
                                             stim_info_path=input.stim_info,
                                             task_keys=['fixation_task', 'memory_task'],
                                             task_average=True,eccentricity_path=input.eccentricity,
                                             x_axis='voxel',y_axis='stim_idx',long_format=True)
+        stim_list = [s.replace('-',' ') for s in STIM_LIST]
         betas_df = betas_df.query('names in @stim_list')
-        power_val = [1,2]
-        power_var = [col for p, col in params.p_dict.items() if p in power_val]
-        sigma_v_df = bts.get_multiple_sigma_vs(betas_df,
-                                               power=power_val,
-                                               columns=power_var,
-                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
-        sigma_v_df.to_csv(output[0], index=False)
+        sigma_v = bts.get_sigma_v_for_whole_brain(betas_df, class_list=None, sigma_power=2)
+        map_values_as_mgz(input.eccentricity, 1/sigma_v, save_path=output[0])
+#TODO: change mgz map names accordingly: from method-curvefit_value-mode to just value-mode
+rule map_to_fsaverage:
+    input:
+        mgz_path=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_method-curvefit_value-{val}.mgz"),
+    output:
+        os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz")
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer")
+    shell:
+        """
+        export SUBJECTS_DIR={params.SUBJECTS_DIR}
+        mri_surf2surf --srcsubject {wildcards.sub} --trgsubject fsaverage --hemi {wildcards.hemi} --sval {input.mgz_path} --tval {output}
+        """
+
+rule fsaverage_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['amp', 'sigma'])
