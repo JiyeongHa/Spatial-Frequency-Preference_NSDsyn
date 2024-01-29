@@ -74,6 +74,21 @@ def get_multiple_sigma_vs(df, power, columns, to_sd='normed_betas', to_group=['v
     sigma_v_df = sigma_v_df.drop(columns=['tmp'])
     return sigma_v_df
 
+def get_sigma_v_for_whole_brain(betas_df, class_list=None, sigma_power=2):
+    """This function has the same purpose as the functions above, but is designed to perform faster
+    to decrease the processing time, usually for whole brain voxels.
+    precision_vi contains a matrix (voxel X 8 phases) for each class i.
+    Then this matrix is normalized for each voxel.
+    For all the classes, we average these normalized matrices and take a mean to get a single value for each voxel."""
+    sigma_squared_v = []
+    if class_list is None:
+        class_list = betas_df.class_idx.unique()
+    for class_i in class_list:
+        sigma_vi = betas_df.query('class_idx == @class_i')['betas'].to_numpy().reshape((betas_df.voxel.nunique(), -1))
+        sigma_vi_norm = sigma_vi / np.linalg.norm(sigma_vi, axis=1, keepdims=True)
+        sigma_squared_v.append(np.std(sigma_vi_norm, axis=1) ** sigma_power)
+    return np.mean(sigma_squared_v, axis=0)
+
 def merge_sigma_v_to_main_df(bts_v_df, subj_df, on=['subj', 'voxel']):
     return subj_df.merge(bts_v_df, on=on)
 
