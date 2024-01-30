@@ -569,7 +569,7 @@ def fit_logGaussian_curves(df,
                            tol = 1.5e-08,
                            amp_bounds=(0,10),
                            mode_bounds=(2**(-5), 2**11),
-                           sigma_bounds=(0,10)):
+                           sigma_bounds=(0.1, 10)):
     tmp = df.sort_values(x)
     p_opt, p_cov = optimize.curve_fit(f=np_log_norm_pdf,
                                       xdata=tmp[x].to_list(),
