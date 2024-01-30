@@ -1210,7 +1210,7 @@ rule precision_v_map:
         betas_df = betas_df.query('names in @stim_list')
         sigma_v = bts.get_sigma_v_for_whole_brain(betas_df, class_list=None, sigma_power=2)
         map_values_as_mgz(input.eccentricity, 1/sigma_v, save_path=output[0])
-#TODO: change mgz map names accordingly: from method-curvefit_value-mode to just value-mode
+
 rule map_to_fsaverage:
     input:
         mgz_path=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_method-curvefit_value-{val}.mgz"),
