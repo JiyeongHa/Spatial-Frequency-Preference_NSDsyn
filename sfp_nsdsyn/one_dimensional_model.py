@@ -26,8 +26,8 @@ def np_log_norm_pdf(x, amp, mode, sigma):
     """the pdf of the log normal distribution, with a scale factor
     """
     # note that mode here is the actual mode, for us, the peak spatial frequency. this differs from
-    # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is the inverse of
-    # the preferred period, the ivnerse of the mode / the peak spatial frequency.
+    # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is
+    # the preferred period, the inverse of the mode = the peak spatial frequency.
     pdf = amp * np.exp(-(np.log2(x) - np.log2(mode)) ** 2 / (2 * sigma ** 2))
     return pdf
 
