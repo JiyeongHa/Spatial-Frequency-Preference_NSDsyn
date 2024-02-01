@@ -1208,12 +1208,13 @@ rule precision_v_map:
                                             x_axis='voxel',y_axis='stim_idx',long_format=True)
         stim_list = [s.replace('-',' ') for s in STIM_LIST]
         betas_df = betas_df.query('names in @stim_list')
-        sigma_v = bts.get_sigma_v_for_whole_brain(betas_df, class_list=None, sigma_power=2)
+        betas_df['normed_betas'] = bts.normalize_betas_by_frequency_magnitude(betas_df,betas='betas',freq_lvl='freq_lvl')
+        sigma_v = bts.get_sigma_v_for_whole_brain(betas_df, betas='normed_betas', class_list=None, sigma_power=2)
         map_values_as_mgz(input.eccentricity, 1/sigma_v, save_path=output[0])
 
 rule map_to_fsaverage:
     input:
-        mgz_path=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_method-curvefit_value-{val}.mgz"),
+        mgz_path=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}.mgz"),
     output:
         os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz")
     params:
@@ -1226,4 +1227,4 @@ rule map_to_fsaverage:
 
 rule fsaverage_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['amp', 'sigma'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['precision'])
