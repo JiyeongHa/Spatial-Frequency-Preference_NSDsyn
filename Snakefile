@@ -1156,10 +1156,10 @@ rule voxel_wise_tuning:
         betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
         template=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
     output:
-        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","method-curvefit_hemi-{hemi}_sub-{sub}.hdf"),
-        amp_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-amp.mgz"),
-        mode_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-mode.mgz"),
-        sigma_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-sigma.mgz"),
+        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","method-curvefit_hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
+        amp_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-amp_frame-{ref_frame}.mgz"),
+        mode_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-mode_frame-{ref_frame}.mgz"),
+        sigma_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-sigma_frame-{ref_frame}.mgz"),
     params:
         p0 = np.random.random(3) + [0, 0.5, 0.5]
     run:
@@ -1169,7 +1169,7 @@ rule voxel_wise_tuning:
                                              stim_info_path=input.stim_info,
                                              task_keys=['fixation_task', 'memory_task'],
                                              task_average=True,eccentricity_path=input.eccentricity,
-                                             x_axis='voxel',y_axis='stim_idx', long_format=True, reference_frame='absolute')
+                                             x_axis='voxel',y_axis='stim_idx', long_format=True, reference_frame={wildcards.ref_frame})
         stim_list = [s.replace('-',' ') for s in STIM_LIST]
         betas_df = betas_df.query('names in @stim_list')
         avg_betas_df = betas_df.groupby(['voxel', 'freq_lvl']).mean().reset_index()
@@ -1214,9 +1214,9 @@ rule precision_v_map:
 
 rule map_to_fsaverage:
     input:
-        mgz_path=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}.mgz"),
+        mgz_path=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-{val}_frame-{ref_frame}.mgz"),
     output:
-        os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz")
+        os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}_space-fsaverage.mgz")
     params:
         SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer")
     shell:
@@ -1227,4 +1227,4 @@ rule map_to_fsaverage:
 
 rule fsaverage_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.sub-{sub}_value-{val}_space-fsaverage.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['precision'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}_space-fsaverage.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['mode'], ref_frame=['relative'])
