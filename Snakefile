@@ -1156,10 +1156,12 @@ rule voxel_wise_tuning:
         betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
         template=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
     output:
-        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","method-curvefit_hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
-        amp_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-amp_frame-{ref_frame}.mgz"),
-        mode_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-mode_frame-{ref_frame}.mgz"),
-        sigma_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-sigma_frame-{ref_frame}.mgz"),
+        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
+        amp_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-amp_frame-{ref_frame}.mgz"),
+        mode_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-mode_frame-{ref_frame}.mgz"),
+        sigma_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-sigma_frame-{ref_frame}.mgz"),
+        r2_map= os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.sub-{sub}_value-r2_frame-{ref_frame}.mgz"),
+        rmse_map= os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.sub-{sub}_value-rmse_frame-{ref_frame}.mgz"),
     params:
         p0 = np.random.random(3) + [0, 0.5, 0.5]
     run:
@@ -1178,7 +1180,7 @@ rule voxel_wise_tuning:
         print(f'subject {wildcards.sub} {wildcards.hemi}')
         for v in avg_betas_df.voxel.unique().tolist():
             v_tmp = avg_betas_df.query('voxel == @v')
-            tmp, _ = tuning.fit_logGaussian_curves(v_tmp, x='local_sf', y='betas',
+            tmp, _ = tuning.fit_logGaussian_curves(v_tmp, x='local_sf', y='betas', goodness_of_fit=True,
                                                    initial_params=params.p0)
             tmp['voxel'] = v
             p_opt = pd.concat((tmp, p_opt))
@@ -1188,7 +1190,16 @@ rule voxel_wise_tuning:
         map_values_as_mgz(input.template, p_opt['amp'].to_numpy(), save_path=output.amp_map)
         map_values_as_mgz(input.template, p_opt['mode'].to_numpy(), save_path=output.mode_map)
         map_values_as_mgz(input.template, p_opt['sigma'].to_numpy(), save_path=output.sigma_map)
-
+        map_values_as_mgz(input.template,p_opt['r2'].to_numpy(), save_path=output.r2_map)
+        map_values_as_mgz(input.template,p_opt['rmse'].to_numpy(), save_path=output.rmse_map)
+#
+# rule visualization_goodness_of_fit:
+#     input:
+#         df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
+#     output:
+#         os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps","voxel-tuning", "goodness-of-fit", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.png"),
+#     run:
+#
 
 rule precision_v_map:
     input:

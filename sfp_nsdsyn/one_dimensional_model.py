@@ -582,8 +582,8 @@ def fit_logGaussian_curves(df,
                                       )
     p_opt = pd.DataFrame(p_opt.reshape(1,-1), columns=['amp','mode','sigma'])
     if goodness_of_fit is True:
-        r_squared, rmse = calculate_goodness_of_fit(p_opt, df, x, y)
-        p_opt['r_squared'] = r_squared
+        r2, rmse = calculate_goodness_of_fit(p_opt, df, x, y)
+        p_opt['r2'] = r2
         p_opt['rmse'] = rmse
     return p_opt, p_cov
 
@@ -605,18 +605,23 @@ def calculate_goodness_of_fit(p_opt, df, x, y):
     rmse = np.sqrt(np.mean(residuals ** 2))
     return r_squared, rmse
 
-def plot_logGaussian_fit(df, x, y, p_opt, save_path=None):
+def plot_logGaussian_fit(df, x, y, p_opt, ax=None,
+                         x_label='local sf', ax_title=None):
     tmp = df.sort_values(x)
     new_x_vals = np.logspace(np.log10(tmp[x].min()), np.log10(tmp[x].max()), 100)
     y_pred = np_log_norm_pdf(new_x_vals,
                              p_opt['amp'].values,
                              p_opt['mode'].values,
                              p_opt['sigma'].values)
-    plt.figure(figsize=(6, 6))
-    plt.plot(tmp[x], tmp[y], 'o', label='data')
-    plt.plot(new_x_vals, y_pred, label='fit')
-    plt.xlabel(x)
-    plt.ylabel(y)
-    plt.xscale('log')
-    plt.legend()
-    utils.save_fig(save_path)
+    if ax is None:
+        fig, ax = plt.subplots()
+    # Plot the data and the fitted curve on the provided Axes object
+    ax.plot(tmp[x], tmp[y], 'o', label='data', color='black')
+    ax.plot(new_x_vals, y_pred, label='fit', color='r')
+    ax.set_xscale('log')
+    ax.set_xlabel(x_label)
+    ax.set_ylabel('betas')
+    ax.set_title(ax_title)
+    ax.legend()
+    plt.tight_layout()
+    return ax
