@@ -565,11 +565,12 @@ def load_all_models(pt_file_path_list, *args):
 def fit_logGaussian_curves(df,
                            x, y,
                            initial_params,
+                           goodness_of_fit=True,
                            maxfev=100000,
                            tol = 1.5e-08,
                            amp_bounds=(0,10),
                            mode_bounds=(2**(-5), 2**11),
-                           sigma_bounds=(0.1, 10)):
+                           sigma_bounds=(0.01, 10)):
     tmp = df.sort_values(x)
     p_opt, p_cov = optimize.curve_fit(f=np_log_norm_pdf,
                                       xdata=tmp[x].to_list(),
@@ -580,4 +581,42 @@ def fit_logGaussian_curves(df,
                                       bounds=list(zip(amp_bounds, mode_bounds, sigma_bounds))
                                       )
     p_opt = pd.DataFrame(p_opt.reshape(1,-1), columns=['amp','mode','sigma'])
+    if goodness_of_fit is True:
+        r_squared, rmse = calculate_goodness_of_fit(p_opt, df, x, y)
+        p_opt['r_squared'] = r_squared
+        p_opt['rmse'] = rmse
     return p_opt, p_cov
+
+def calculate_goodness_of_fit(p_opt, df, x, y):
+    tmp = df.sort_values(x)
+    y_pred = np_log_norm_pdf(tmp[x].to_list(),
+                             p_opt['amp'].values,
+                             p_opt['mode'].values,
+                             p_opt['sigma'].values)
+    # Compute residuals
+    residuals = tmp[y].to_list() - y_pred
+    # Calculate the total sum of squares (TSS), variance of the observed data
+    ss_tot = np.sum((tmp[y] - np.mean(tmp[y])) ** 2)
+    # Calculate the residual sum of squares (RSS)
+    ss_res = np.sum(residuals ** 2)
+    # Calculate R^2
+    r_squared = 1 - (ss_res / ss_tot)
+    # Calculate RMSE
+    rmse = np.sqrt(np.mean(residuals ** 2))
+    return r_squared, rmse
+
+def plot_logGaussian_fit(df, x, y, p_opt, save_path=None):
+    tmp = df.sort_values(x)
+    new_x_vals = np.logspace(np.log10(tmp[x].min()), np.log10(tmp[x].max()), 100)
+    y_pred = np_log_norm_pdf(new_x_vals,
+                             p_opt['amp'].values,
+                             p_opt['mode'].values,
+                             p_opt['sigma'].values)
+    plt.figure(figsize=(6, 6))
+    plt.plot(tmp[x], tmp[y], 'o', label='data')
+    plt.plot(new_x_vals, y_pred, label='fit')
+    plt.xlabel(x)
+    plt.ylabel(y)
+    plt.xscale('log')
+    plt.legend()
+    utils.save_fig(save_path)
