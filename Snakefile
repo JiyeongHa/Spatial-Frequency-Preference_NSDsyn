@@ -1190,8 +1190,8 @@ rule voxel_wise_tuning:
         map_values_as_mgz(input.template, p_opt['amp'].to_numpy(), save_path=output.amp_map)
         map_values_as_mgz(input.template, p_opt['mode'].to_numpy(), save_path=output.mode_map)
         map_values_as_mgz(input.template, p_opt['sigma'].to_numpy(), save_path=output.sigma_map)
-        map_values_as_mgz(input.template,p_opt['r2'].to_numpy(), save_path=output.r2_map)
-        map_values_as_mgz(input.template,p_opt['rmse'].to_numpy(), save_path=output.rmse_map)
+        map_values_as_mgz(input.template, p_opt['r2'].to_numpy(), save_path=output.r2_map)
+        map_values_as_mgz(input.template, p_opt['rmse'].to_numpy(), save_path=output.rmse_map)
 #
 # rule visualization_goodness_of_fit:
 #     input:
@@ -1225,9 +1225,9 @@ rule precision_v_map:
 
 rule map_to_fsaverage:
     input:
-        mgz_path=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_method-curvefit_value-{val}_frame-{ref_frame}.mgz"),
+        mgz_path=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
     output:
-        os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}_space-fsaverage.mgz")
+        os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.space-fsaverage_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
     params:
         SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer")
     shell:
@@ -1238,4 +1238,4 @@ rule map_to_fsaverage:
 
 rule fsaverage_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}_space-fsaverage.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['mode'], ref_frame=['relative'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.space-fsaverage_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['r2', 'rmse', 'mode'], ref_frame=['absolute', 'relative'])
