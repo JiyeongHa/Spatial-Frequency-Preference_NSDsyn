@@ -1297,3 +1297,9 @@ rule average_subjects_brain_map:
         avg_mgz = np.nanmean(avg_mgz, axis=0)
         map_values_as_mgz(template=sub_mgz, data=avg_mgz, save_path=output.avg_masked_mgz)
 
+rule visualize_average_subjects_brain_map:
+    input:
+        lh_avg_masked_mgz = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","lh.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+        rh_avg_masked_mgz = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","rh.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz")
+    output:
+        avg_masked_png = os.path.join(config['OUTPUT_DIR'],"figures", "sfp_maps","mgzs","{dset}","mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.png")
