@@ -1238,4 +1238,62 @@ rule map_to_fsaverage:
 
 rule fsaverage_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.space-fsaverage_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['r2', 'rmse', 'mode'], ref_frame=['absolute', 'relative'])
+        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.space-fsaverage_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['r2', 'rmse', 'mode'], ref_frame=['absolute', 'relative'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[2,4,6,8], val=['mode'], ref_frame=['absolute', 'relative'])
+
+rule make_a_precision_mask:
+    input:
+        precision=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-precision.mgz"),
+    output:
+        mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-precision_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        precision_mask = load_mgzs(input.precision, fdata_only=True,squeeze=False)
+        precision_mask[precision_mask < float(wildcards.thres)] = 0
+        precision_mask[precision_mask > float(wildcards.thres)] = 1
+        map_values_as_mgz(template=input.precision, data=precision_mask, save_path=output.mask_mgz)
+
+rule mask_val_map:
+    input:
+        mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-precision_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
+        val_map=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
+    output:
+        masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        precision_mask = load_mgzs(input.mask_mgz, fdata_only=True, squeeze=False)
+        val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
+        val_map[precision_mask == 0] = np.nan
+        map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
+
+rule fsaverage_masked_val_map:
+    input:
+        masked_val_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    output:
+        fsaverage_masked_val_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-precision_space-fsaverage_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer")
+    shell:
+        """
+        export SUBJECTS_DIR={params.SUBJECTS_DIR}
+        mri_surf2surf --srcsubject {wildcards.sub} --trgsubject fsaverage --hemi {wildcards.hemi} --sval {input.masked_val_map} --tval {output.fsaverage_masked_val_map}
+        """
+
+rule average_subjects_brain_map:
+    input:
+        masked_mgzs=expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","{{hemi}}.mask-precision_space-fsaverage_sub-{sub}_value-{{val}}_thres-{{thres}}_frame-{{ref_frame}}.mgz"), sub=make_subj_list('nsdsyn')),
+    output:
+        avg_masked_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz")
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        avg_mgz = []
+        for sub_mgz in input.masked_mgzs:
+            tmp_mgz = load_mgzs(sub_mgz, fdata_only=True, squeeze=True)
+            avg_mgz.append(tmp_mgz)
+        avg_mgz = np.asarray(avg_mgz)
+        avg_mgz = np.nanmean(avg_mgz, axis=0)
+        map_values_as_mgz(template=sub_mgz, data=avg_mgz, save_path=output.avg_masked_mgz)
+
