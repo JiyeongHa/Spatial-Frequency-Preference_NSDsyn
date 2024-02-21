@@ -1239,7 +1239,7 @@ rule map_to_fsaverage:
 rule fsaverage_all:
     input:
         #expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.space-fsaverage_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['r2', 'rmse', 'mode'], ref_frame=['absolute', 'relative'])
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[2,4,6,8], val=['mode'], ref_frame=['absolute', 'relative'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[0,2,4,6,8], val=['mode','r2','rmse'], ref_frame=['absolute', 'relative'])
 
 rule make_a_precision_mask:
     input:
@@ -1267,6 +1267,28 @@ rule mask_val_map:
         val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
         val_map[precision_mask == 0] = np.nan
         map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
+
+rule plot_histograms_for_each_ROI:
+    output:
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps", "{dset}", "{hemi}.histogram_mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.png"),
+    input:
+        lh_masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "lh.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+        rh_masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "rh.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        labels = ['V1v', 'V1d', 'V2v','V2d', 'V3v','V3d', 'hV4', 'aFFA', 'pFFA', 'PPA']
+    run:
+        from pysurfer.mgz_helper import get_vertices_in_labels, read_label, get_existing_labels_only
+        lh_rois, rh_rois = {}, {}
+        label_dir = os.path.join(params.SUBJECTS_DIR, wildcards.sub,'label')
+        lh_labels, lh_label_paths = get_existing_labels_only(params.labels, label_dir, 'lh',return_paths=True)
+        rh_labels, rh_label_paths = get_existing_labels_only(params.labels, label_dir, 'rh',return_paths=True)
+
+        lh_rois[wildcards.sub] = get_vertices_in_labels(input.lh_masked_val_map,lh_label_paths,lh_labels,load_mgz=True,return_label=True)
+        rh_rois[wildcards.sub] = get_vertices_in_labels(input.rh_masked_val_map,rh_label_paths,rh_labels,load_mgz=True,return_label=True)
+
+
+#TODO: visualize goodness of fit maps
 
 rule fsaverage_masked_val_map:
     input:
