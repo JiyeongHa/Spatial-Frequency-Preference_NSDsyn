@@ -1318,7 +1318,7 @@ rule visualize_r2_mask:
         from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz, extract_info_from_filename
         from matplotlib.pyplot import get_cmap
 
-        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('coolwarm'), val_range=(-1, 1), n=100, log_scale=False)
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('autumn'), val_range=(float(wildcards.thres), 1), n=100, log_scale=False)
         kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
 
         labels = [f'bin-min-0.5_probmap_{roi}_smooth.label' for roi in params.rois]
@@ -1328,13 +1328,13 @@ rule visualize_r2_mask:
         plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
                  overlay=info['overlay'], overlay_dir=info['folder'],
                  labels=labels, label_dir=label_dir, label_colors=params.label_colors,
-                 colorscale=False, view=wildcards.view,
+                 colorscale=True, view=wildcards.view,
                  surf='inflated', save_path=output[0], **kwargs)
 
 
 rule visualize_all:
     input:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-posterior_avg_mask-r2_space-fsaverage_sub-fsaverage_thres-0.5_frame-absolute.png")
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_avg_mask-r2_space-fsaverage_sub-fsaverage_thres-0.5_frame-{ref_frame}.png"), view=['posterior','inferior'], ref_frame=['absolute', 'relative'])
 
 
 ### R2 masking ###
