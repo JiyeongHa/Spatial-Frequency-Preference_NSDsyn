@@ -12,6 +12,7 @@ import pickle
 pickle.HIGHEST_PROTOCOL = 4
 from sfp_nsdsyn import *
 from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
+from pysurfer.freeview_helper import retinotopy_colors
 
 
 STIM_LIST=['annulus', 'forward-spiral', 'pinwheel', 'reverse-spiral'] #'avg'
@@ -1303,6 +1304,39 @@ rule average_r2_mask:
 rule r2_mask_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.avg_mask-r2_space-fsaverage_sub-fsaverage_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], thres=[0.3, 0.5, 0.7], ref_frame=['absolute', 'relative'])
+
+rule visualize_r2_mask:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_avg_mask-r2_space-fsaverage_sub-{sn}_thres-{thres}_frame-{ref_frame}.png"),
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.avg_mask-r2_space-fsaverage_sub-{{sn}}_thres-{{thres}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
+    params:
+        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        rois=['V1v','V1d','V2v','V2d','V3v','V3d','hV4','FFA-1','FFA-2','PPA'],
+        label_colors = retinotopy_colors() + [np.asarray([0,0,0])]*3
+    run:
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz, extract_info_from_filename
+        from matplotlib.pyplot import get_cmap
+
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('coolwarm'), val_range=(-1, 1), n=100, log_scale=False)
+        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
+
+        labels = [f'bin-min-0.5_probmap_{roi}_smooth.label' for roi in params.rois]
+        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
+
+        info = extract_info_from_filename(input[0])
+        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
+                 overlay=info['overlay'], overlay_dir=info['folder'],
+                 labels=labels, label_dir=label_dir, label_colors=params.label_colors,
+                 colorscale=False, view=wildcards.view,
+                 surf='inflated', save_path=output[0], **kwargs)
+
+
+rule visualize_all:
+    input:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-posterior_avg_mask-r2_space-fsaverage_sub-fsaverage_thres-0.5_frame-absolute.png")
+
+
 ### R2 masking ###
 #
 # ### Precision masking ###
