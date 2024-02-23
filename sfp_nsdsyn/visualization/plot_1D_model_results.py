@@ -293,8 +293,8 @@ def plot_median_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
                  marker='o', size=8, edgecolor='gray', linewidth=0.5)
     y_label = y_label if y_label else y
     grid.set_axis_labels('Regions of Interest (ROI)', y_label)
+    g.set(ylim=(-0.1, 1))
     if lgd_title is not None:
-        g.add_legend(title=lgd_title, bbox_to_anchor=(1.05, 1), loc='upper left')
-    g.set(ylim=(0, 10))
+        g.add_legend(title=lgd_title, loc='upper right')
     utils.save_fig(save_path)
     return g
