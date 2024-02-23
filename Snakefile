@@ -1,6 +1,5 @@
 configfile:
     "config.json"
-
 import os
 import sys
 sys.path.append(config['PYSURFER_DIR'])
@@ -1157,7 +1156,7 @@ rule voxel_wise_tuning:
         betas=os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{sub}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','{hemi}.betas_nsdsynthetic.hdf5'),
         template=os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{sub}','label','{hemi}.prfeccentricity.mgz'),
     output:
-        df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
+        df = os.path.join(config['OUTPUT_DIR'],"dataframes", "sfp_maps","mgzs", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
         amp_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-amp_frame-{ref_frame}.mgz"),
         mode_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-mode_frame-{ref_frame}.mgz"),
         sigma_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-sigma_frame-{ref_frame}.mgz"),
@@ -1193,14 +1192,58 @@ rule voxel_wise_tuning:
         map_values_as_mgz(input.template, p_opt['sigma'].to_numpy(), save_path=output.sigma_map)
         map_values_as_mgz(input.template, p_opt['r2'].to_numpy(), save_path=output.r2_map)
         map_values_as_mgz(input.template, p_opt['rmse'].to_numpy(), save_path=output.rmse_map)
-#
-# rule visualization_goodness_of_fit:
-#     input:
-#         df = os.path.join(config['OUTPUT_DIR'],"sfp_maps","voxel-tuning", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.hdf"),
-#     output:
-#         os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps","voxel-tuning", "goodness-of-fit", "{dset}","hemi-{hemi}_sub-{sub}_frame-{ref_frame}.png"),
-#     run:
-#
+
+def breakdown_dfs(value_dict, voxel_dict, sn_list, hemi):
+    hemi_df = pd.DataFrame({})
+    for sn in sn_list:
+        for roi in value_dict[sn].keys():
+            tmp = pd.DataFrame({})
+            tmp['value'] = value_dict[sn][roi]
+            tmp['voxel'] = voxel_dict[sn][roi]
+            tmp['ROI'] = roi
+            tmp['hemi'] = hemi
+            tmp['sub'] = sn
+            hemi_df = pd.concat((hemi_df, tmp))
+    return hemi_df
+
+rule save_value_for_each_roi_as_a_dataframe:
+    output:
+        os.path.join(config['OUTPUT_DIR'], "dataframes","sfp_maps", "mgzs", "{dset}", "sub-all_value-{val}_frame-{ref_frame}.hdf")
+    input:
+        lh_mgzs = expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","lh.sub-{sub}_value-{{val}}_frame-{{ref_frame}}.mgz"), sub=make_subj_list('nsdsyn')),
+        rh_mgzs= expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","rh.sub-{sub}_value-{{val}}_frame-{{ref_frame}}.mgz"),sub=make_subj_list('nsdsyn'))
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'],"nsddata","freesurfer"),
+        roi_list=['V1v', 'V1d', 'V2v','V2d', 'V3v','V3d', 'hV4', 'pFFA','aFFA','PPA']
+    run:
+        from pysurfer.mgz_helper import extract_info_from_filename, get_vertices_in_labels, get_existing_labels_only
+        lh_rois, lh_voxels = {}, {}
+        rh_rois, rh_voxels = {}, {}
+        sn_list = []
+        for lh_mgz in input.lh_mgzs:
+            info = extract_info_from_filename(lh_mgz, *['sub'])
+            sn=info['sub']
+            label_dir = os.path.join(params.SUBJECTS_DIR, sn, 'label')
+            lh_labels, lh_label_paths = get_existing_labels_only(params.roi_list, label_dir, 'lh',return_paths=True)
+            lh_rois[sn], lh_voxels[sn] = get_vertices_in_labels(lh_mgz, lh_label_paths, lh_labels, load_mgz=True,return_label=True)
+            sn_list.append(sn)
+        for rh_mgz in input.rh_mgzs:
+            info = extract_info_from_filename(rh_mgz, *['sub'])
+            sn=info['sub']
+            label_dir = os.path.join(params.SUBJECTS_DIR, sn, 'label')
+            rh_labels, rh_label_paths = get_existing_labels_only(params.roi_list, label_dir, 'rh',return_paths=True)
+            rh_rois[sn], rh_voxels[sn] = get_vertices_in_labels(rh_mgz, rh_label_paths, rh_labels, load_mgz=True,return_label=True)
+
+        lh_df = breakdown_dfs(lh_rois, lh_voxels, sn_list, hemi='lh')
+        rh_df = breakdown_dfs(rh_rois, rh_voxels, sn_list, hemi='rh')
+        all_df = pd.concat((lh_df, rh_df))
+        all_df.to_hdf(output[0], key='stage',mode='w')
+
+rule quantify_value_dataframe:
+    output:
+        os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "{dset}", "fig-medianplot_sub-all_value-{val}_frame-{ref_frame}.hdf")
+    input:
+        os.path.join(config['OUTPUT_DIR'], "dataframes","sfp_maps", "mgzs", "{dset}", "sub-all_value-{val}_frame-{ref_frame}.hdf")
 
 rule precision_v_map:
     input:
@@ -1236,6 +1279,7 @@ rule map_to_fsaverage:
         export SUBJECTS_DIR={params.SUBJECTS_DIR}
         mri_surf2surf --srcsubject {wildcards.sub} --trgsubject fsaverage --hemi {wildcards.hemi} --sval {input.mgz_path} --tval {output}
         """
+
 rule average_subjects:
     output:
         avg_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.avg_space-fsaverage_sub-fsaverage_value-{val}_frame-{ref_frame}.mgz"),
@@ -1338,76 +1382,76 @@ rule visualize_all:
 
 
 ### R2 masking ###
-#
-# ### Precision masking ###
-# rule make_a_precision_mask:
-#     input:
-#         precision=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{mask}.mgz"),
-#     output:
-#         mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_thres-{thres}.mgz"),
-#     run:
-#         from pysurfer.mgz_helper import map_values_as_mgz
-#         from pysurfer.mgz_helper import load_mgzs
-#         varexp_mask = load_mgzs(input.precision, fdata_only=True,squeeze=False)
-#         varexp_mask[varexp_mask < float(wildcards.thres)] = 0
-#         varexp_mask[varexp_mask > float(wildcards.thres)] = 1
-#         map_values_as_mgz(template=input.precision, data=varexp_mask, save_path=output.mask_mgz)
-# ### Precision masking ###
-#
-#
-# rule mask_val_map:
-#     input:
-#         mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_thres-{thres}.mgz"),
-#         val_map=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
-#     output:
-#         masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
-#     run:
-#         from pysurfer.mgz_helper import map_values_as_mgz
-#         from pysurfer.mgz_helper import load_mgzs
-#         varexp_mask = load_mgzs(input.mask_mgz, fdata_only=True, squeeze=False)
-#         val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
-#         val_map[varexp_mask == 0] = np.nan
-#         map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
-#
-#
-# rule mask_all:
-#     input:
-#         expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdysn", "{hemi}.mask-{mask}_sub-{sub}_value-mode_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[0.5], mask=['r2'], ref_frame=['absolute', 'relative']),
-#
-# rule plot_histograms_for_each_ROI:
-#     output:
-#         os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps", "{dset}", "{hemi}.histogram_mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.png"),
-#     input:
-#         lh_masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "lh.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
-#         rh_masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "rh.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
-#     params:
-#         SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-#         labels = ['V1v', 'V1d', 'V2v','V2d', 'V3v','V3d', 'hV4', 'aFFA', 'pFFA', 'PPA']
-#     run:
-#         from pysurfer.mgz_helper import get_vertices_in_labels, read_label, get_existing_labels_only
-#         lh_rois, rh_rois = {}, {}
-#         label_dir = os.path.join(params.SUBJECTS_DIR, wildcards.sub,'label')
-#         lh_labels, lh_label_paths = get_existing_labels_only(params.labels, label_dir, 'lh',return_paths=True)
-#         rh_labels, rh_label_paths = get_existing_labels_only(params.labels, label_dir, 'rh',return_paths=True)
-#
-#         lh_rois[wildcards.sub] = get_vertices_in_labels(input.lh_masked_val_map,lh_label_paths,lh_labels,load_mgz=True,return_label=True)
-#         rh_rois[wildcards.sub] = get_vertices_in_labels(input.rh_masked_val_map,rh_label_paths,rh_labels,load_mgz=True,return_label=True)
-#
-#
-# #TODO: visualize goodness of fit maps
-#
-# rule fsaverage_masked_val_map:
-#     input:
-#         masked_val_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
-#     output:
-#         fsaverage_masked_val_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-precision_space-fsaverage_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
-#     params:
-#         SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer")
-#     shell:
-#         """
-#         export SUBJECTS_DIR={params.SUBJECTS_DIR}
-#         mri_surf2surf --srcsubject {wildcards.sub} --trgsubject fsaverage --hemi {wildcards.hemi} --sval {input.masked_val_map} --tval {output.fsaverage_masked_val_map}
-#         """
+
+### Precision masking ###
+rule make_a_precision_mask:
+    input:
+        precision=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{mask}.mgz"),
+    output:
+        mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_thres-{thres}.mgz"),
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        varexp_mask = load_mgzs(input.precision, fdata_only=True,squeeze=False)
+        varexp_mask[varexp_mask < float(wildcards.thres)] = 0
+        varexp_mask[varexp_mask > float(wildcards.thres)] = 1
+        map_values_as_mgz(template=input.precision, data=varexp_mask, save_path=output.mask_mgz)
+### Precision masking ###
+
+
+rule mask_val_map:
+    input:
+        mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_thres-{thres}.mgz"),
+        val_map=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
+    output:
+        masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        varexp_mask = load_mgzs(input.mask_mgz, fdata_only=True, squeeze=False)
+        val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
+        val_map[varexp_mask == 0] = np.nan
+        map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
+
+
+rule mask_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdysn", "{hemi}.mask-{mask}_sub-{sub}_value-mode_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[0.5], mask=['r2'], ref_frame=['absolute', 'relative']),
+
+rule plot_histograms_for_each_ROI:
+    output:
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps", "{dset}", "{hemi}.histogram_mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.png"),
+    input:
+        lh_masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "lh.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+        rh_masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "rh.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        labels = ['V1v', 'V1d', 'V2v','V2d', 'V3v','V3d', 'hV4', 'aFFA', 'pFFA', 'PPA']
+    run:
+        from pysurfer.mgz_helper import get_vertices_in_labels, read_label, get_existing_labels_only
+        lh_rois, rh_rois = {}, {}
+        label_dir = os.path.join(params.SUBJECTS_DIR, wildcards.sub,'label')
+        lh_labels, lh_label_paths = get_existing_labels_only(params.labels, label_dir, 'lh',return_paths=True)
+        rh_labels, rh_label_paths = get_existing_labels_only(params.labels, label_dir, 'rh',return_paths=True)
+
+        lh_rois[wildcards.sub] = get_vertices_in_labels(input.lh_masked_val_map,lh_label_paths,lh_labels,load_mgz=True,return_label=True)
+        rh_rois[wildcards.sub] = get_vertices_in_labels(input.rh_masked_val_map,rh_label_paths,rh_labels,load_mgz=True,return_label=True)
+
+
+#TODO: visualize goodness of fit maps
+
+rule fsaverage_masked_val_map:
+    input:
+        masked_val_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    output:
+        fsaverage_masked_val_map = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-precision_space-fsaverage_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer")
+    shell:
+        """
+        export SUBJECTS_DIR={params.SUBJECTS_DIR}
+        mri_surf2surf --srcsubject {wildcards.sub} --trgsubject fsaverage --hemi {wildcards.hemi} --sval {input.masked_val_map} --tval {output.fsaverage_masked_val_map}
+        """
 
 rule average_subjects_brain_map:
     input:
