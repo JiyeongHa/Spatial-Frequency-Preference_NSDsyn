@@ -1241,7 +1241,7 @@ rule save_value_for_each_roi_as_a_dataframe:
 
 def combine_ventral_and_dorsal_rois(df, roi):
     # Replace 'V1v' and 'V1d' with 'V1', and 'V2v' and 'V2d' with 'V2'
-    new_col = all_df[roi].replace({'V1v': 'V1', 'V1d': 'V1',
+    new_col = df[roi].replace({'V1v': 'V1', 'V1d': 'V1',
                                   'V2v': 'V2', 'V2d': 'V2',
                                   'V3v': 'V3', 'V3d': 'V3',
                                   'pFFA': 'FFA-1', 'aFFA': 'FFA-2'})
@@ -1249,7 +1249,8 @@ def combine_ventral_and_dorsal_rois(df, roi):
 
 rule quantify_value_dataframe:
     output:
-        os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "{dset}", "fig-medianplot_sub-all_value-{val}_frame-{ref_frame}.hdf")
+        sub_hue=os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "{dset}", "fig-medianplot_hue-sub_sub-all_value-{val}_frame-{ref_frame}.png"),
+        roi_hue=os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "{dset}", "fig-medianplot_hue-roi_sub-all_value-{val}_frame-{ref_frame}.png")
     input:
         os.path.join(config['OUTPUT_DIR'], "dataframes","sfp_maps", "mgzs", "{dset}", "sub-all_value-{val}_frame-{ref_frame}.hdf")
     params:
@@ -1260,14 +1261,23 @@ rule quantify_value_dataframe:
         all_df['ROI'] = combine_ventral_and_dorsal_rois(all_df, 'ROI')
         medians = all_df.groupby(['sub', 'ROI'])['value'].median().reset_index()
         y_label = r"$R^2$"if wildcards.val == 'r2' else wildcards.val
-
+        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',x_order=params.roi_list,
+                                                   hue='sub',
+                                                   hue_order=make_subj_list('nsdsyn'),
+                                                   height=5,
+                                                   y_label=y_label,
+                                                   lgd_title='Subject',
+                                                   save_path=output.sub_hue)
         g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',x_order=params.roi_list,
                                                    hue='ROI',
                                                    hue_order=params.roi_list,
                                                    height=5,
-                                                   y_label=y_label,
                                                    palette=retinotopy_colors(to_seaborn=True),
-                                                   save_path=output[0])
+                                                   save_path=output.roi_hue)
+
+rule fig_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "nsdsyn", "fig-medianplot_hue-sub_sub-all_value-r2_frame-{ref_frame}.png"), ref_frame=['absolute','relative'])
 
 rule precision_v_map:
     input:
