@@ -6,7 +6,7 @@ sys.path.append(config['PYSURFER_DIR'])
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
-mpl.use('svg')
+mpl.use('Agg')
 import pickle
 pickle.HIGHEST_PROTOCOL = 4
 from sfp_nsdsyn import *
@@ -1254,30 +1254,28 @@ rule quantify_value_dataframe:
     input:
         os.path.join(config['OUTPUT_DIR'], "dataframes","sfp_maps", "mgzs", "{dset}", "sub-all_value-{val}_frame-{ref_frame}.hdf")
     params:
-        roi_list=['V1', 'V2', 'V3', 'FFA-1', 'FFA-2', 'hV4', 'PPA']
+        roi_list=['V1', 'V2', 'V3', 'hV4', 'FFA-1', 'FFA-2', 'PPA']
     run:
         # Calculate median values for each subject and ROI
         all_df = pd.read_hdf(input[0], key='stage')
         all_df['ROI'] = combine_ventral_and_dorsal_rois(all_df, 'ROI')
         medians = all_df.groupby(['sub', 'ROI'])['value'].median().reset_index()
         y_label = r"$R^2$"if wildcards.val == 'r2' else wildcards.val
-        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',x_order=params.roi_list,
+        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',
+                                                   x_order=params.roi_list,
                                                    hue='sub',
                                                    hue_order=make_subj_list('nsdsyn'),
                                                    height=5,
                                                    y_label=y_label,
                                                    lgd_title='Subject',
                                                    save_path=output.sub_hue)
-        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',x_order=params.roi_list,
+        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',
+                                                   x_order=params.roi_list,
                                                    hue='ROI',
                                                    hue_order=params.roi_list,
                                                    height=5,
                                                    palette=retinotopy_colors(to_seaborn=True),
                                                    save_path=output.roi_hue)
-
-rule fig_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "nsdsyn", "fig-medianplot_hue-sub_sub-all_value-r2_frame-{ref_frame}.png"), ref_frame=['absolute','relative'])
 
 rule precision_v_map:
     input:
@@ -1383,23 +1381,24 @@ rule r2_mask_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.avg_mask-r2_space-fsaverage_sub-fsaverage_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], thres=[0.3, 0.5, 0.7], ref_frame=['absolute', 'relative'])
 
-rule visualize_r2_mask:
+rule visualize_mgz:
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_avg_mask-r2_space-fsaverage_sub-{sn}_thres-{thres}_frame-{ref_frame}.png"),
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.avg_mask-r2_space-fsaverage_sub-{{sn}}_thres-{{thres}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-{{val}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
     params:
         freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-        rois=['V1v','V1d','V2v','V2d','V3v','V3d','hV4','FFA-1','FFA-2','PPA'],
-        label_colors = retinotopy_colors() + [np.asarray([0,0,0])]*3
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        label_colors = retinotopy_colors(dv_combined=False, category_areas=True, to_seaborn=False) + [np.asarray([0,0,0])]*3
     run:
-        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz, extract_info_from_filename
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
+        from pysurfer.mgz_helper import extract_info_from_filename
         from matplotlib.pyplot import get_cmap
 
         overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('autumn'), val_range=(float(wildcards.thres), 1), n=100, log_scale=False)
         kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
 
-        labels = [f'bin-min-0.5_probmap_{roi}_smooth.label' for roi in params.rois]
+        labels = [f'{roi}.label' for roi in params.rois]
         label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
 
         info = extract_info_from_filename(input[0])
@@ -1409,10 +1408,23 @@ rule visualize_r2_mask:
                  colorscale=True, view=wildcards.view,
                  surf='inflated', save_path=output[0], **kwargs)
 
+rule save_all_subject_figures:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf")
+    input:
+        ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{{view}}_thres-{{thres}}_sub-{sn}_value-{{val}}_frame-{{ref_frame}}.png"), sn=make_subj_list('nsdsyn'))
+    run:
+        from pysurfer.freeview_helper import plot_freeview_ss_two_rows
+        from pysurfer.mgz_helper import extract_info_from_filename
+        sn_list = [extract_info_from_filename(sn, 'sub')['sub'] for sn in input.ss]
+        plot_freeview_ss_two_rows(input.ss,
+                                  sn_list,
+                                  suptitle=wildcards.val,
+                                  save_path=output[0], dpi=500)
 
 rule visualize_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_avg_mask-r2_space-fsaverage_sub-fsaverage_thres-0.5_frame-{ref_frame}.png"), view=['posterior','inferior'], ref_frame=['absolute', 'relative'])
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf"), view=['inferior'],  val='r2', thres=['0.2'], ref_frame=['absolute'])
 
 
 ### R2 masking ###
@@ -1446,7 +1458,6 @@ rule mask_val_map:
         val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
         val_map[varexp_mask == 0] = np.nan
         map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
-
 
 rule mask_all:
     input:

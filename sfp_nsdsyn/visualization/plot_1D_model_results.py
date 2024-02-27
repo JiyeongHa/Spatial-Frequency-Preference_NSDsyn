@@ -282,9 +282,7 @@ def plot_median_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
     sns.set_context("notebook", font_scale=1.5, rc=rc)
     grid = sns.FacetGrid(df,
                          col=col, col_wrap=col_wrap,
-                         hue=hue,
-                         hue_order=hue_order,
-                         height=height,
+                         height=height, hue=hue, hue_order=hue_order,
                          aspect=1.6,
                          sharex=True, sharey=True, **kwargs)
     g = grid.map(sns.stripplot, x, y,
