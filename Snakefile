@@ -1334,20 +1334,6 @@ rule fsaverage_all:
         expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.avg_space-fsaverage_sub-fsaverage_value-{val}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['r2'], ref_frame=['absolute']),
         #expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.mask-precision_space-fsaverage_sub-fsaverage_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[0,2,4,6,8], val=['mode','r2','rmse'], ref_frame=['absolute', 'relative'])
 
-### R2 masking ###
-rule make_a_r2_mask:
-    output:
-        mask_mgz=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-r2_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
-    input:
-        varexp = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.sub-{sub}_value-r2_frame-{ref_frame}.mgz"),
-    run:
-        from pysurfer.mgz_helper import map_values_as_mgz
-        from pysurfer.mgz_helper import load_mgzs
-        varexp_mask = load_mgzs(input.varexp, fdata_only=True,squeeze=False)
-        varexp_mask[varexp_mask < float(wildcards.thres)] = 0
-        varexp_mask[varexp_mask > float(wildcards.thres)] = 1
-        map_values_as_mgz(template=input.varexp, data=varexp_mask, save_path=output.mask_mgz)
-
 rule r2_mask_to_fsaverage:
     output:
         fsaverage_mask_mgz=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-r2_space-fsaverage_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
@@ -1389,6 +1375,111 @@ rule visualize_mgz:
     params:
         freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
         rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        label_colors = retinotopy_colors(dv_combined=False, category_areas=False, to_seaborn=False) + [np.asarray([0,0,0])]*3
+    run:
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
+        from pysurfer.mgz_helper import extract_info_from_filename
+        from matplotlib.pyplot import get_cmap
+
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('autumn'), val_range=(float(wildcards.thres), 1), n=100, log_scale=False)
+        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
+
+        labels = [f'{roi}.label' for roi in params.rois]
+        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
+
+        info = extract_info_from_filename(input[0])
+        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
+                 overlay=info['overlay'], overlay_dir=info['folder'],
+                 labels=labels, label_dir=label_dir, label_colors=params.label_colors,
+                 colorscale=True, view=wildcards.view,
+                 surf='inflated', save_path=output[0], **kwargs)
+
+
+rule visualize_precision_mgz:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_upthres-{thres}_sub-{sn}_value-precision.png"),
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-precision.mgz"), hemi=['lh','rh'])
+    params:
+        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        label_colors =  [np.asarray([0,0,0])]*10
+    run:
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
+        from pysurfer.mgz_helper import extract_info_from_filename
+        from matplotlib.pyplot import get_cmap
+
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('turbo'), val_range=(1, float(wildcards.thres)), n=200, log_scale=False)
+        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
+
+        labels = [f'{roi}.label' for roi in params.rois]
+        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
+
+        info = extract_info_from_filename(input[0])
+        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
+                 overlay=info['overlay'], overlay_dir=info['folder'],
+                 labels=labels, label_dir=label_dir, label_colors=params.label_colors,
+                 colorscale=True, view=wildcards.view,
+                 surf='inflated', save_path=output[0], **kwargs)
+
+rule precision_visualize_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_upthres-{thres}_sub-{sn}_value-precision.png"), view=['inferior','posterior'], thres=[50], sn=make_subj_list('nsdsyn'))
+
+rule save_all_subject_figures:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf")
+    input:
+        ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{{view}}_thres-{{thres}}_sub-{sn}_value-{{val}}_frame-{{ref_frame}}.png"), sn=make_subj_list('nsdsyn'))
+    run:
+        from pysurfer.freeview_helper import plot_freeview_ss_two_rows
+        from pysurfer.mgz_helper import extract_info_from_filename
+        sn_list = [extract_info_from_filename(sn, 'sub')['sub'] for sn in input.ss]
+        plot_freeview_ss_two_rows(input.ss,
+                                  sn_list,
+                                  suptitle=wildcards.val,
+                                  save_path=output[0], dpi=500)
+
+rule make_a_val_mask:
+    output:
+        mask_mgz=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-{val}_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
+    input:
+        varexp = os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        varexp_mask = load_mgzs(input.varexp, fdata_only=True,squeeze=False)
+        varexp_mask[varexp_mask < float(wildcards.thres)] = 0
+        varexp_mask[varexp_mask > float(wildcards.thres)] = 1
+        map_values_as_mgz(template=input.varexp, data=varexp_mask, save_path=output.mask_mgz)
+
+rule mask_val_map:
+    input:
+        mask_mgz=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-{mask}_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
+        val_map=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
+    output:
+        masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+    run:
+        from pysurfer.mgz_helper import map_values_as_mgz
+        from pysurfer.mgz_helper import load_mgzs
+        varexp_mask = load_mgzs(input.mask_mgz, fdata_only=True, squeeze=False)
+        val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
+        val_map[varexp_mask == 0] = np.nan
+        map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
+
+rule mask_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.mask-{mask}_sub-{sub}_value-mode_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], mask='r2', sub=make_subj_list('nsdsyn'), thres=[0.2], ref_frame=['absolute']),
+
+#TODO: fine tuning the overlay custom color values
+rule visualize_masked_mgz:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","view-{view}_mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.png"),
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{{dset}}", "{hemi}.mask-{{mask}}_sub-{{sub}}_value-{{val}}_thres-{{thres}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
+    params:
+        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
         label_colors = retinotopy_colors(dv_combined=False, category_areas=True, to_seaborn=False) + [np.asarray([0,0,0])]*3
     run:
         from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
@@ -1408,27 +1499,6 @@ rule visualize_mgz:
                  colorscale=True, view=wildcards.view,
                  surf='inflated', save_path=output[0], **kwargs)
 
-rule save_all_subject_figures:
-    output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf")
-    input:
-        ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{{view}}_thres-{{thres}}_sub-{sn}_value-{{val}}_frame-{{ref_frame}}.png"), sn=make_subj_list('nsdsyn'))
-    run:
-        from pysurfer.freeview_helper import plot_freeview_ss_two_rows
-        from pysurfer.mgz_helper import extract_info_from_filename
-        sn_list = [extract_info_from_filename(sn, 'sub')['sub'] for sn in input.ss]
-        plot_freeview_ss_two_rows(input.ss,
-                                  sn_list,
-                                  suptitle=wildcards.val,
-                                  save_path=output[0], dpi=500)
-
-rule visualize_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf"), view=['inferior'],  val='r2', thres=['0.2'], ref_frame=['absolute'])
-
-
-### R2 masking ###
-
 ### Precision masking ###
 rule make_a_precision_mask:
     input:
@@ -1444,24 +1514,6 @@ rule make_a_precision_mask:
         map_values_as_mgz(template=input.precision, data=varexp_mask, save_path=output.mask_mgz)
 ### Precision masking ###
 
-
-rule mask_val_map:
-    input:
-        mask_mgz=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_thres-{thres}.mgz"),
-        val_map=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
-    output:
-        masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
-    run:
-        from pysurfer.mgz_helper import map_values_as_mgz
-        from pysurfer.mgz_helper import load_mgzs
-        varexp_mask = load_mgzs(input.mask_mgz, fdata_only=True, squeeze=False)
-        val_map = load_mgzs(input.val_map, fdata_only=True,squeeze=False)
-        val_map[varexp_mask == 0] = np.nan
-        map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
-
-rule mask_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdysn", "{hemi}.mask-{mask}_sub-{sub}_value-mode_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), thres=[0.5], mask=['r2'], ref_frame=['absolute', 'relative']),
 
 rule plot_histograms_for_each_ROI:
     output:
