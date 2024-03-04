@@ -1424,13 +1424,27 @@ rule visualize_precision_mgz:
 
 rule precision_visualize_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_upthres-{thres}_sub-{sn}_value-precision.png"), view=['inferior','posterior'], thres=[50], sn=make_subj_list('nsdsyn'))
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_upthres-50_value-precision.pdf"), view=['inferior','posterior'],  sn=make_subj_list('nsdsyn'))
 
-rule save_all_subject_figures:
+rule save_all_subject_r2_figures:
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf")
     input:
         ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{{view}}_thres-{{thres}}_sub-{sn}_value-{{val}}_frame-{{ref_frame}}.png"), sn=make_subj_list('nsdsyn'))
+    run:
+        from pysurfer.freeview_helper import plot_freeview_ss_two_rows
+        from pysurfer.mgz_helper import extract_info_from_filename
+        sn_list = [extract_info_from_filename(sn, 'sub')['sub'] for sn in input.ss]
+        plot_freeview_ss_two_rows(input.ss,
+                                  sn_list,
+                                  suptitle=wildcards.val,
+                                  save_path=output[0], dpi=500)
+
+rule save_all_subject_precision_figures:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_upthres-{thres}_value-{val}.pdf")
+    input:
+        ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{{view}}_upthres-{{thres}}_sub-{sn}_value-{{val}}.png"), sn=make_subj_list('nsdsyn'))
     run:
         from pysurfer.freeview_helper import plot_freeview_ss_two_rows
         from pysurfer.mgz_helper import extract_info_from_filename
