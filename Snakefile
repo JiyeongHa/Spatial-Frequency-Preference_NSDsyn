@@ -1277,6 +1277,71 @@ rule quantify_value_dataframe:
                                                    palette=retinotopy_colors(to_seaborn=True),
                                                    save_path=output.roi_hue)
 
+
+rule save_precision_for_each_roi_as_a_dataframe:
+    output:
+        os.path.join(config['OUTPUT_DIR'], "dataframes","sfp_maps", "mgzs", "{dset}", "sub-all_value-{val}.hdf")
+    input:
+        lh_mgzs = expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","lh.sub-{sub}_value-{{val}}.mgz"), sub=make_subj_list('nsdsyn')),
+        rh_mgzs= expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","rh.sub-{sub}_value-{{val}}.mgz"),sub=make_subj_list('nsdsyn'))
+    params:
+        SUBJECTS_DIR=os.path.join(config['NSD_DIR'],"nsddata","freesurfer"),
+        roi_list=['V1v', 'V1d', 'V2v','V2d', 'V3v','V3d', 'hV4', 'pFFA','aFFA','PPA']
+    run:
+        from pysurfer.mgz_helper import extract_info_from_filename, get_vertices_in_labels, get_existing_labels_only
+        lh_rois, lh_voxels = {}, {}
+        rh_rois, rh_voxels = {}, {}
+        sn_list = []
+        for lh_mgz in input.lh_mgzs:
+            info = extract_info_from_filename(lh_mgz, *['sub'])
+            sn=info['sub']
+            label_dir = os.path.join(params.SUBJECTS_DIR, sn, 'label')
+            lh_labels, lh_label_paths = get_existing_labels_only(params.roi_list, label_dir, 'lh',return_paths=True)
+            lh_rois[sn], lh_voxels[sn] = get_vertices_in_labels(lh_mgz, lh_label_paths, lh_labels, load_mgz=True,return_label=True)
+            sn_list.append(sn)
+        for rh_mgz in input.rh_mgzs:
+            info = extract_info_from_filename(rh_mgz, *['sub'])
+            sn=info['sub']
+            label_dir = os.path.join(params.SUBJECTS_DIR, sn, 'label')
+            rh_labels, rh_label_paths = get_existing_labels_only(params.roi_list, label_dir, 'rh',return_paths=True)
+            rh_rois[sn], rh_voxels[sn] = get_vertices_in_labels(rh_mgz, rh_label_paths, rh_labels, load_mgz=True,return_label=True)
+
+        lh_df = breakdown_dfs(lh_rois, lh_voxels, sn_list, hemi='lh')
+        rh_df = breakdown_dfs(rh_rois, rh_voxels, sn_list, hemi='rh')
+        all_df = pd.concat((lh_df, rh_df))
+        all_df.to_hdf(output[0], key='stage',mode='w')
+
+rule quantify_precision_dataframe:
+    output:
+        sub_hue=os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "{dset}", "fig-medianplot_hue-sub_sub-all_value-{val}.png"),
+        roi_hue=os.path.join(config['OUTPUT_DIR'], "figures","sfp_maps", "mgzs", "{dset}", "fig-medianplot_hue-roi_sub-all_value-{val}.png")
+    input:
+        os.path.join(config['OUTPUT_DIR'], "dataframes","sfp_maps", "mgzs", "{dset}", "sub-all_value-{val}.hdf")
+    params:
+        roi_list=['V1', 'V2', 'V3', 'hV4', 'FFA-1', 'FFA-2', 'PPA']
+    run:
+        # Calculate median values for each subject and ROI
+        all_df = pd.read_hdf(input[0], key='stage')
+        all_df['ROI'] = combine_ventral_and_dorsal_rois(all_df, 'ROI')
+        medians = all_df.groupby(['sub', 'ROI'])['value'].median().reset_index()
+        y_label = r"$R^2$"if wildcards.val == 'r2' else wildcards.val.title()
+        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',
+                                                   x_order=params.roi_list,
+                                                   hue='sub',
+                                                   hue_order=make_subj_list('nsdsyn'),
+                                                   height=5,
+                                                   y_label=y_label,
+                                                   lgd_title='Subject',
+                                                   save_path=output.sub_hue)
+        g = vis1D.plot_median_for_each_sub_and_roi(medians,'ROI','value',
+                                                   x_order=params.roi_list,
+                                                   hue='ROI',
+                                                   hue_order=params.roi_list,
+                                                   height=5,
+                                                   palette=retinotopy_colors(to_seaborn=True),
+                                                   save_path=output.roi_hue)
+
+
 rule precision_v_map:
     input:
         design_mat=os.path.join(config['NSD_DIR'],'nsddata','experiments','nsdsynthetic','nsdsynthetic_expdesign.mat'),
@@ -1529,7 +1594,7 @@ rule make_a_precision_mask:
 ### Precision masking ###
 
 
-rule plot_histograms_for_each_ROI:
+rule dataframes_for_each_ROI:
     output:
         os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps", "{dset}", "{hemi}.histogram_mask-precision_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.png"),
     input:

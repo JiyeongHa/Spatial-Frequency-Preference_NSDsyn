@@ -271,7 +271,7 @@ def plot_median_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
                                      hue=None, hue_order=None,
                                      lgd_title=None,
                                      height=5, col=None, col_wrap=None,
-                                     save_path=None,
+                                     save_path=None, ylim=None,
                                      **kwargs):
     # Plot
     rc = {'axes.labelpad': 15}
@@ -291,7 +291,8 @@ def plot_median_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
                  marker='o', size=8, edgecolor='gray', linewidth=0.5)
     y_label = y_label if y_label else y
     grid.set_axis_labels('Regions of Interest (ROI)', y_label)
-    g.set(ylim=(-0.1, 1))
+    if ylim is not None:
+        g.set(ylim=ylim)
     if lgd_title is not None:
         g.add_legend(title=lgd_title, loc='upper right')
     utils.save_fig(save_path)
