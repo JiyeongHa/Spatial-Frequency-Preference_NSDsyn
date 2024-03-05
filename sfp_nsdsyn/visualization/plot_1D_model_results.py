@@ -266,6 +266,36 @@ def plot_dots(df, y, col, hue, lgd_title, height=5, save_path=None):
     grid.fig.legend(title=lgd_title, labels=df[hue].unique())
     plt.xscale('log')
 
+def plot_histogram_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
+                                     hue=None, hue_order=None,
+                                     lgd_title=None,
+                                     height=5, col=None, col_wrap=None,
+                                     save_path=None, ylim=None,
+                                     **kwargs):
+    # Plot
+    rc = {'axes.labelpad': 15}
+    rc.update({'font.family': 'sans-serif',
+          'font.sans-serif': ['HelveticaNeue', 'Helvetica', 'Arial'],
+          'lines.linewidth': 2})
+    utils.set_rcParams(rc)
+    sns.set_context("notebook", font_scale=1.5, rc=rc)
+    grid = sns.FacetGrid(df,
+                         col=col, col_wrap=col_wrap,
+                         height=height, hue=hue, hue_order=hue_order,
+                         aspect=1.6,
+                         sharex=True, sharey=True, **kwargs)
+    g = grid.map(sns.stripplot, x, y,
+                 order=x_order,
+                 jitter=True, dodge=True,
+                 marker='o', size=8, edgecolor='gray', linewidth=0.5)
+    y_label = y_label if y_label else y
+    grid.set_axis_labels('Regions of Interest (ROI)', y_label)
+    if ylim is not None:
+        g.set(ylim=ylim)
+    if lgd_title is not None:
+        g.add_legend(title=lgd_title, loc='upper right')
+    utils.save_fig(save_path)
+    return g
 
 def plot_median_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
                                      hue=None, hue_order=None,
