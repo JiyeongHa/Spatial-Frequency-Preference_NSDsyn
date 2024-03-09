@@ -249,7 +249,7 @@ def _cast_as_param(x, requires_grad=True):
 class LogGaussianTuningModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        self.amp = _cast_as_param(np.random.random(1))
+        self.slope = _cast_as_param(np.random.random(1))
         self.mode = _cast_as_param(np.random.random(1) + 0.5)
         self.sigma = _cast_as_param(np.random.random(1) + 0.5)
 
@@ -259,7 +259,7 @@ class LogGaussianTuningModel(torch.nn.Module):
         # note that mode here is the actual mode, for us, the peak spatial frequency. this differs from
         # the 2d version we have, where we we have np.log2(x)+np.log2(p), so that p is the inverse of
         # the preferred period, the inverse of the mode / the peak spatial frequency.
-        pdf = self.amp * torch.exp(-(torch.log2(x) - torch.log2(self.mode)) ** 2 / (2 * self.sigma ** 2))
+        pdf = self.slope * torch.exp(-(torch.log2(x) - torch.log2(self.mode)) ** 2 / (2 * self.sigma ** 2))
         return torch.clamp(pdf, min=1e-6)
 
 
@@ -403,7 +403,7 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
 
 def _get_x_and_y_prediction(min, max, fnl_param_df):
     x = np.linspace(min, max, 100)
-    y = [np_log_norm_pdf(k, fnl_param_df['amp'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
+    y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
          k in x]
     return x, y
 
@@ -531,7 +531,7 @@ def load_history_files(file_list, *args):
 
 def load_LogGaussianTuningModel(pt_file_path):
     my_model = LogGaussianTuningModel()
-    my_model.load_state_dict(torch.load(pt_file_path))
+    my_model.load_state_dict(torch.load(pt_file_path, map_location='cpu'))
     my_model.eval()
     return my_model
 

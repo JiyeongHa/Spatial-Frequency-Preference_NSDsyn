@@ -5,6 +5,7 @@ import pandas as pd
 sys.path.append('/Users/jh7685/Documents/Projects/pysurfer')
 from pysurfer import mgz_helper as fs
 from scipy.stats import f_oneway
+from itertools import product
 from sfp_nsdsyn import preprocessing as prep
 
 def get_whole_brain_betas(betas_path, design_mat_path,
@@ -79,3 +80,29 @@ def map_stats_as_mgz(template, data, save_path=None):
                        affine=template_mgz.affine,
                        save_path=save_path)
     return stat_mgz
+def breakdown_dfs(value_dict, voxel_dict, sn_list):
+    hemi_df = pd.DataFrame({})
+    for sn, hemi in product(sn_list, ['lh', 'rh']):
+        k = f'{sn}-{hemi}'
+        for roi in value_dict[k].keys():
+            tmp = pd.DataFrame({})
+            tmp['value'] = value_dict[k][roi]
+            tmp['voxel'] = voxel_dict[k][roi]
+            tmp['ROI'] = roi
+            tmp['hemi'] = hemi
+            tmp['sub'] = sn
+            hemi_df = pd.concat((hemi_df, tmp))
+    return hemi_df
+
+def extract_roi_values(labels, label_dir, mgz, hemi=None):
+    from pysurfer.mgz_helper import get_existing_labels_only, get_vertices_in_labels
+    if hemi is None:
+        hemi = mgz.split('/')[-1][:2]
+    hemi_labels, hemi_label_paths = get_existing_labels_only(labels, label_dir, hemi, return_paths=True)
+    hemi_rois, hemi_voxels = get_vertices_in_labels(mgz,
+                                                    hemi_label_paths,
+                                                    hemi_labels,
+                                                    load_mgz=True,
+                                                    return_label=True)
+
+    return hemi_rois, hemi_voxels

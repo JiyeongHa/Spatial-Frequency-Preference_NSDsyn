@@ -1365,6 +1365,119 @@ rule precision_v_map:
         sigma_v = bts.get_sigma_v_for_whole_brain(betas_df, betas='normed_betas', class_list=None, sigma_power=2)
         map_values_as_mgz(input.eccentricity, 1/sigma_v, save_path=output[0])
 
+def custom_colormap():
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LinearSegmentedColormap
+
+    # Define the colors and their positions along the color gradient
+    colors = [(1, 0, 0), (0.9, 0.1, 0), (0.9, 0.2, 0), (0.8, 0.3, 0), (0.9, 0.6, 0), (0.9, 0.8, 0),
+              (1, 1, 0)]  # Red, Orange, Yellow
+    positions = [0, 0.1, 0.2, 0.5, 0.8, 1]  # Positions corresponding to each color
+
+    # Create the custom colormap
+    custom_cmap = LinearSegmentedColormap.from_list("RedOrangeYellow",list(zip(positions,colors)))
+    return custom_cmap
+
+rule freeview_precision_mgz:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "precision", "view-{view}_thres-{downthres}_sub-{sn}_value-precision.png"),
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-precision.mgz"), hemi=['lh','rh'])
+    params:
+        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+    run:
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
+        from pysurfer.mgz_helper import extract_info_from_filename
+        from matplotlib.pyplot import get_cmap
+        label_colors = [np.asarray([255,255,255])] * len(params.rois)
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('plasma'), val_range=(float(wildcards.downthres), 70), n=100, log_scale=False)
+        #overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('custom_cmap'), val_range=(float(wildcards.downthres), 200), n=300, log_scale=False)
+        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom, 'overlay_opacity': 0.95}
+
+        labels = [f'{roi}.label' for roi in params.rois]
+        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
+
+        info = extract_info_from_filename(input[0])
+        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
+                 overlay=info['overlay'], overlay_dir=info['folder'],
+                 labels=labels, label_dir=label_dir, label_colors=label_colors,
+                 colorscale=True, view=wildcards.view,
+                 surf='inflated', save_path=output[0], **kwargs)
+
+rule freeview_val_mgz:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "{val}", "view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-{{val}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
+    params:
+        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+    run:
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
+        from pysurfer.mgz_helper import extract_info_from_filename
+        from matplotlib.pyplot import get_cmap
+        label_colors = retinotopy_colors(params.rois, all_black=True)
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('autumn'), val_range=(float(wildcards.thres), 1), n=100, log_scale=False)
+        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
+
+        labels = [f'{roi}.label' for roi in params.rois]
+        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
+
+        info = extract_info_from_filename(input[0])
+        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
+                 overlay=info['overlay'], overlay_dir=info['folder'],
+                 labels=labels, label_dir=label_dir, label_colors=label_colors,
+                 colorscale=True, view=wildcards.view,
+                 surf='inflated', save_path=output[0], **kwargs)
+
+
+rule visualize_all:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "{val}", "view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"), view=['posterior','inferior'], thres=[0.3, 0.2], val=['r2'], ref_frame=['absolute'], sn=make_subj_list('nsdsyn')),
+        b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "precision", "view-{view}_thres-{downthres}_sub-{sn}_value-precision.png"), view=['posterior','inferior'], downthres=[2], sn=make_subj_list('nsdsyn')),
+        #c = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "masks", "view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png"), view=['posterior','inferior'], r2thres=[0.3, 0.2], precisionthres=[2], ref_frame=['absolute','relative'], sn=make_subj_list('nsdsyn')),
+        #d = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "masking_process", "view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png"), view=['posterior','inferior'], r2thres=[0.3, 0.2], precisionthres=[2], ref_frame=['absolute'], sn=make_subj_list('nsdsyn'))
+
+rule visualize_intersection_mask:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","masks","view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png"),
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","{hemi}.mask-intersection_r2thres-{{r2thres}}_precisionthres-{{precisionthres}}_sub-{{sn}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
+    params:
+        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+    run:
+        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz, retinotopy_colors
+        from pysurfer.mgz_helper import extract_info_from_filename
+        #label_colors =  [np.asarray([0, 0, 0])] * 7 + retinotopy_colors(['FFA-1','FFA-2','PPA']) +[np.asarray([30,30,30])] * 4
+        label_colors = retinotopy_colors(params.rois[:-3], all_black=True)
+        label_colors += retinotopy_colors(params.rois[-3:], all_black=False)
+        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_opacity': 0.8}
+        labels = [f'{roi}.label' for roi in params.rois]
+        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
+
+        info = extract_info_from_filename(input[0])
+        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
+                 overlay=info['overlay'], overlay_dir=info['folder'],
+                 labels=labels, label_dir=label_dir, label_colors=label_colors,
+                 colorscale=False, view=wildcards.view,
+                 surf='inflated', save_path=output[0], **kwargs)
+#
+rule visualize_masking_process:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss", "masking_process", "view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png"),
+    input:
+        precision_ss=os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","precision", "view-{view}_thres-{precisionthres}_sub-{sn}_value-precision.png"),
+        r2_ss=os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss", "r2", "view-{view}_thres-{r2thres}_sub-{sn}_value-r2_frame-{ref_frame}.png"),
+        intersection_ss=os.path.join(config['OUTPUT_DIR'], "figures", "sfp_maps","mgzs","{dset}","ss", "masks", "view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png")
+    run:
+        from pysurfer.freeview_helper import plot_freeview_ss
+        n_cols=3
+        cols=[input.precision_ss, input.r2_ss, input.intersection_ss]
+        col_titles=['Precision', r"$R^2$", 'Intersection mask']
+        plot_freeview_ss(3,cols, col_titles, suptitle=wildcards.sn, dpi=500, save_path=output[0])
+
 rule make_a_precision_mask:
     input:
         precision=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{mask}.mgz"),
@@ -1377,39 +1490,6 @@ rule make_a_precision_mask:
         varexp_mask[varexp_mask < float(wildcards.thres)] = 0
         varexp_mask[varexp_mask > float(wildcards.thres)] = 1
         map_values_as_mgz(template=input.precision, data=varexp_mask, save_path=output.mask_mgz)
-
-rule visualize_precision_mgz:
-    output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_downthres-{downthres}_upthres-{upthres}_sub-{sn}_value-precision.png"),
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-precision.mgz"), hemi=['lh','rh'])
-    params:
-        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
-        label_colors =  [np.asarray([0,0,0])]*10
-    run:
-        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
-        from pysurfer.mgz_helper import extract_info_from_filename
-        from matplotlib.pyplot import get_cmap
-
-        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('turbo'), val_range=(float(wildcards.downthres), float(wildcards.upthres)), n=200, log_scale=False)
-        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
-
-        labels = [f'{roi}.label' for roi in params.rois]
-        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
-
-        info = extract_info_from_filename(input[0])
-        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
-                 overlay=info['overlay'], overlay_dir=info['folder'],
-                 labels=labels, label_dir=label_dir, label_colors=params.label_colors,
-                 colorscale=True, view=wildcards.view,
-                 surf='inflated', save_path=output[0], **kwargs)
-
-
-rule r2_mask_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.avg_mask-r2_space-fsaverage_sub-fsaverage_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], thres=[0.3, 0.5, 0.7], ref_frame=['absolute', 'relative'])
-
 
 rule make_a_val_mask:
     output:
@@ -1438,73 +1518,9 @@ rule make_a_intersection_mask:
         intersection_mask = r2_mask & precision_mask
         map_values_as_mgz(template=input.r2, data=intersection_mask, save_path=output.intersection_mask)
 
-
-# Define a Python function to generate label colors based on the length of rois
-def generate_label_colors(rois):
-    return [np.asarray([0, 0, 0])] * len(rois)
-
-rule visualize_intersection_mask:
-    output:
-        #roi_all = os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss", "masks", "view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png"),
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","masks","view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_frame-{ref_frame}.png"),
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{{dset}}","{hemi}.mask-intersection_r2thres-{{r2thres}}_precisionthres-{{precisionthres}}_sub-{{sn}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
-    params:
-        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
-    run:
-        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz, retinotopy_colors
-        from pysurfer.mgz_helper import extract_info_from_filename
-        #label_colors =  [np.asarray([0, 0, 0])] * 7 + retinotopy_colors(['FFA-1','FFA-2','PPA']) +[np.asarray([30,30,30])] * 4
-        label_colors = retinotopy_colors(params.rois[:-3], all_black=True)
-        label_colors += retinotopy_colors(params.rois[-3:], all_black=False)
-        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_opacity': 0.8}
-        labels = [f'{roi}.label' for roi in params.rois]
-        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
-
-        info = extract_info_from_filename(input[0])
-        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
-                 overlay=info['overlay'], overlay_dir=info['folder'],
-                 labels=labels, label_dir=label_dir, label_colors=label_colors,
-                 colorscale=False, view=wildcards.view,
-                 surf='inflated', save_path=output[0], **kwargs)
-#
-# rule visualize_precision_r2_and_intersection:
-#
-
-
 rule intersection_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sub}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], r2thres=[0.2], sub=make_subj_list('nsdsyn'), precisionthres=[1,2,3], ref_frame=['absolute', 'relative'])
-
-rule visualize_mgz:
-    output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-{{val}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
-    params:
-        freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
-        label_colors = [np.asarray([0,0,0])]*10
-    run:
-        from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
-        from pysurfer.mgz_helper import extract_info_from_filename
-        from matplotlib.pyplot import get_cmap
-
-        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('autumn'), val_range=(float(wildcards.thres), 1), n=100, log_scale=False)
-        kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
-
-        labels = [f'{roi}.label' for roi in params.rois]
-        label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
-
-        info = extract_info_from_filename(input[0])
-        plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
-                 overlay=info['overlay'], overlay_dir=info['folder'],
-                 labels=labels, label_dir=label_dir, label_colors=params.label_colors,
-                 colorscale=True, view=wildcards.view,
-                 surf='inflated', save_path=output[0], **kwargs)
-
-
 
 rule precision_visualize_all:
     input:
