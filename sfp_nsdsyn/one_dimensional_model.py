@@ -606,7 +606,7 @@ def calculate_goodness_of_fit(p_opt, df, x, y):
     return r_squared, rmse
 
 def plot_logGaussian_fit(df, x, y, p_opt, ax=None,
-                         x_label='local sf', ax_title=None):
+                         x_label='base frequency', ax_title=None):
     tmp = df.sort_values(x)
     new_x_vals = np.logspace(np.log10(tmp[x].min()), np.log10(tmp[x].max()), 100)
     y_pred = np_log_norm_pdf(new_x_vals,
@@ -617,11 +617,11 @@ def plot_logGaussian_fit(df, x, y, p_opt, ax=None,
         fig, ax = plt.subplots()
     # Plot the data and the fitted curve on the provided Axes object
     ax.plot(tmp[x], tmp[y], 'o', label='data', color='black')
-    ax.plot(new_x_vals, y_pred, label='fit', color='r')
+    ax.plot(new_x_vals, y_pred, label='fit', linewidth=2, color='r')
     ax.set_xscale('log')
     ax.set_xlabel(x_label)
     ax.set_ylabel('betas')
     ax.set_title(ax_title)
-    ax.legend()
+    #ax.legend()
     plt.tight_layout()
     return ax

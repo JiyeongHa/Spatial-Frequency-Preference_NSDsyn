@@ -1380,12 +1380,13 @@ def custom_colormap():
 
 rule freeview_precision_mgz:
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "precision", "view-{view}_thres-{downthres}_sub-{sn}_value-precision.png"),
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "precision", "roi-wang_view-{view}_thres-{downthres}_sub-{sn}_value-precision.png"),
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-precision.mgz"), hemi=['lh','rh'])
     params:
         freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        #rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        rois=['V1v','V1d','V2v','V2d','V3v','V3d','hV4','wangVO1','wangVO2','wangPHC1','wangPHC2','PPA']
     run:
         from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
         from pysurfer.mgz_helper import extract_info_from_filename
@@ -1407,12 +1408,14 @@ rule freeview_precision_mgz:
 
 rule freeview_val_mgz:
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "{val}", "view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
+        #os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "{val}", "view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","{val}","roi-wang_view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.sub-{{sn}}_value-{{val}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
     params:
         freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
-        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        #rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4', 'wangVO1','wangVO2','wangPHC1', 'wangPHC2', 'PPA']
     run:
         from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
         from pysurfer.mgz_helper import extract_info_from_filename
@@ -1431,6 +1434,10 @@ rule freeview_val_mgz:
                  colorscale=True, view=wildcards.view,
                  surf='inflated', save_path=output[0], **kwargs)
 
+rule freeview_www:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","{val}","roi-wang_view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"), view=['inferior'], thres=[0.3], val=['r2'], ref_frame=['absolute'], sn=['subj01','subj03','subj07']),
+        b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "precision", "roi-wang_view-{view}_thres-2_sub-{sn}_value-precision.png"), view=['inferior'], ref_frame=['absolute'], sn=['subj01', 'subj03', 'subj07']),
 
 rule visualize_all:
     input:
@@ -1518,14 +1525,6 @@ rule make_a_intersection_mask:
         intersection_mask = r2_mask & precision_mask
         map_values_as_mgz(template=input.r2, data=intersection_mask, save_path=output.intersection_mask)
 
-rule intersection_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","nsdsyn","{hemi}.mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sub}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], r2thres=[0.2], sub=make_subj_list('nsdsyn'), precisionthres=[1,2,3], ref_frame=['absolute', 'relative'])
-
-rule precision_visualize_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_upthres-50_value-precision.pdf"), view=['inferior','posterior'],  sn=make_subj_list('nsdsyn'))
-
 rule save_all_subject_r2_figures:
     output:
         os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf")
@@ -1555,26 +1554,12 @@ rule save_all_subject_precision_figures:
                                   save_path=output[0], dpi=500)
 
 
-rule save_all_subject_sfp_figures:
-    output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","allsub_view-{view}_log-True_mask-{mask}_thres-{thres}_value-{val}_frame-{ref_frame}.pdf")
-    input:
-        ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{{view}}_log-True_mask-{{mask}}_sub-{sn}_value-{{val}}_thres-{{thres}}_frame-{{ref_frame}}.png"), sn=make_subj_list('nsdsyn'))
-    run:
-        from pysurfer.freeview_helper import plot_freeview_ss_two_rows
-        from pysurfer.mgz_helper import extract_info_from_filename
-        sn_list = [extract_info_from_filename(sn, 'sub')['sub'] for sn in input.ss]
-        plot_freeview_ss_two_rows(input.ss,
-                                  sn_list,
-                                  suptitle=wildcards.val,
-                                  save_path=output[0], dpi=500)
-
 rule mask_val_map:
     input:
-        mask_mgz=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-{mask}_sub-{sub}_thres-{thres}_frame-{ref_frame}.mgz"),
+        mask_mgz=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}","{hemi}.mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sub}_frame-{ref_frame}.mgz"),
         val_map=os.path.join(config['OUTPUT_DIR'],"sfp_maps","mgzs","{dset}", "{hemi}.sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
     output:
-        masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"),
+        masked_val_map=os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"),
     run:
         from pysurfer.mgz_helper import map_values_as_mgz
         from pysurfer.mgz_helper import load_mgzs
@@ -1583,32 +1568,28 @@ rule mask_val_map:
         val_map[varexp_mask == 0] = np.nan
         map_values_as_mgz(template=input.val_map, data=val_map, save_path=output.masked_val_map)
 
-rule mask_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "nsdsyn", "{hemi}.mask-{mask}_sub-{sub}_value-{val}_thres-{thres}_frame-{ref_frame}.mgz"), hemi=['lh','rh'], mask='r2', val='mode', sub=make_subj_list('nsdsyn'), thres=[0.2], ref_frame=['absolute','relative']),
-
-
-
 rule visualize_masked_mgz:
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","view-{view}_log-{logscale}_mask-{mask}_sub-{sn}_value-{val}_thres-{thres}_frame-{ref_frame}.png"),
+        #wang = os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","base-sfp","roi-wang_view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
+        cat = os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss","base-sfp","roi-cat_view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"),
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{{dset}}", "{hemi}.mask-{{mask}}_sub-{{sn}}_value-{{val}}_thres-{{thres}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{{dset}}", "{hemi}.mask-intersection_r2thres-{{r2thres}}_precisionthres-{{precisionthres}}_sub-{{sn}}_value-{{val}}_frame-{{ref_frame}}.mgz"), hemi=['lh','rh'])
     params:
         freesurfer_dir=os.path.join(config['NSD_DIR'], "nsddata", "freesurfer"),
         rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','FFA-1','FFA-2','PPA'],
+        #rois=['V1v','V1d', 'V2v', 'V2d', 'V3v', 'V3d', 'hV4','wangVO1','wangVO2','wangPHC1','wangPHC2'],
         label_colors = [np.asarray([0,0,0])]*10
     run:
         from pysurfer.freeview_helper import make_custom_color_palettes_for_overlay, plot_mgz
         from pysurfer.mgz_helper import extract_info_from_filename
         from matplotlib.pyplot import get_cmap
 
-        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('jet'), val_range=(0.1, 150), n=150, log_scale=(wildcards.logscale=="True"))
+        overlay_custom=make_custom_color_palettes_for_overlay(get_cmap('jet'), val_range=(0.1, 130), n=150, log_scale=True)
         kwargs = {'label_opacity': 1, 'label_outline': True, 'overlay_custom': overlay_custom}
 
         labels = [f'{roi}.label' for roi in params.rois]
         label_dir = os.path.join(params.freesurfer_dir, wildcards.sn, 'label')
-        colorscale = False if wildcards.logscale == "True" else True
+        colorscale = False
         info = extract_info_from_filename(input[0])
         plot_mgz(params.freesurfer_dir, sn=wildcards.sn,
                  overlay=info['overlay'], overlay_dir=info['folder'],
@@ -1616,9 +1597,24 @@ rule visualize_masked_mgz:
                  view=wildcards.view, colorscale=colorscale,
                  surf='inflated', save_path=output[0], **kwargs)
 
+rule save_all_subject_sfp_figures:
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{dset}","ss", "base-sfp", "allsub_roi-cat_view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_value-{val}_frame-{ref_frame}.pdf")
+    input:
+        ss = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","{{dset}}","ss","base-sfp","roi-cat_view-{{view}}_mask-intersection_r2thres-{{r2thres}}_precisionthres-{{precisionthres}}_sub-{sn}_value-{{val}}_frame-{{ref_frame}}.png"), sn=make_subj_list('nsdsyn'))
+    run:
+        from pysurfer.freeview_helper import plot_freeview_ss_two_rows
+        from pysurfer.mgz_helper import extract_info_from_filename
+        sn_list = [extract_info_from_filename(sn, 'sub')['sub'] for sn in input.ss]
+        plot_freeview_ss_two_rows(input.ss,
+                                  sn_list,
+                                  suptitle=wildcards.val,
+                                  save_path=output[0], dpi=500)
 rule visualize_sfp:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","view-{view}_log-{logscale}_mask-r2_sub-{sn}_value-{val}_thres-{thres}_frame-{ref_frame}.png"), view=['inferior','posterior'], sn=make_subj_list('nsdsyn'), logscale=['True','False'], val=['mode'], thres=[0.2], ref_frame=['absolute','relative']),
+        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_maps", "mgzs", "{dset}", "{hemi}.mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sub}_value-{val}_frame-{ref_frame}.mgz"), dset='nsdsyn', hemi=['lh','rh'], sub=make_subj_list('nsdsyn'), val=['mode'], r2thres=[0.3], precisionthres=[2], ref_frame=['absolute']),
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","base-sfp","allsub_roi-cat_view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_value-{val}_frame-{ref_frame}.pdf"), view=['inferior','posterior'], r2thres=[0.3], precisionthres=[2], val=['mode'],  ref_frame=['absolute'])
+        #expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","base-sfp","view-{view}_mask-intersection_r2thres-{r2thres}_precisionthres-{precisionthres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"), r2thres=[0.3], precisionthres=[2], view=['inferior','posterior'], sn=make_subj_list('nsdsyn'), val=['mode'],  ref_frame=['absolute']),
 
 
 rule dataframes_for_each_ROI:

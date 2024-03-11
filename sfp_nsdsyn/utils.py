@@ -352,3 +352,10 @@ def set_fontsize(small, medium, large):
 
 def pick_random_voxels(voxel_list, n):
     return np.random.choice(voxel_list, n,replace=False)
+
+def combine_dorsal_and_ventral_rois(all_df):
+    """Replace 'V1v' and 'V1d' with 'V1', and 'V2v' and 'V2d' with 'V2'"""
+    all_df['ROI'] = all_df['ROI'].replace({'V1v': 'V1', 'V1d': 'V1',
+                                           'V2v': 'V2', 'V2d': 'V2',
+                                           'V3v': 'V3', 'V3d': 'V3'})
+    return all_df
