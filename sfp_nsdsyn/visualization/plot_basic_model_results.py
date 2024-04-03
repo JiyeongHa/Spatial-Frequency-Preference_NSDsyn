@@ -11,26 +11,31 @@ from sfp_nsdsyn.two_dimensional_model import group_params
 
 def plot_loss_history(loss_history_df,
                       hue=None, lgd_title=None, hue_order=None,
-                      col=None, height=4, save_path=None,
-                      log_y=True, sharey=False, ci=None,
+                      height=4, save_path=None, row=None,
+                      log_y=True, sharey=False, errorbar=None,
                       suptitle=None, **kwargs):
-    sns.set_context("notebook", font_scale=1.5)
+    rc = {'text.color': 'black',
+          'axes.titleweight': "bold",
+          "axes.spines.right": False,
+          "axes.spines.top": False,
+          'font.family': 'Helvetica'}
+    sns.set_theme(style="ticks", context='notebook', rc=rc, font_scale=2)
+
     grid = sns.FacetGrid(loss_history_df,
-                         hue=hue,
+                         hue=hue, row=row,
                          hue_order=hue_order,
-                         row=col,
                          height=height,
                          legend_out=True,
                          aspect=2.5,
                          sharey=sharey,
                          **kwargs)
-    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, ci=ci)
+    g = grid.map(sns.lineplot, 'epoch', 'loss', linewidth=2, errorbar=errorbar)
     if log_y is True:
         g.set(yscale='log')
     grid.set_axis_labels('Epoch', 'Loss')
     if lgd_title is not None:
-        g.add_legend(title=lgd_title)
-    if col is not None:
+        g.add_legend(title=lgd_title, loc='upper right')
+    if row is not None:
         for subplot_title, ax in grid.axes_dict.items():
             ax.set_title(f"{subplot_title.title()}")
     if suptitle is not None:
