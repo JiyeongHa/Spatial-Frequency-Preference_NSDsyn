@@ -191,7 +191,7 @@ rule fit_tuning_curves:
         subj_df = subj_df.query('ecc_bin == @save_ecc_bin_name')
         model_path_list = get_trained_model_for_all_bins(wildcards)
         my_model = tuning.LogGaussianTuningModel()
-        my_dataset = tuning.LogGaussianTuningDataset(subj_df)
+        my_dataset = tuning.LogGaussianTuningDataset(subj_df['local_sf'], subj_df['betas'])
         loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset,
                                                                learning_rate=float(wildcards.lr),
                                                                max_epoch=int(wildcards.max_epoch),

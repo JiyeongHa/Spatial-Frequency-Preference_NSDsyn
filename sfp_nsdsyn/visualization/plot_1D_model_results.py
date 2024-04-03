@@ -329,3 +329,46 @@ def plot_median_for_each_sub_and_roi(df, x, y, x_order, y_label=None,
         g.add_legend(title=lgd_title, loc='upper right')
     utils.save_fig(save_path)
     return grid, g
+
+def plot_datapoints(df, x, y, hue, hue_order=None, lgd_title=None,
+                    col='names', col_order=None, suptitle=None,
+                    height=5,
+                    save_path=None, **kwargs):
+    rc = {'text.color': 'black',
+          'axes.labelpad': 20,
+          'axes.linewidth': 3,
+          'axes.titlepad': 40,
+          'axes.titleweight': "bold",
+          "axes.spines.right": False,
+          "axes.spines.top": False,
+          'xtick.major.pad': 10,
+          'ytick.major.pad': 10,
+          'xtick.major.width': 3,
+          'xtick.minor.width': 3,
+          'ytick.major.width': 3,
+          'xtick.major.size': 10,
+          'xtick.minor.size': 6,
+          'ytick.major.size': 10,
+          'grid.linewidth': 3,
+          'font.family': 'Helvetica',
+          'lines.linewidth': 2}
+    sns.set_theme(style="ticks", context='notebook', rc=rc, font_scale=2)
+
+    grid = sns.FacetGrid(df,
+                         col=col,
+                         col_order=col_order,
+                         hue=hue,
+                         height=height,
+                         hue_order=hue_order,
+                         sharex=True, sharey=True, **kwargs)
+    grid.fig.suptitle(suptitle, fontweight="bold")
+    g = grid.map(sns.scatterplot, x, y, s=90, alpha=0.9, edgecolor='gray')
+    grid.set_axis_labels('Spatial Frequency', 'Betas')
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+    if lgd_title is not None:
+        g.add_legend(title=lgd_title, loc='upper right')
+    grid.set(xscale='log')
+    utils.save_fig(save_path)
+
+    return g
