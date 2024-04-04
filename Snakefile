@@ -341,7 +341,7 @@ rule calculate_broderick_Pv_based_on_model:
         os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
-        broderick_model_df = utils.load_history_files([input.model], *['dset','sub'])
+        broderick_model_df = utils.load_dataframes([input.model],'dset','sub')
         broderick_model_df['vroinames'] = 'V1'
         final_params = broderick_model_df.query('epoch == 29999')  #TODO: make it with new bd dataframes
         syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info, final_params,
@@ -378,10 +378,10 @@ rule plot_preferred_period_2D:
     params:
         projection = lambda wildcards: Pv_projection(wildcards.xaxis)
     run:
-        precision_v = utils.load_history_files(input.precision)
+        precision_v = utils.load_dataframes(input.precision)
         precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
         precision_s['precision'] = 1/precision_s['sigma_v_squared']
-        df = utils.load_history_files(input.model_prediction, *ARGS_2D)
+        df = utils.load_dataframes(input.model_prediction,*ARGS_2D)
         df = df.merge(precision_s, on=['sub','vroinames'])
         if wildcards.xaxis == "angle":
             df = df.query('eccentricity == 5')
@@ -403,14 +403,14 @@ rule plot_preferred_period_comparison:
     params:
         col = lambda wildcards: None if wildcards.col == 'None' else wildcards.col
     run:
-        broderick_model_df = utils.load_history_files(input.broderick_model_prediction, *PARAMS_2D)
-        broderick_precision_v = utils.load_history_files(input.broderick_precision_v)
+        broderick_model_df = utils.load_dataframes(input.broderick_model_prediction,*PARAMS_2D)
+        broderick_precision_v = utils.load_dataframes(input.broderick_precision_v)
         broderick_precision_s = broderick_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
         broderick_df = broderick_model_df.merge(broderick_precision_s[['sub','vroinames','sigma_v_squared']],
                                                 on=['sub', 'vroinames'])
 
-        nsd_model_df = utils.load_history_files(input.nsd_model_params, *ARGS_2D)
-        nsd_precision_v = utils.load_history_files(input.nsd_precision_v)
+        nsd_model_df = utils.load_dataframes(input.nsd_model_params,*ARGS_2D)
+        nsd_precision_v = utils.load_dataframes(input.nsd_precision_v)
         nsd_precision_s = nsd_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
         nsd_df = nsd_model_df.merge(nsd_precision_s, on=['sub', 'vroinames'])
 
@@ -481,15 +481,15 @@ rule plot_model_parameter_comparison:
         param_list = PARAMS_2D,
         param_group = PARAMS_GROUP_2D
     run:
-        broderick_model_df = utils.load_history_files(input.broderick_model_params, *['sub','dset'])
+        broderick_model_df = utils.load_dataframes(input.broderick_model_params,'sub','dset')
         broderick_model_df['vroinames'] = 'V1'
         broderick_model_df = broderick_model_df.query('epoch == 29999') #TODO: make it with new bd dataframes
-        broderick_precision_v = utils.load_history_files(input.broderick_precision_v)
+        broderick_precision_v = utils.load_dataframes(input.broderick_precision_v)
         broderick_precision_s = broderick_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
         broderick_df = broderick_model_df.merge(broderick_precision_s[['sub', 'vroinames', 'sigma_v_squared']], on=['sub', 'vroinames'])
 
         nsd_model_df = model.load_all_models(input.nsd_model_params, *ARGS_2D)
-        nsd_precision_v = utils.load_history_files(input.nsd_precision_v)
+        nsd_precision_v = utils.load_dataframes(input.nsd_precision_v)
         nsd_precision_s = nsd_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
         nsd_df = nsd_model_df.merge(nsd_precision_s, on=['sub','vroinames'])
 
@@ -524,7 +524,7 @@ rule plot_2D_model_loss_history:
     params:
         args = ['dset', 'lr', 'eph', 'sub', 'roi']
     run:
-        loss_history = utils.load_history_files(input.loss_history, *params.args)
+        loss_history = utils.load_dataframes(input.loss_history,*params.args)
         subj_list = make_subj_list(wildcards.dset)
         kwargs = {'palette': utils.subject_color_palettes(wildcards.dset, subj_list)}
         vis.plot_loss_history(loss_history,
@@ -548,7 +548,7 @@ rule plot_2D_model_param_history:
         args=['dset','lr','eph','sub','roi'],
         params_list = PARAMS_2D,
     run:
-        model_history = utils.load_history_files(input.model_history, *params.args)
+        model_history = utils.load_dataframes(input.model_history,*params.args)
         subj_list = make_subj_list(wildcards.dset)
         kwargs = {'palette': utils.subject_color_palettes(wildcards.dset, subj_list)}
         vis.plot_param_history(model_history,

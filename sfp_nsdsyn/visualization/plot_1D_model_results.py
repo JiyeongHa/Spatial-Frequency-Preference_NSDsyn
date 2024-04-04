@@ -130,7 +130,7 @@ def plot_sf_curves(df, x, y,
         axes[g].tick_params(axis='both')
     axes[len(subplot_list)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(1, 0.7), frameon=False)
     fig.supxlabel('Spatial Frequency', fontsize=large_fontsize)
-    fig.supylabel('Beta', fontsize=large_fontsize)
+    fig.supylabel('Betas', fontsize=large_fontsize)
     fig.subplots_adjust(wspace=0.4, left=.11, bottom=0.14)
     utils.save_fig(save_path)
 

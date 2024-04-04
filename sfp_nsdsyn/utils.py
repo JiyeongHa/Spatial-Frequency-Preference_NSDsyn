@@ -311,7 +311,7 @@ def match_wildcards_with_col(arg):
                 'class': 'names'}
     return switcher.get(arg, arg)
 
-def load_history_files(file_list, *args):
+def load_dataframes(file_list, *args):
     """args: ['subj', 'dset', 'lr_rate', 'max_epoch', 'vroinames', 'names'].
     maybe I can make use of something like [k.split('-')[0] for k in file_name.split('_')] later"""
     history_df = pd.DataFrame({})
