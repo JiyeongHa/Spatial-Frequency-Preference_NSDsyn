@@ -167,7 +167,7 @@ def get_trained_model_for_all_bins(wildcards):
 
 rule fit_tuning_curves:
     input:
-        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
     output:
         model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
         loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
@@ -182,7 +182,7 @@ rule fit_tuning_curves:
     run:
         subj_df = pd.read_csv(input.input_path)
         if wildcards.stim_class == "avg":
-            subj_df = subj_df.groupby(['sub','ecc_bin','vroinames','freq_lvl'], group_keys=False).mean().reset_index()
+            subj_df = subj_df.groupby(['sub','ecc_bin','vroinames','freq_lvl']).mean().reset_index()
         else:
             save_stim_type_name = wildcards.stim_class.replace('-',' ')
             subj_df = subj_df.query('names == @save_stim_type_name')
@@ -207,16 +207,16 @@ def _get_curbin(enum):
 rule plot_tuning_curves:
     input:
         model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
-        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "{{dset}}", 'binned', 'binned_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_dset-{{dset}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
+        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "{{dset}}", 'binned', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_dset-{{dset}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'fig-tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-all_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-all_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "{dset}", 'fig-tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-all_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-all_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
     run:
         final_params = tuning.load_all_models(input.model_df, *ARGS_1D)
-        bin_df = tuning.load_history_files(input.binned_df, *['sub','dset','roi'])
+        bin_df = utils.load_dataframes(input.binned_df, *['sub','dset','roi'])
         if wildcards.stim_class == "avg":
-            bin_df = bin_df.groupby(['sub', 'ecc_bin', 'vroinames', 'freq_lvl'],group_keys=False).mean().reset_index()
+            bin_df = bin_df.groupby(['sub', 'ecc_bin', 'vroinames', 'freq_lvl']).mean().reset_index()
         else:
             save_stim_type_name = wildcards.stim_class.replace('-',' ')
             bin_df = bin_df.query('names == @save_stim_type_name')
@@ -228,8 +228,8 @@ rule plot_tuning_curves:
 
 rule plot_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'fig-tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-all_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
-            stim_class=STIM_LIST, lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFsize','pRFcenter'], fig_format='svg')
+        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-all_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
+            stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=['log3'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter','pRFsize'], fig_format='svg')
 
 rule make_precision_v_df:
     input:

@@ -71,8 +71,9 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
     utils.save_fig(save_path)
 
 
-def plot_sf_curves(df, x, y,
-                   params_df, col, hue, height=13, lgd_title=None, save_path=None):
+def plot_sf_curves(df, params_df, x, y, hue, col,
+                   hue_order=None, col_order=None,
+                   height=13, lgd_title=None, save_path=None):
     rc = {'axes.labelpad': 20,
           'axes.linewidth': 3,
           'axes.titlepad': 40,
@@ -91,24 +92,26 @@ def plot_sf_curves(df, x, y,
     large_fontsize = 50
     utils.set_fontsize(30, 35, large_fontsize)
     utils.set_rcParams(rc)
-    subplot_list = df[col].unique()
-    hue_list = df[hue].unique()
-    fig, axes = plt.subplots(1, len(subplot_list),
+    if hue_order is None:
+        hue_order = df[hue].unique()
+    if col_order is None:
+        col_order = df[col].unique()
+    fig, axes = plt.subplots(1, len(col_order),
                              figsize=(height*1.9, height),
                              sharex=True, sharey=False)
 
-    colors = utils.get_continuous_colors(len(hue_list)+1, '#3f0377')
-    colors = colors[1:]
-    for g in range(len(subplot_list)):
-        subplot_tmp = df[df[col] == subplot_list[g]]
-        for c in range(len(hue_list)):
-            tmp = subplot_tmp[subplot_tmp[hue] == hue_list[c]]
+    colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
+    colors = colors[1:][::-1]
+    for g in range(len(col_order)):
+        subplot_tmp = df[df[col] == col_order[g]]
+        for c in range(len(hue_order)):
+            tmp = subplot_tmp[subplot_tmp[hue] == hue_order[c]]
             xx = tmp[x]
             yy = tmp[y]
-            tmp_history = params_df[params_df[col] == subplot_list[g]]
-            tmp_history = tmp_history[tmp_history[hue] == hue_list[c]]
+            tmp_history = params_df[params_df[col] == col_order[g]]
+            tmp_history = tmp_history[tmp_history[hue] == hue_order[c]]
             pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(), tmp_history)
-            axes[g].set_title(subplot_list[g])
+            axes[g].set_title(col_order[g])
             axes[g].plot(pred_x, pred_y,
                          color=colors[c],
                          linewidth=5,
@@ -119,7 +122,7 @@ def plot_sf_curves(df, x, y,
                             s=200,
                             color=colors[c],
                             alpha=0.95,
-                            label=hue_list[c],
+                            label=hue_order[c],
                             edgecolors='black',
                             zorder=10)
             plt.xscale('log')
@@ -128,7 +131,7 @@ def plot_sf_curves(df, x, y,
         if len(axes[g].get_yticks()) > 4:
             axes[g].set_yticks(axes[g].get_yticks()[::2])
         axes[g].tick_params(axis='both')
-    axes[len(subplot_list)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(1, 0.7), frameon=False)
+    axes[len(col_order)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(1, 0.7), frameon=False)
     fig.supxlabel('Spatial Frequency', fontsize=large_fontsize)
     fig.supylabel('Betas', fontsize=large_fontsize)
     fig.subplots_adjust(wspace=0.4, left=.11, bottom=0.14)

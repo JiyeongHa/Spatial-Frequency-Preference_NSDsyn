@@ -316,12 +316,13 @@ def load_dataframes(file_list, *args):
     maybe I can make use of something like [k.split('-')[0] for k in file_name.split('_')] later"""
     history_df = pd.DataFrame({})
     for f in file_list:
-        if f.split('.')[-1] == 'h5'or f.split('.')[-1] == 'hdf':
+        f_type = f.split('.')[-1]
+        if f_type == 'h5'or f_type == 'hdf':
             tmp = pd.read_hdf(f)
-        elif f.split('.')[-1] == 'csv':
+        elif f_type == 'csv':
             tmp = pd.read_csv(f)
         for arg in args:
-            ff = f.split('.')[0]
+            ff = f.split(f'.{f_type}')[0]
             tmp[match_wildcards_with_col(arg)] = [k for k in ff.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
         history_df = history_df.append(tmp)
     return history_df
