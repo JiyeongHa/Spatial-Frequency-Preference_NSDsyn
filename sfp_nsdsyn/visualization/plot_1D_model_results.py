@@ -152,7 +152,7 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
 
 def plot_preferred_period(df, precision_col=None,
                           hue="names", hue_order=None, lgd_title='Stimulus Class',
-                          col=None, col_wrap=None, suptitle=None, height=5,
+                          col=None, col_wrap=None, suptitle=None, height=5, errorbar=("ci", 68),
                           save_path=None):
     rc = {'axes.labelpad': 25}
     sns.set_context("notebook", font_scale=2, rc=rc)
@@ -171,7 +171,7 @@ def plot_preferred_period(df, precision_col=None,
                          palette=sns.color_palette("tab10"),
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight', hue, hue_order=hue_order, marker='o',
-                 lw=4, markersize=20, estimator=utils.weighted_mean, ci=68,
+                 lw=4, markersize=20, estimator=utils.weighted_mean, errorbar=errorbar,
                  err_style='bars', err_kws={'elinewidth': 4})
     grid.set(xticks=[0,1,2,3,4], yticks=[0, 0.5, 1])
     if lgd_title is not None:
