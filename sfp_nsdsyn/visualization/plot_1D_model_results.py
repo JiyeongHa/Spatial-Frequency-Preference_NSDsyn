@@ -73,31 +73,31 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
 
 def plot_sf_curves(df, params_df, x, y, hue, col,
                    hue_order=None, col_order=None,
-                   height=13, lgd_title=None, save_path=None):
-    rc = {'axes.labelpad': 20,
-          'axes.linewidth': 3,
-          'axes.titlepad': 40,
-          'axes.titleweight': "bold",
-          'xtick.major.pad': 10,
-          'ytick.major.pad': 10,
-          'xtick.major.width': 3,
-          'xtick.minor.width': 3,
-          'ytick.major.width': 3,
-          'xtick.major.size': 10,
-          'xtick.minor.size': 6,
-          'ytick.major.size': 10,
-          'grid.linewidth': 3,
+                   lgd_title=None, save_path=None):
+
+    rc = {'axes.linewidth': 1.2,
+          'xtick.major.width':1.2,
+          'ytick.major.width':1.2,
+          'xtick.minor.width':1,
+          'xtick.major.size': 5,
+          'ytick.major.size': 5,
+          'xtick.minor.size': 3.5,
+          'axes.labelpad': 8,
+          'axes.titlepad': 10,
+          'axes.titleweight': 'bold',
           'font.family': 'Helvetica',
-          'lines.linewidth': 2}
-    large_fontsize = 50
-    utils.set_fontsize(30, 35, large_fontsize)
+          'figure.dpi': 72*2,
+          'savefig.dpi': 72*4}
     utils.set_rcParams(rc)
+    utils.set_fontsize(11, 11, 15)
+
+
     if hue_order is None:
         hue_order = df[hue].unique()
     if col_order is None:
         col_order = df[col].unique()
     fig, axes = plt.subplots(1, len(col_order),
-                             figsize=(height*1.9, height),
+                             figsize=(7, 7/1.9), dpi=72*2,
                              sharex=True, sharey=False)
 
     colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
@@ -114,16 +114,16 @@ def plot_sf_curves(df, params_df, x, y, hue, col,
             axes[g].set_title(col_order[g])
             axes[g].plot(pred_x, pred_y,
                          color=colors[c],
-                         linewidth=5,
-                         path_effects=[pe.Stroke(linewidth=5.6, foreground='black'),
+                         linewidth=2,
+                         path_effects=[pe.Stroke(linewidth=2.3, foreground='black'),
                                        pe.Normal()],
                          zorder=0)
             axes[g].scatter(xx, yy,
-                            s=200,
+                            s=30,
                             color=colors[c],
                             alpha=0.95,
                             label=hue_order[c],
-                            edgecolors='black',
+                            edgecolors='black', linewidth=0.5,
                             zorder=10)
             plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
@@ -131,10 +131,12 @@ def plot_sf_curves(df, params_df, x, y, hue, col,
         if len(axes[g].get_yticks()) > 4:
             axes[g].set_yticks(axes[g].get_yticks()[::2])
         axes[g].tick_params(axis='both')
-    axes[len(col_order)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(1, 0.7), frameon=False)
-    fig.supxlabel('Spatial Frequency', fontsize=large_fontsize)
-    fig.supylabel('Betas', fontsize=large_fontsize)
-    fig.subplots_adjust(wspace=0.4, left=.11, bottom=0.14)
+    axes[len(col_order)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(0.9, 0.9), frameon=False, fontsize=13)
+    fig.supxlabel('Local spatial frequency (cpd)')
+    fig.supylabel('Response\n(% BOLD signal change)', ha='center')
+    fig.subplots_adjust(wspace=0.5, left=0.1, bottom=0.17)
+
+
     utils.save_fig(save_path)
 
 def _get_middle_ecc(row):
@@ -338,6 +340,9 @@ def plot_datapoints(df, x, y, hue, hue_order=None, lgd_title=None,
                     height=5,
                     save_path=None, **kwargs):
     rc = {'text.color': 'black',
+          'axes.labelcolor': 'black',
+          'xtick.color': 'black',
+          'ytick.color': 'black',
           'axes.labelpad': 20,
           'axes.linewidth': 3,
           'axes.titlepad': 40,
