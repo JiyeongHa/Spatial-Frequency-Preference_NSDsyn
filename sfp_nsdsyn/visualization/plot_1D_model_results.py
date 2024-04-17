@@ -230,10 +230,10 @@ def fit_line_to_weighted_mean(df, sf_peak, precision, groupby=['vroinames']):
     weighted_mean_df = calculate_weighted_mean(df, sf_peak, precision, groupby)
     coeff_df = weighted_mean_df.groupby(groupby).apply(lambda x: np.polyfit(x['ecc'], x['weighted_mean'], 1))
     coeff_df = coeff_df.reset_index().rename(columns={0: 'coefficient'})
-    new_df = pd.merge(weighted_mean_df, coeff_df, on=groupby)
-    new_df = _add_ecc_0(new_df, groupby)
-    new_df['fitted'] = new_df.apply(lambda x: x['coefficient'][0] * x['ecc'] + x['coefficient'][1], axis=1)
-    return new_df
+    fit_df = pd.merge(weighted_mean_df, coeff_df, on=groupby)
+    fit_df = _add_ecc_0(fit_df, groupby)
+    fit_df['fitted'] = fit_df.apply(lambda x: x['coefficient'][0] * x['ecc'] + x['coefficient'][1], axis=1)
+    return fit_df
 
 def plot_beta_all_subj(subj_to_run, merged_df, to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
                        dp_to_x_axis='local_sf', dp_to_y_axis='avg_betas', plot_pdf=True,
