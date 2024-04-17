@@ -83,7 +83,7 @@ def plot_sf_curves(df, params_df, x, y, hue, col,
           'ytick.major.size': 5,
           'xtick.minor.size': 3.5,
           'axes.labelpad': 8,
-          'axes.titlepad': 10,
+          'axes.titlepad': 15,
           'axes.titleweight': 'bold',
           'font.family': 'Helvetica',
           'figure.dpi': 72*2,
@@ -152,42 +152,88 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
     new_col = df.apply(lambda row: row[to_jitter] + jitters[row[subset]], axis=1)
     return new_col
 
-def plot_preferred_period(df, precision_col=None,
-                          hue="names", hue_order=None, lgd_title='Stimulus Class',
-                          col=None, col_wrap=None, suptitle=None, height=5, errorbar=("ci", 68),
+def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
+                          pal=sns.color_palette("tab10"),
+                          lgd_title=None,
+                          col=None, col_wrap=None,
+                          suptitle=None, width=3.25, errorbar=("ci", 68),
                           save_path=None):
-    rc = {'axes.labelpad': 25}
-    sns.set_context("notebook", font_scale=2, rc=rc)
+    rc = {'axes.labelpad': 5,
+          'figure.dpi': 72*4}
+    sns.set_theme("notebook", style='ticks', font_scale=0.9, rc=rc)
+    height = utils.get_height_based_on_width(3.25, 0.85)
+
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
-    new_df['ecc'] = _add_jitter(new_df, 'ecc', hue, jitter_scale=0.08)
-    new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc_bin', jitter_scale=0.05)
-    new_df['pp'] = 1 / new_df['mode']
-    if precision_col is not None:
-        new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df['pp'], new_df[precision_col])]
+    new_df['pp'] = 1 / new_df[sf_peak]
+
+    new_df['ecc'] = _add_jitter(new_df, 'ecc', subset=hue, jitter_scale=0.08)
+    new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc', jitter_scale=0.03)
+
+
+    new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df['pp'], new_df[precision])]
     grid = sns.FacetGrid(new_df,
                          col=col,
                          col_wrap=col_wrap,
                          height=height,
                          aspect=1.2,
-                         palette=sns.color_palette("tab10"),
+                         palette=pal,
                          sharex=True, sharey=True)
-    g = grid.map(sns.lineplot, 'ecc', 'value_and_weight', hue, hue_order=hue_order, marker='o',
-                 lw=4, markersize=20, estimator=utils.weighted_mean, errorbar=errorbar,
-                 err_style='bars', err_kws={'elinewidth': 4})
-    grid.set(xticks=[0,1,2,3,4], yticks=[0, 0.5, 1])
+    g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
+                 hue, hue_order=hue_order, marker='o',
+                 linestyle='', markersize=5, mew=0.1, mec='white',
+                 estimator=utils.weighted_mean, errorbar=errorbar,
+                 err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
+
     if lgd_title is not None:
-        g.add_legend(title=lgd_title, bbox_to_anchor=(1.02, 0.7))
+        handles, labels = grid.ax.get_legend_handles_labels()
+        # Modifying the properties of the handles, e.g., increasing the line width
+        for handle in handles:
+            if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
+                handle.set_linewidth(4)  # Set line width to 3
+                handle.set_alpha(1)
+        grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+
+    if fit_df is not None:
+        for ax in g.axes.flatten():
+            for i, cur_hue in enumerate(hue_order):
+                tmp_fit_df = fit_df.copy()
+                if col is not None:
+                    tmp_fit_df = tmp_fit_df[fit_df[col] == ax.get_title()]
+                tmp_fit_df = tmp_fit_df[fit_df[hue] == cur_hue]
+                ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
+                        color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
+    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], yticks=[0, 0.5, 1])
     grid.set_axis_labels('Eccentricity', 'Preferred period')
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
     grid.fig.suptitle(suptitle, fontweight="bold")
-    # set transparency
-    plt.setp(grid.ax.collections, alpha=.85)  # for the markers
-    #plt.setp(grid.ax.lines, alpha=.8)  # for the lines
-    utils.save_fig(save_path)
 
-    return grid
+    utils.save_fig(save_path)
+    return g
+
+
+def calculate_weighted_mean(df, sf_peak, precision, groupby=['vroinames']):
+    df['ecc'] = df.apply(_get_middle_ecc, axis=1)
+    df['pp'] = 1 / df[sf_peak]
+    new_df = df.groupby(groupby+['ecc']).apply(lambda x: (x['pp'] * x[precision]).sum() / x[precision].sum())
+    new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
+    return new_df
+
+def _add_ecc_0(df, groupby=['vroinames']):
+    unique_df = df.drop_duplicates(subset=groupby, inplace=False)
+    unique_df['ecc'] = 0
+    return pd.concat((df, unique_df), axis=0)
+
+
+def fit_line_to_weighted_mean(df, sf_peak, precision, groupby=['vroinames']):
+    weighted_mean_df = calculate_weighted_mean(df, sf_peak, precision, groupby)
+    coeff_df = weighted_mean_df.groupby(groupby).apply(lambda x: np.polyfit(x['ecc'], x['weighted_mean'], 1))
+    coeff_df = coeff_df.reset_index().rename(columns={0: 'coefficient'})
+    new_df = pd.merge(weighted_mean_df, coeff_df, on=groupby)
+    new_df = _add_ecc_0(new_df, groupby)
+    new_df['fitted'] = new_df.apply(lambda x: x['coefficient'][0] * x['ecc'] + x['coefficient'][1], axis=1)
+    return new_df
 
 def plot_beta_all_subj(subj_to_run, merged_df, to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
                        dp_to_x_axis='local_sf', dp_to_y_axis='avg_betas', plot_pdf=True,

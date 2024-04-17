@@ -360,3 +360,7 @@ def combine_dorsal_and_ventral_rois(all_df):
                                            'V2v': 'V2', 'V2d': 'V2',
                                            'V3v': 'V3', 'V3d': 'V3'})
     return all_df
+
+def get_height_based_on_width(width, aspect_ratio):
+
+    return aspect_ratio * width
