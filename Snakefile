@@ -259,21 +259,35 @@ rule make_precision_s_df:
     output:
         os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
     run:
-        sigma_v_df = pd.DataFrame({})
-        for subj_sigma_v_df in input.precision_v:
-            tmp = pd.read_csv(subj_sigma_v_df)
-            sigma_v_df = sigma_v_df.append(tmp)
-        precision_s = sigma_v_df.groupby('sub')['sigma_v_squared'].mean().reset_index()
+        precision_v = utils.load_dataframes(input.precision_v)
+        precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
         precision_s['precision'] = 1 / precision_s['sigma_v_squared']
         precision_s.to_csv(output[0], index=False)
 
+rule plot_avg_preferred_period_1D:
+    input:
+        models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-params_class-avg_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list(wildcards.dset), roi=ROIS),
+        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}')
+    run:
+        args = ['sub', 'class','dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
+        precision_s = pd.read_csv(input.precision_s)
+        final_params= tuning.load_all_models(input.models, *args)
+        tuning_with_precision_df = final_params.merge(precision_s[['sub', 'vroinames', 'precision']], on=['sub', 'vroinames'])
+
+        fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision', groupby=['vroinames'])
+        g = vis1D.plot_preferred_period(tuning_with_precision_df,
+                                        sf_peak='mode',precision='precision',hue='vroinames',
+                                        hue_order=['V1', 'V2', 'V3'], fit_df=fit_df, lgd_title='ROI',
+                                        width=3.25, save_path=output[0])
 
 rule plot_preferred_period_1D:
     input:
         models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-params_class-{stim_class}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.pt'), stim_class=[k.replace(' ', '-') for k in STIM_LIST], curbin=_get_curbin(wildcards.enum), subj=make_subj_list(wildcards.dset)),
         precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fig-pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
     run:
         args = ['sub', 'class','dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
         final_params= tuning.load_all_models(pt_file_path_list=input.models, ecc_bin=True, args=args)
