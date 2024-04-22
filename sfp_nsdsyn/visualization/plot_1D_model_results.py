@@ -155,7 +155,7 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
 def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
                           pal=sns.color_palette("tab10"),
                           lgd_title=None,
-                          col=None, col_wrap=None,
+                          col=None, col_order=None,
                           suptitle=None, width=3.25, errorbar=("ci", 68),
                           save_path=None):
     rc = {'axes.labelpad': 5,
@@ -174,7 +174,7 @@ def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
     new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df['pp'], new_df[precision])]
     grid = sns.FacetGrid(new_df,
                          col=col,
-                         col_wrap=col_wrap,
+                         col_order=col_order,
                          height=height,
                          aspect=1.2,
                          palette=pal,
@@ -186,13 +186,22 @@ def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
                  err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
 
     if lgd_title is not None:
-        handles, labels = grid.ax.get_legend_handles_labels()
+        if col is not None:
+            handles, labels = g.axes[0,-1].get_legend_handles_labels()
+        else:
+            handles, labels = g.ax.get_legend_handles_labels()
+
         # Modifying the properties of the handles, e.g., increasing the line width
         for handle in handles:
             if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
                 handle.set_linewidth(4)  # Set line width to 3
                 handle.set_alpha(1)
-        grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+        if col is not None:
+            grid.axes[0,-1].legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+        else:
+            grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
 
     if fit_df is not None:
         for ax in g.axes.flatten():
@@ -200,13 +209,12 @@ def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
                 tmp_fit_df = fit_df.copy()
                 if col is not None:
                     tmp_fit_df = tmp_fit_df[fit_df[col] == ax.get_title()]
-                tmp_fit_df = tmp_fit_df[fit_df[hue] == cur_hue]
+                tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
     g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], yticks=[0, 0.5, 1])
     grid.set_axis_labels('Eccentricity', 'Preferred period')
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
+
     grid.fig.suptitle(suptitle, fontweight="bold")
 
     utils.save_fig(save_path)

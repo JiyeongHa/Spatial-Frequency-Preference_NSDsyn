@@ -92,7 +92,7 @@ def _get_boolean_for_vs(vs):
 rule prep_data:
     input:
         design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
-        stim_info = os.path.join(config['NSD_DIR'], 'nsdsynthetic_sf_stim_description.csv'),
+        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
         lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
         lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
         lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
@@ -100,7 +100,7 @@ rule prep_data:
         rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
         rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
     params:
         rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation_task', 'memory_task'],
@@ -130,6 +130,57 @@ rule prep_data:
                                      to_group=['voxel'], return_voxel_list=False)
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
+
+
+rule prep_baseline:
+    input:
+        design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
+        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
+        lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
+        lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
+        lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
+        rh_prfs= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
+        rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
+        rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
+    output:
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','baseline', 'baseline_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    params:
+        rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
+        task_keys = ['fixation_task', 'memory_task'],
+        stim_size= get_stim_size_in_degree('nsdsyn'),
+        white_noise_indices = [1,2,3,4]
+    run:
+        from sfp_nsdsyn import prep
+        from sfp_nsdsyn import vs
+        #lh
+        mask, rois_dict = prep.load_common_mask_and_rois(input.lh_rois, params.rois_vals)
+        prf_dict = prep.load_prf_properties_as_dict(input.lh_prfs, mask, angle_to_radians=True)
+        betas_dict = prep.load_betas_as_dict(input.lh_betas, input.design_mat,
+                                             params.white_noise_indices, mask,
+                                             task_keys=params.task_keys, average=True)
+        betas_df = prep.melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True)
+        lh_prf_betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, rois_dict, on='voxel')
+        #rh
+        mask, rois_dict = prep.load_common_mask_and_rois(input.rh_rois, params.rois_vals)
+        prf_dict = prep.load_prf_properties_as_dict(input.rh_prfs, mask, angle_to_radians=True)
+        betas_dict = prep.load_betas_as_dict(input.rh_betas, input.design_mat,
+                                             params.white_noise_indices, mask,
+                                             task_keys=params.task_keys, average=True)
+        betas_df = prep.melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True)
+        rh_prf_betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, rois_dict, on='voxel')
+
+        baseline_df = prep.concat_lh_rh_df(lh_prf_betas_df, rh_prf_betas_df)
+        if wildcards.vs != 'None':
+            baseline_df = vs.select_voxels(baseline_df, drop_by=wildcards.vs,
+                                           inner_border=params.stim_size[0],
+                                           outer_border=params.stim_size[1],
+                                           to_group=['voxel'], return_voxel_list=False)
+        baseline_df['sub'] = wildcards.subj
+        baseline_df.to_csv(output[0], index=False)
+
+rule baseline_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','baseline', 'baseline_sub-{subj}_roi-{roi}_vs-{vs}.csv'), subj=make_subj_list('nsdsyn'), roi=ROIS, vs=['pRFcenter']),
 
 def get_ecc_bin_list(wildcards):
     bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
@@ -287,15 +338,19 @@ rule plot_preferred_period_1D:
         models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-params_class-{stim_class}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.pt'), stim_class=[k.replace(' ', '-') for k in STIM_LIST], curbin=_get_curbin(wildcards.enum), subj=make_subj_list(wildcards.dset)),
         precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-avg_roi-{roi}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-all_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_roi-{roi}_vs-{vs}.{fig_format}')
     run:
         args = ['sub', 'class','dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
-        final_params= tuning.load_all_models(pt_file_path_list=input.models, ecc_bin=True, args=args)
         precision_s = pd.read_csv(input.precision_s)
-        params_precision_df = final_params.merge(precision_s[['sub', 'precision']], on='sub')
-        vis1D.plot_preferred_period(params_precision_df, precision_col='precision',
-                                    hue='names', hue_order=STIM_LIST, lgd_title='Stimulus class',
-                                    height=8, save_path=output[0])
+        precision_s = precision_s.query('vroinames == @wildcards.roi')
+        final_params= tuning.load_all_models(input.models, *args)
+        tuning_with_precision_df = final_params.merge(precision_s[['sub', 'vroinames', 'precision']], on=['sub', 'vroinames'])
+
+        fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision', groupby=['vroinames'])
+        g = vis1D.plot_preferred_period(tuning_with_precision_df,
+                                        sf_peak='mode',precision='precision',hue='vroinames',
+                                        hue_order=['V1', 'V2', 'V3'], fit_df=fit_df, lgd_title='ROI',
+                                        width=7, save_path=output[0])
 
 rule run_model:
     input:
