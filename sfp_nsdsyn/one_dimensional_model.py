@@ -401,8 +401,8 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
     return grid
 
 
-def _get_x_and_y_prediction(min, max, fnl_param_df):
-    x = np.linspace(min, max, 100)
+def _get_x_and_y_prediction(min, max, fnl_param_df, n_points=100):
+    x = np.linspace(min, max, n_points)
     y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
          k in x]
     return x, y
@@ -609,3 +609,28 @@ def plot_logGaussian_fit(df, x, y, p_opt, ax=None,
     #ax.legend()
     plt.tight_layout()
     return ax
+
+def get_bandwidth_in_octave(data_df, local_sf, params_df):
+    xx = data_df[local_sf]
+    pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(), params_df, n_points=10000)
+
+    # Find the peak freq's beta value
+    peak_freq = params_df['mode'].values[0]
+    peak_beta = np_log_norm_pdf(peak_freq,
+                                params_df['slope'].values[0],
+                                params_df['mode'].values[0],
+                                params_df['sigma'].values[0],)
+    # find the half of the peak based on the lowest beta value in the prediction
+    results_half_y = peak_beta - ((peak_beta - np.min(pred_y)) * 0.5)
+    # find the x values that are the closest to the half of the peak
+    half_y = abs(pred_y - results_half_y)
+    results_half_x = half_y.argsort()
+
+    results_half_x_min = results_half_x[pred_x[results_half_x] < peak_freq]
+    f_low = pred_x[results_half_x_min][0]
+    results_half_x_max = results_half_x[pred_x[results_half_x] > peak_freq]
+    f_high = pred_x[results_half_x_max][0]
+
+    # Calculate the bandwidth in octave
+    fwhm_octaves = np.log2(f_high / f_low)
+    return fwhm_octaves

@@ -327,7 +327,7 @@ rule plot_avg_preferred_period_1D:
         final_params= tuning.load_all_models(input.models, *args)
         tuning_with_precision_df = final_params.merge(precision_s[['sub', 'vroinames', 'precision']], on=['sub', 'vroinames'])
 
-        fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision', groupby=['vroinames'])
+        fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision',groupby=['vroinames'])
         g = vis1D.plot_preferred_period(tuning_with_precision_df,
                                         sf_peak='mode',precision='precision',hue='vroinames',
                                         hue_order=['V1', 'V2', 'V3'], fit_df=fit_df, lgd_title='ROI',
@@ -346,7 +346,7 @@ rule plot_preferred_period_1D:
         final_params= tuning.load_all_models(input.models, *args)
         tuning_with_precision_df = final_params.merge(precision_s[['sub', 'vroinames', 'precision']], on=['sub', 'vroinames'])
 
-        fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision', groupby=['vroinames'])
+        fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision',groupby=['vroinames'])
         g = vis1D.plot_preferred_period(tuning_with_precision_df,
                                         sf_peak='mode',precision='precision',hue='vroinames',
                                         hue_order=['V1', 'V2', 'V3'], fit_df=fit_df, lgd_title='ROI',

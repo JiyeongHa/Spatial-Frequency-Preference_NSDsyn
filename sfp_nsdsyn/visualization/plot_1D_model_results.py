@@ -71,7 +71,7 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
     utils.save_fig(save_path)
 
 
-def plot_sf_curves(df, params_df, x, y, hue, col,
+def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
                    hue_order=None, col_order=None,
                    lgd_title=None, save_path=None):
 
@@ -125,7 +125,12 @@ def plot_sf_curves(df, params_df, x, y, hue, col,
                             label=hue_order[c],
                             edgecolors='black', linewidth=0.5,
                             zorder=10)
-            plt.xscale('log')
+
+        if baseline is not None:
+            baseline_example_df = baseline[baseline[col] == col_order[g]]
+            yy = np.mean(baseline_example_df[y])
+            axes[g].axhline([yy], color='grey', linestyle='--', linewidth=1, zorder=20)
+        plt.xscale('log')
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
         if len(axes[g].get_yticks()) > 4:
@@ -138,6 +143,7 @@ def plot_sf_curves(df, params_df, x, y, hue, col,
 
 
     utils.save_fig(save_path)
+    return fig, axes
 
 def _get_middle_ecc(row):
 
@@ -160,7 +166,8 @@ def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
                           save_path=None):
     rc = {'axes.labelpad': 5,
           'figure.dpi': 72*4}
-    sns.set_theme("notebook", style='ticks', font_scale=0.9, rc=rc)
+    sns.set_theme("notebook", style='ticks', rc=rc)
+    utils.set_fontsize(11, 11, 15)
     height = utils.get_height_based_on_width(3.25, 0.85)
 
     new_df = df.copy()
@@ -220,11 +227,77 @@ def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
     utils.save_fig(save_path)
     return g
 
+def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
+                              pal=sns.color_palette("tab10"),
+                              lgd_title=None,
+                              col=None, col_order=None,
+                              suptitle=None, width=3.25, errorbar=("ci", 68),
+                              save_path=None):
+    rc = {'axes.labelpad': 5,
+          'figure.dpi': 72*4}
+    sns.set_theme("notebook", style='ticks', font_scale=0.9, rc=rc)
+    height = utils.get_height_based_on_width(width, 0.85)
 
-def calculate_weighted_mean(df, sf_peak, precision, groupby=['vroinames']):
+    new_df = df.copy()
+    new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
+    new_df['ecc'] = _add_jitter(new_df, 'ecc', subset=hue, jitter_scale=0.08)
+    new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc', jitter_scale=0.03)
+    new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df[bandwidth], new_df[precision])]
+    grid = sns.FacetGrid(new_df,
+                         col=col,
+                         col_order=col_order,
+                         height=height,
+                         aspect=1.2,
+                         palette=pal,
+                         sharex=True, sharey=True)
+    g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
+                 hue, hue_order=hue_order, marker='o',
+                 linestyle='', markersize=5, mew=0.1, mec='white',
+                 estimator=utils.weighted_mean, errorbar=errorbar,
+                 err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
+
+    if lgd_title is not None:
+        if col is not None:
+            handles, labels = g.axes[0,-1].get_legend_handles_labels()
+        else:
+            handles, labels = g.ax.get_legend_handles_labels()
+
+        # Modifying the properties of the handles, e.g., increasing the line width
+        for handle in handles:
+            if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
+                handle.set_linewidth(4)  # Set line width to 3
+                handle.set_alpha(1)
+        if col is not None:
+            grid.axes[0,-1].legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+        else:
+            grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f"{subplot_title.title()}")
+
+    if fit_df is not None:
+        for ax in g.axes.flatten():
+            for i, cur_hue in enumerate(hue_order):
+                tmp_fit_df = fit_df.copy()
+                if col is not None:
+                    tmp_fit_df = tmp_fit_df[fit_df[col] == ax.get_title()]
+                tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
+                ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
+                        color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
+    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], ylim=(2, 4))
+
+    grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
+
+    grid.fig.suptitle(suptitle, fontweight="bold")
+
+    utils.save_fig(save_path)
+    return g
+
+
+
+
+def calculate_weighted_mean(df, value, precision, groupby=['vroinames']):
     df['ecc'] = df.apply(_get_middle_ecc, axis=1)
-    df['pp'] = 1 / df[sf_peak]
-    new_df = df.groupby(groupby+['ecc']).apply(lambda x: (x['pp'] * x[precision]).sum() / x[precision].sum())
+    new_df = df.groupby(groupby+['ecc']).apply(lambda x: (x[value] * x[precision]).sum() / x[precision].sum())
     new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
     return new_df
 
@@ -234,25 +307,17 @@ def _add_ecc_0(df, groupby=['vroinames']):
     return pd.concat((df, unique_df), axis=0)
 
 
-def fit_line_to_weighted_mean(df, sf_peak, precision, groupby=['vroinames']):
-    weighted_mean_df = calculate_weighted_mean(df, sf_peak, precision, groupby)
+def fit_line_to_weighted_mean(df, values, precision, groupby=['vroinames']):
+    weighted_mean_df = calculate_weighted_mean(df, values, precision, groupby)
+    if 'ecc' not in weighted_mean_df.columns:
+        weighted_mean_df['ecc'] = weighted_mean_df.apply(_get_middle_ecc, axis=1)
+    weighted_mean_df = weighted_mean_df.sort_values(by='ecc')
     coeff_df = weighted_mean_df.groupby(groupby).apply(lambda x: np.polyfit(x['ecc'], x['weighted_mean'], 1))
     coeff_df = coeff_df.reset_index().rename(columns={0: 'coefficient'})
     fit_df = pd.merge(weighted_mean_df, coeff_df, on=groupby)
     fit_df = _add_ecc_0(fit_df, groupby)
     fit_df['fitted'] = fit_df.apply(lambda x: x['coefficient'][0] * x['ecc'] + x['coefficient'][1], axis=1)
     return fit_df
-
-def plot_beta_all_subj(subj_to_run, merged_df, to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
-                       dp_to_x_axis='local_sf', dp_to_y_axis='avg_betas', plot_pdf=True,
-                       ln_y_axis="y_lg_pdf", x_axis_label="Spatial Frequency", y_axis_label="Beta",
-                       legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
-                       save_fig=True, save_dir='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/',
-                       save_file_name='.png'):
-    for sn in subj_to_run:
-        grid = beta_vs_sf_scatterplot()
-    return grid
-
 
 def merge_and_plot(subj_to_run, fitting_df, subj_df, merge_on_cols=["subj", "vroinames", "eccrois"],
                    to_subplot="vroinames", n_sp_low=2, legend_out=True, to_label="eccrois",
