@@ -401,10 +401,9 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
     return grid
 
 
-def _get_x_and_y_prediction(min, max, fnl_param_df, n_points=100):
+def _get_x_and_y_prediction(min, max, slope, peak, sigma, n_points=100):
     x = np.linspace(min, max, n_points)
-    y = [np_log_norm_pdf(k, fnl_param_df['slope'].item(), fnl_param_df['mode'].item(), fnl_param_df['sigma'].item()) for
-         k in x]
+    y = [np_log_norm_pdf(k, slope, peak, sigma) for k in x]
     return x, y
 
 
@@ -610,27 +609,48 @@ def plot_logGaussian_fit(df, x, y, p_opt, ax=None,
     plt.tight_layout()
     return ax
 
-def get_bandwidth_in_octave(data_df, local_sf, params_df):
+def get_bandwidth_in_octave(data_df, local_sf, slope, peak, sigma):
     xx = data_df[local_sf]
-    pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(), params_df, n_points=10000)
-
+    x_min, x_max = np.floor(np.log(peak) - 5 * sigma), np.ceil(np.log(peak) + 5 * sigma)
+    pred_x, pred_y = _get_x_and_y_prediction(x_min, x_max, slope, peak, sigma, n_points=1000)
     # Find the peak freq's beta value
-    peak_freq = params_df['mode'].values[0]
-    peak_beta = np_log_norm_pdf(peak_freq,
-                                params_df['slope'].values[0],
-                                params_df['mode'].values[0],
-                                params_df['sigma'].values[0],)
+
     # find the half of the peak based on the lowest beta value in the prediction
-    results_half_y = peak_beta - ((peak_beta - np.min(pred_y)) * 0.5)
+    results_half_y = 0.5*slope
     # find the x values that are the closest to the half of the peak
-    half_y = abs(pred_y - results_half_y)
+    half_y = np.abs([k-results_half_y for k in pred_y])
     results_half_x = half_y.argsort()
 
-    results_half_x_min = results_half_x[pred_x[results_half_x] < peak_freq]
+    results_half_x_min = results_half_x[pred_x[results_half_x] < peak]
     f_low = pred_x[results_half_x_min][0]
-    results_half_x_max = results_half_x[pred_x[results_half_x] > peak_freq]
-    f_high = pred_x[results_half_x_max][0]
 
+    results_half_x_max = results_half_x[pred_x[results_half_x] > peak]
+    f_high = pred_x[results_half_x_max][0]
     # Calculate the bandwidth in octave
-    fwhm_octaves = np.log2(f_high / f_low)
+    fwhm_octaves = np.log2(f_high) - np.log2(f_low)
+    return fwhm_octaves
+
+# Define the log Gaussian function
+def log_gaussian(x, mode, sigma, A):
+    return A * np.exp(-((np.log(x) - np.log(mode)) ** 2) / (2 * sigma ** 2))
+
+# Define the function to find the half maximum points
+def half_max_function(x, mode, sigma, A):
+    return log_gaussian(x, mode, sigma, A) - (A / 2)
+
+def get_bandwidth_chatgpt(mode, sigma, slope):
+    from scipy.optimize import fsolve
+
+    # Define the function to find the half maximum points
+
+    # Solving for x1 and x2
+    x1 = fsolve(half_max_function, 1e-4, args=(mode, sigma, slope))
+    x2 = fsolve(half_max_function, mode*2, args=(mode, sigma, slope))
+
+    # Calculate FWHM in octaves
+    fwhm_octaves = np.log2(x2 / x1)
+
+    print("x1 (lower half-max point):", x1)
+    print("x2 (upper half-max point):", x2)
+    print("FWHM in octaves:", fwhm_octaves)
     return fwhm_octaves

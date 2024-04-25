@@ -11,6 +11,13 @@ import matplotlib as mpl
 import matplotlib.patheffects as pe
 from sfp_nsdsyn.visualization import plot_2D_model_results as vis2D
 
+rc = {'text.color': 'black',
+      'axes.labelcolor': 'black',
+      'xtick.color': 'black',
+      'ytick.color': 'black'
+      }
+mpl.rcParams.update(rc)
+
 
 def _get_y_pdf(row):
     y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
@@ -74,8 +81,7 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
 def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
                    hue_order=None, col_order=None,
                    lgd_title=None, save_path=None):
-
-    rc = {'axes.linewidth': 1.2,
+    rc.update({'axes.linewidth': 1.2,
           'xtick.major.width':1.2,
           'ytick.major.width':1.2,
           'xtick.minor.width':1,
@@ -87,7 +93,7 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
           'axes.titleweight': 'bold',
           'font.family': 'Helvetica',
           'figure.dpi': 72*2,
-          'savefig.dpi': 72*4}
+          'savefig.dpi': 72*4})
     utils.set_rcParams(rc)
     utils.set_fontsize(11, 11, 15)
 
@@ -158,27 +164,26 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
     new_col = df.apply(lambda row: row[to_jitter] + jitters[row[subset]], axis=1)
     return new_col
 
-def plot_preferred_period(df, sf_peak, precision, hue, hue_order, fit_df,
+def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_df,
                           pal=sns.color_palette("tab10"),
                           lgd_title=None,
                           col=None, col_order=None,
                           suptitle=None, width=3.25, errorbar=("ci", 68),
                           save_path=None):
-    rc = {'axes.labelpad': 5,
-          'figure.dpi': 72*4}
+    rc.update({'axes.labelpad': 5,
+               'figure.dpi': 72*4})
     sns.set_theme("notebook", style='ticks', rc=rc)
     utils.set_fontsize(11, 11, 15)
-    height = utils.get_height_based_on_width(3.25, 0.85)
+    height = utils.get_height_based_on_width(width, 0.85)
 
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
-    new_df['pp'] = 1 / new_df[sf_peak]
 
     new_df['ecc'] = _add_jitter(new_df, 'ecc', subset=hue, jitter_scale=0.08)
     new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc', jitter_scale=0.03)
 
 
-    new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df['pp'], new_df[precision])]
+    new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df[preferred_period], new_df[precision])]
     grid = sns.FacetGrid(new_df,
                          col=col,
                          col_order=col_order,
@@ -233,8 +238,9 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                               col=None, col_order=None,
                               suptitle=None, width=3.25, errorbar=("ci", 68),
                               save_path=None):
-    rc = {'axes.labelpad': 5,
-          'figure.dpi': 72*4}
+
+    rc.update({'axes.labelpad': 5,
+               'figure.dpi': 72*4})
     sns.set_theme("notebook", style='ticks', font_scale=0.9, rc=rc)
     height = utils.get_height_based_on_width(width, 0.85)
 
@@ -283,7 +289,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], ylim=(2, 4))
+    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], ylim=(2,14))
 
     grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
 
