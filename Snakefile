@@ -89,7 +89,7 @@ def _get_boolean_for_vs(vs):
                 'pRFsize': True}
     return switcher.get(vs, True)
 
-rule prep_data:
+rule prep_nsdsyn_data:
     input:
         design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
         stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
@@ -131,6 +131,22 @@ rule prep_data:
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
+rule prep_broderick_data:
+    input:
+        design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
+        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
+        lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
+        lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
+        lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
+        rh_prfs= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
+        rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
+        rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
+    output:
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+    params:
+        rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
+        task_keys = ['fixation_task', 'memory_task'],
+        stim_size= get_stim_size_in_degree('nsdsyn')
 
 rule prep_baseline:
     input:

@@ -67,7 +67,7 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
                          height=height,
                          hue=hue,
                          hue_order=hue_order,
-                         aspect=1,
+                         cd =1,
                          palette=sns.color_palette("tab10"),
                          sharex=True, sharey=False, **kwargs)
     g = grid.map(sns.lineplot, x, y, linestyle='-', marker='o',
@@ -116,7 +116,10 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
             yy = tmp[y]
             tmp_history = params_df[params_df[col] == col_order[g]]
             tmp_history = tmp_history[tmp_history[hue] == hue_order[c]]
-            pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(), tmp_history)
+            pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(),
+                                                     tmp_history['slope'].item(),
+                                                     tmp_history['mode'].item(),
+                                                     tmp_history['sigma'].item(), n_points=1000)
             axes[g].set_title(col_order[g])
             axes[g].plot(pred_x, pred_y,
                          color=colors[c],
