@@ -80,7 +80,7 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
 
 def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
                    hue_order=None, col_order=None,
-                   lgd_title=None, save_path=None):
+                   lgd_title=None, save_path=None, palette=None):
     rc.update({'axes.linewidth': 1.2,
           'xtick.major.width':1.2,
           'ytick.major.width':1.2,
@@ -105,9 +105,11 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
     fig, axes = plt.subplots(1, len(col_order),
                              figsize=(7, 7/1.9), dpi=72*2,
                              sharex=True, sharey=False)
-
-    colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
-    colors = colors[1:][::-1]
+    if palette is None:
+        colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
+        colors = colors[1:][::-1]
+    else:
+        colors = palette
     for g in range(len(col_order)):
         subplot_tmp = df[df[col] == col_order[g]]
         for c in range(len(hue_order)):
