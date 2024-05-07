@@ -14,7 +14,11 @@ from sfp_nsdsyn.visualization import plot_2D_model_results as vis2D
 rc = {'text.color': 'black',
       'axes.labelcolor': 'black',
       'xtick.color': 'black',
-      'ytick.color': 'black'
+      'ytick.color': 'black',
+      'axes.edgecolor': 'black',
+      'font.family': 'Helvetica',
+      'figure.dpi': 72 * 2,
+      'savefig.dpi': 72 * 4
       }
 mpl.rcParams.update(rc)
 
@@ -92,27 +96,29 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
           'axes.titlepad': 15,
           'axes.titleweight': 'bold',
           'font.family': 'Helvetica',
+          'axes.edgecolor': 'black',
           'figure.dpi': 72*2,
           'savefig.dpi': 72*4})
     utils.set_rcParams(rc)
     utils.set_fontsize(11, 11, 15)
-
+    sns.set_theme("notebook", style='ticks', rc=rc)
 
     if hue_order is None:
         hue_order = df[hue].unique()
     if col_order is None:
         col_order = df[col].unique()
     fig, axes = plt.subplots(1, len(col_order),
-                             figsize=(7, 7/1.9), dpi=72*2,
+                             figsize=(7, 7/1.9),
                              sharex=True, sharey=False)
     if palette is None:
         colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
         colors = colors[1:][::-1]
     else:
         colors = palette
-    for g in range(len(col_order)):
+    for i, g in enumerate(range(len(col_order))):
         subplot_tmp = df[df[col] == col_order[g]]
-        for c in range(len(hue_order)):
+        cur_color = colors[i]
+        for c, ls, fc, in zip(range(len(hue_order)), ['--','-'], ['w', cur_color]):
             tmp = subplot_tmp[subplot_tmp[hue] == hue_order[c]]
             xx = tmp[x]
             yy = tmp[y]
@@ -122,19 +128,20 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
                                                      tmp_history['slope'].item(),
                                                      tmp_history['mode'].item(),
                                                      tmp_history['sigma'].item(), n_points=1000)
-            axes[g].set_title(col_order[g])
+            axes[g].set_title(col_order[g], fontsize=15)
             axes[g].plot(pred_x, pred_y,
-                         color=colors[c],
+                         color=cur_color,
+                         linestyle=ls,
                          linewidth=2,
-                         path_effects=[pe.Stroke(linewidth=2.3, foreground='black'),
+                         path_effects=[pe.Stroke(linewidth=1, foreground='black'),
                                        pe.Normal()],
                          zorder=0)
             axes[g].scatter(xx, yy,
-                            s=30,
-                            color=colors[c],
+                            s=34,
+                            facecolor=fc, #colors[c],
                             alpha=0.95,
                             label=hue_order[c],
-                            edgecolors='black', linewidth=0.5,
+                            edgecolor=cur_color, linewidth=1.5,
                             zorder=10)
 
         if baseline is not None:
@@ -148,6 +155,9 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
             axes[g].set_yticks(axes[g].get_yticks()[::2])
         axes[g].tick_params(axis='both')
     axes[len(col_order)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(0.9, 0.9), frameon=False, fontsize=13)
+    leg = axes[len(col_order)-1].get_legend()
+    leg.legendHandles[0].set_edgecolor('black')
+    leg.legendHandles[1].set_color('black')
     fig.supxlabel('Local spatial frequency (cpd)')
     fig.supylabel('Response\n(% BOLD signal change)', ha='center')
     fig.subplots_adjust(wspace=0.5, left=0.1, bottom=0.17)
@@ -175,7 +185,8 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                           col=None, col_order=None,
                           suptitle=None, width=3.25, errorbar=("ci", 68),
                           save_path=None):
-    rc.update({'axes.labelpad': 5,
+    rc.update({'axes.edgecolor': 'black',
+               'axes.labelpad': 5,
                'figure.dpi': 72*4})
     sns.set_theme("notebook", style='ticks', rc=rc)
     utils.set_fontsize(11, 11, 15)
@@ -194,10 +205,9 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                          col_order=col_order,
                          height=height,
                          aspect=1.2,
-                         palette=pal,
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
-                 hue, hue_order=hue_order, marker='o',
+                 hue, hue_order=hue_order, marker='o', palette=pal,
                  linestyle='', markersize=5, mew=0.1, mec='white',
                  estimator=utils.weighted_mean, errorbar=errorbar,
                  err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
@@ -245,6 +255,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                               save_path=None):
 
     rc.update({'axes.labelpad': 5,
+               'axes.edgecolor': 'black',
                'figure.dpi': 72*4})
     sns.set_theme("notebook", style='ticks', font_scale=0.9, rc=rc)
     height = utils.get_height_based_on_width(width, 0.85)
@@ -259,10 +270,9 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                          col_order=col_order,
                          height=height,
                          aspect=1.2,
-                         palette=pal,
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
-                 hue, hue_order=hue_order, marker='o',
+                 hue, hue_order=hue_order, marker='o', palette=pal,
                  linestyle='', markersize=5, mew=0.1, mec='white',
                  estimator=utils.weighted_mean, errorbar=errorbar,
                  err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
@@ -294,7 +304,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], ylim=(2,14))
+    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], ylim=(0,10))
 
     grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
 
