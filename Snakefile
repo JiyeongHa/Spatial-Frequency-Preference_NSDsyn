@@ -72,12 +72,6 @@ def interpret_bin_nums(wildcards):
         new_bin_labels = [bin_labels[int(k)] for k in wildcards.ebin]
     return new_bin_labels
 
-rule make_df_for_all_subj:
-    input:
-        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_binned-ecc-{e1}-{e2}_nbin-{enum}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        #stim_class=STIM_LIST, lr=LR, max_epoch=MAX_EPOCH, e1=[0.5], e2=[4], enum=[7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs=['pRFcenter','pRFsize'])
-        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'), dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize'])
-
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
         fixation_radius = vs.pix_to_deg(42.878)
