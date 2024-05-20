@@ -141,15 +141,15 @@ rule prep_broderick_data:
         rh_rois=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_varea.mgz'),
         betas= os.path.join(config['BRODERICK_DIR'], 'derivatives', 'GLMdenoise', 'sub-{subj}_ses-04_task-sfprescaled_results.mat')
     output:
-        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv'),
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
     params:
         stim_size= get_stim_size_in_degree('broderick')
     run:
         from sfp_nsdsyn import brod
-        if wildcards.tfunc == "corrected":
-            transform_func = brod._transform_angle_corrected
-        elif wildcards.tfunc == "uncorrected":
-            transform_func = brod._transform_angle
+#        if wildcards.tfunc == "corrected":
+        transform_func = brod._transform_angle_corrected
+        # elif wildcards.tfunc == "uncorrected":
+        #     transform_func = brod._transform_angle
         lh_prf_path_list = [input.lh_eccentricity, input.lh_angle, input.lh_size]
         rh_prf_path_list = [input.rh_eccentricity, input.rh_angle, input.rh_size]
         bd_df = brod.make_broderick_sf_dataframe(input.stim_info,
@@ -170,7 +170,7 @@ rule prep_broderick_data:
 
 rule broderick_data_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv'), subj=make_subj_list('broderick'), roi='V1', vs=['pRFcenter','pRFsize'], tfunc=['corrected','uncorrected'])
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}.csv'), subj=make_subj_list('broderick'), roi='V1', vs=['pRFcenter','pRFsize'])
 
 rule prep_baseline:
     input:
