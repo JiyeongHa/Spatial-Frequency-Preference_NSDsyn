@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import h5py
 import itertools
+from . import preprocessing as prep
 from . import utils as utils
 from . import voxel_selection as vs
 from . import two_dimensional_model as model
@@ -29,26 +30,24 @@ def _label_freq_lvl(freq_lvl=10, phi_repeat=8, main_classes=4, mixture_freq_lvl=
     freq_lvl = np.concatenate((freq_lvl_main_classes, freq_lvl_mixtures))
     return freq_lvl
 
-def load_stim_info(stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
-                   save_copy=True):
-    """stimulus description file will be loaded as a dataframe."""
+def load_broderick_stim_info(stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description.csv',
+                             drop_phase=True):
+    """ Broderick et al (2022) had different convention for naming conditions.
+    This function will load in the original broderick stimulus .csv file and convert its format to match the sfp_nsd convention."""
 
-    # stimuli information
-    if os.path.exists(stim_description_path):
-        stim_df = pd.read_csv(stim_description_path)
-    else:
-        if not os.path.exists(stim_description_path.replace('_haji.csv', '.csv')):
-            raise Exception('The original stim description file does not exist!\n')
-        stim_df = pd.read_csv(stim_description_path)
-        stim_df = stim_df.dropna(axis=0)
-        stim_df = stim_df.astype({'class_idx': int})
-        stim_df = stim_df.drop(columns='res')
-        stim_df = stim_df.rename(columns={'phi': 'phase', 'index': 'image_idx'})
-        stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
-        stim_df['freq_lvl'] = _label_freq_lvl()
-        stim_df.to_csv(stim_description_path, index=False)
+    if not os.path.exists(stim_description_path):
+        raise Exception('The original stim description file does not exist!\n')
+    stim_df = pd.read_csv(stim_description_path)
+    stim_df = stim_df.dropna(axis=0)
+    stim_df = stim_df.astype({'class_idx': int})
+    stim_df = stim_df.drop(columns='res')
+    stim_df = stim_df.rename(columns={'phi': 'phase', 'index': 'image_idx'})
+    stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
+    stim_df['freq_lvl'] = _label_freq_lvl()
+    if drop_phase:
+        stim_df = stim_df.drop_duplicates(subset=['class_idx'])
+        stim_df = stim_df.drop(columns='phase')
     return stim_df
-
 
 def _get_benson_atlas_rois(roi_index):
     """ switch num to roi names or the other way around. see https://osf.io/knb5g/wiki/Usage/"""
@@ -60,94 +59,52 @@ def _get_benson_atlas_rois(roi_index):
     return switcher.get(roi_index, "No Visual area")
 
 
-def masking(sn, roi="V1", eroi_range=[1, 12], mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
-    """create a mask using visual rois and eccentricity range."""
-    mask = {}
-    vroi_num = [_get_benson_atlas_rois(roi)]
-    for hemi in ['lh', 'rh']:
-        varea_name = f"{hemi}.inferred_varea.mgz"
-        varea_path = os.path.join(mask_path, "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', varea_name)
-        varea = nib.load(varea_path).get_fdata().squeeze()
-        vroi_mask = np.isin(varea, vroi_num)
-        eccen_name = f"{hemi}.inferred_eccen.mgz"
-        eccen_path = os.path.join(mask_path, "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', eccen_name)
-        eccen = nib.load(eccen_path).get_fdata().squeeze()
-        eccen_mask = (eroi_range[0] < eccen) & (eccen < eroi_range[-1])
-        roi_mask = vroi_mask & eccen_mask
-        mask[hemi] = roi_mask
+
+def make_a_mask(varea_path, roi, eccentricity_path, eccen_range):
+    """create a mask using visual rois and eccentricity range.
+    Broderick dataset doesn't have eccentricity-based ROIs. Therefore, the possible input for the rois_path is inferred_varea and inferred_eccen."""
+    vroi_mask, _ = prep.load_mask_and_roi(varea_path, [_get_benson_atlas_rois(roi)])
+    eccen = nib.load(eccentricity_path).get_fdata().squeeze()
+    eccen_mask = (eccen_range[0] < eccen) & (eccen < eccen_range[-1])
+    mask = vroi_mask & eccen_mask
     return mask
 
+def make_lh_rh_masks(lh_varea_path, rh_varea_path, lh_eccen_path, rh_eccen_path, roi, eccen_range):
+    mask={}
+    lh_mask = make_a_mask(lh_varea_path, roi, lh_eccen_path, eccen_range)
+    rh_mask = make_a_mask(rh_varea_path, roi, rh_eccen_path, eccen_range)
+    mask['lh'] = lh_mask
+    mask['rh'] = rh_mask
+    return mask
 
-def load_prf(sn, mask, prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
-             prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/'):
-    mgzs = {}
-    for hemi, prf_names in itertools.product(['lh', 'rh'], prf_label_names):
-        k = f"{hemi}-{prf_names}"
-        prf_file = f"{hemi}.inferred_{prf_names}.mgz"
-        prf_path = os.path.join(prf_dir,
-                                "sub-wlsubj{:03d}".format(sn), 'bayesian_posterior', prf_file)
-        prf = nib.load(prf_path).get_fdata().squeeze()
-        prf = prf[mask[hemi]]
-        mgzs[k] = prf
-    return mgzs
+def _get_prf_property_name(prf_path):
+    """ switch num to roi names or the other way around. see https://osf.io/knb5g/wiki/Usage/"""
+    k = prf_path.split('/')[-1].replace('.mgz', '')
+    hemi = k.split('.')[0]
+    k = k.split('.')[-1]  # remove hemi
+    switcher = {'inferred_angle': f'{hemi}_angle',
+               'inferred_sigma': f'{hemi}_size',
+               'inferred_eccen': f'{hemi}_eccentricity',
+               'inferred_varea': f'{hemi}_vroinames'}
+    return switcher.get(k, None)
 
-
-def load_betas(sn, mask, results_names=['modelmd'], beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/'):
-    """Load beta files. This is shaped as .mat files and lh and rh files are concatenated.
-    See _load_mat_files() in one_dimensional_model.py of the Broderick et al (2022) Github."""
-    betas = {}
-    subj = "sub-wlsubj{:03d}".format(sn)
-    betas_file = f'{subj}_ses-04_task-sfprescaled_results.mat'
-    betas_path = os.path.join(beta_dir, betas_file)
-    # this is the case for all the models fields of the .mat file (modelse, modelmd,
-    # models). [0, 0] contains the hrf, and [1, 0] contains the actual results
-    f = h5py.File(betas_path, 'r')
-    for var in results_names:
-        tmp_ref = f['results'][var]
-        res = f[tmp_ref[1, 0]][:]  # actual data
-        tmp = res.squeeze().transpose()  # voxel x conditions
-        if var == "modelmd":
-            for hemi in ['lh', 'rh']:
-                k = f"{hemi}-betas"
-                if hemi == 'lh':
-                    tmper = tmp[:mask['lh'].shape[0]]
-                else:
-                    tmper = tmp[-mask['rh'].shape[0]:]
-                tmper = tmper[mask[hemi], :]
-                betas[k] = tmper
-        elif var == "models": # voxel x conditions x bootstrap
-            for hemi in ['lh', 'rh']:
-                k = f"{hemi}-betas"
-                if hemi == 'lh':
-                    tmper = tmp[:mask['lh'].shape[0], :, :]
-                else:
-                    tmper = tmp[-mask['rh'].shape[0]:, :, :]
-                tmper = tmper[mask[hemi], :, :]
-                betas[k] = tmper
-
-    return betas
-
-def melt_2D_betas_into_df(betas):
-    """Melt 2D shaped betas dict into a wide form of a dataframe."""
-    betas_df = {}
-    for hemi in ['lh', 'rh']:
-        k = f'{hemi}-betas'
-        if betas[k].ndim < 3:
-            tmp = pd.DataFrame(betas[k]).reset_index()
-            tmp = pd.melt(tmp, id_vars='index', var_name='class_idx', value_name='betas', ignore_index=True)
-            tmp = tmp.rename(columns={'index': 'voxel'})
-            betas_df[hemi] = tmp
-        else:
-            names = ['voxel', 'class_idx', 'bootstraps']
-            index = pd.MultiIndex.from_product([range(s) for s in betas[k].shape], names=names)
-            tmp = pd.DataFrame({'betas': betas[k].flatten()}, index=index)['betas']
-            betas_df[hemi] = tmp.reset_index()
-    return betas_df
-
-
-def _label_vareas(row):
-    return _get_benson_atlas_rois(row.varea)
-
+def load_prf_properties_as_dict(prf_path_list, mask=None):
+    # load pRF labels & save masked voxels
+    prf_dict = {}
+    for prf_path in prf_path_list:
+        k = _get_prf_property_name(prf_path)
+        tmp_prf = nib.load(prf_path).get_fdata().squeeze()
+        if mask is not None:
+            # throw away voxels that are not included in visual rois & eccen rois
+            tmp_prf = tmp_prf[mask]
+        # save ROIs, ecc rois, & pRF labels into a dict
+        prf_dict[k] = tmp_prf
+    return prf_dict
+def load_lh_rh_prf_properties_as_dict(lh_prf_path_list,
+                                      rh_prf_path_list, lh_mask=None, rh_mask=None):
+    lh_dict = load_prf_properties_as_dict(lh_prf_path_list, lh_mask)
+    rh_dict = load_prf_properties_as_dict(rh_prf_path_list, rh_mask)
+    return {**lh_dict, **rh_dict}
 
 def _transform_angle(row):
     """this function is a modified ver. of the script from sfp (Broderick et al.2022).
@@ -165,41 +122,130 @@ def _transform_angle(row):
         # convention, but I have seen positive values there, so maybe it changed at one point.
         if row.angle > 0:
             row.angle = -row.angle
-    return np.mod((row.angle - 90), 360)
+    return np.mod((row.angle - 90), 360) #TODO: maybe should be + 90
 
-def prf_mgzs_to_df(prf_mgzs, prf_label_names=['angle','eccen','sigma','varea']):
+
+def _transform_angle_corrected(row):
+    """This function is to correct the above function _transform_angle to match the sfp_nsd convention. First, the right visual field should be negative, and then add 90.
+    The right visual field is from left hemisphere's angle file. So in case the hemisphere is 'lh', we multiply -1.
+
+    """
+    if row.hemi == 'lh':
+        if row.angle > 0:
+            row.angle = -row.angle
+    return np.mod((row.angle + 90), 360)
+
+def _transform_angle_baseline(row):
+    """this function is a modified ver. of the script from sfp (Broderick et al.2022).
+     transform angle from Benson14 convention to our convention
+    The Benson atlases' convention for angle in visual field is: zero is the upper vertical
+    meridian, angle is in degrees, the left and right hemisphere both run from 0 to 180 from the
+    upper to lower meridian (so they increase as you go clockwise and counter-clockwise,
+    respectively). For our calculations, we need the following convention: zero is the right
+    horizontal meridian, angle is in radians (and lie between 0 and 360, rather than -pi and pi),
+    angle increases as you go clockwise, and each angle is unique (refers to one point on the
+    visual field; we don't have the same number in the left and right hemispheres)
+    """
+    return row.angle
+
+def prf_mgzs_to_df(prf_dict, angle_to_radians=True, transform_func=_transform_angle):
 
     prf_df = {}
-    for hemi in ['lh', 'rh']:
-        tmp = {}
-        for prf_name in prf_label_names:
-            k = f'{hemi}-{prf_name}'
-            tmp[prf_name] = pd.DataFrame(prf_mgzs[k])
-            tmp[prf_name] = tmp[prf_name].rename(columns={0: prf_name})
-            if prf_name == 'varea':
-                tmp[prf_name]['vroinames'] = tmp[prf_name].apply(_label_vareas, axis=1)
-            if prf_name == 'angle':
-                if hemi == 'rh':
-                    tmp[prf_name]['angle'] = -tmp[prf_name]['angle']
-                tmp[prf_name]['angle'] = np.mod((tmp[prf_name]['angle'] - 90), 360)
-        prf_df[hemi] = pd.concat(tmp, axis=1).droplevel(0, axis=1)
+    for hemi in ['lh','rh']:
+        prf_df[hemi] = pd.DataFrame({})
+        hemi_key_list = [k for k in prf_dict.keys() if hemi in k]
+        for k in hemi_key_list:
+            prf_name = k.split('_')[-1]
+            tmp = pd.DataFrame(prf_dict[k], columns=[prf_name])
+            if prf_name == 'vroinames':
+                tmp['vroinames'] = tmp['vroinames'].apply(lambda x: _get_benson_atlas_rois(x))
+            prf_df[hemi] = pd.concat((prf_df[hemi], tmp), axis=1)
+        prf_df[hemi]['hemi'] = hemi
         prf_df[hemi] = prf_df[hemi].reset_index().rename(columns={'index': 'voxel'})
-
+        prf_df[hemi]['angle'] = prf_df[hemi].apply(transform_func, axis=1)
+    for hemi in ['lh', 'rh']:
+        if angle_to_radians is True:
+            prf_df[hemi]['angle'] = np.deg2rad(prf_df[hemi]['angle'])
     return prf_df
 
-def merge_prf_and_betas(betas_df, prf_df):
+def load_lh_rh_prf_proporties_as_df(lh_prf_path_list, rh_prf_path_list, lh_mask=None, rh_mask=None, angle_to_radians=True, transform_func=_transform_angle):
+    prf_dict = load_lh_rh_prf_properties_as_dict(lh_prf_path_list, rh_prf_path_list, lh_mask, rh_mask)
+    prf_df = prf_mgzs_to_df(prf_dict, angle_to_radians, transform_func=transform_func)
+    return prf_df
 
+
+
+def load_betas(betas_path, mask, results_names=['modelmd']):
+    """Load beta files. This is shaped as .mat files and lh and rh files are concatenated.
+    See _load_mat_files() in one_dimensional_model.py of the Broderick et al (2022) Github."""
+    # this is the case for all the models fields of the .mat file (modelse, modelmd,
+    # models). [0, 0] contains the hrf, and [1, 0] contains the actual results
+    betas = {}
+
+    f = h5py.File(betas_path, 'r')
+    for var in results_names:
+        tmp_ref = f['results'][var]
+        res = f[tmp_ref[1, 0]][:]  # actual data
+        tmp = res.squeeze().transpose()  # voxel x conditions
+        if var == "modelmd":
+            for hemi in ['lh', 'rh']:
+                k = f"{hemi}_betas"
+                if hemi == 'lh':
+                    tmper = tmp[:mask['lh'].shape[0]]
+                else:
+                    tmper = tmp[-mask['rh'].shape[0]:]
+                tmper = tmper[mask[hemi], :]
+                betas[k] = tmper
+        elif var == "models":
+            for hemi in ['lh', 'rh']:
+                k = f"{hemi}_betas"
+                if hemi == 'lh':
+                    tmper = tmp[:mask['lh'].shape[0], :, :] # voxel x conditions x bootstrap
+                else:
+                    tmper = tmp[-mask['rh'].shape[0]:, :, :]
+                tmper = tmper[mask[hemi], :, :]
+                betas[k] = tmper
+
+    return betas
+
+def melt_2D_betas_into_df(betas):
+    """Melt 2D shaped betas dict into a wide form of a dataframe."""
+    betas_df = {}
     for hemi in ['lh', 'rh']:
-        betas_df[hemi] = betas_df[hemi].merge(prf_df[hemi], on='voxel')
+        k = f'{hemi}_betas'
+        if betas[k].ndim < 3:
+            tmp = pd.DataFrame(betas[k]).reset_index()
+            tmp = pd.melt(tmp, id_vars='index', var_name='class_idx', value_name='betas', ignore_index=True)
+            tmp = tmp.rename(columns={'index': 'voxel'})
+            betas_df[hemi] = tmp
+        else:
+            names = ['voxel', 'class_idx', 'bootstraps']
+            index = pd.MultiIndex.from_product([range(s) for s in betas[k].shape], names=names)
+            tmp = pd.DataFrame({'betas': betas[k].flatten()}, index=index)['betas']
+            betas_df[hemi] = tmp.reset_index()
     return betas_df
+
+def load_betas_as_df(betas_path, mask, results_names=['modelmd']):
+    betas = load_betas(betas_path, mask, results_names)
+    betas_df = melt_2D_betas_into_df(betas)
+    return betas_df
+
+def merge_prf_and_betas(prf_df, betas_df):
+    merged_df = {}
+    for hemi in ['lh', 'rh']:
+        merged_df[hemi] = betas_df[hemi].merge(prf_df[hemi], on='voxel')
+    return merged_df
 
 def concat_lh_and_rh_df(df):
     df['rh'].voxel = df['rh'].voxel + df['lh'].voxel.max() + 1
-    return pd.concat(df).reset_index(0).rename(columns={'level_0': 'hemi'})
+    return pd.concat((df['lh'], df['rh']), ignore_index=True, axis=0)
 
-def add_stim_info_to_df(df, stim_df):
-    stim_df = stim_df[stim_df['phase'] == 0]
-    return df.merge(stim_df, on='class_idx')
+def merge_stim_df_and_betas_df(prf_betas_df, stim_df, on='class_idx'):
+    if 'phase' in stim_df.columns:
+        raise Exception('The stimulus info df should not contain phase column.')
+    return prf_betas_df.merge(stim_df, on=on)
+
+
 
 def calculate_local_orientation(df):
     ang = np.arctan2(df['w_a'], df['w_r'])
@@ -213,54 +259,26 @@ def calculate_local_sf(df):
     df['local_sf'] = np.divide(df['local_sf'], 2 * np.pi)
     return df
 
-
-def sub_main(sn,
-             stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',
-             vroi_range=["V1", "V2","V3"], eroi_range=[1, 12],
-             mask_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
-             prf_label_names=['angle', 'eccen', 'sigma', 'varea'],
-             prf_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/prf_solutions/',
-             beta_dir='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/derivatives/GLMdenoise/',
-             df_save_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes/broderick',
-             save_df=False, voxel_criteria='pRFcenter'):
-    for roi in vroi_range:
-        print(f'**{roi}**')
-        subj = utils.sub_number_to_string(sn, dataset="broderick")
-        stim_df = load_stim_info(stim_description_path, save_copy=False)
-        mask = masking(sn, roi, eroi_range, mask_path)
-        prf_mgzs = load_prf(sn, mask, prf_label_names, prf_dir)
-        betas = load_betas(sn, mask, results_names=['models'], beta_dir=beta_dir)
-        betas_df = melt_2D_betas_into_df(betas)
-        prf_df = prf_mgzs_to_df(prf_mgzs)
-        voxel_df = merge_prf_and_betas(betas_df, prf_df)
-        df = concat_lh_and_rh_df(voxel_df)
-        df = df.rename(columns={'eccen': 'eccentricity'})
-        if voxel_criteria == 'pRFcenter':
-            df = vs.select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'], beta_col='betas', near_border=False)
-        elif voxel_criteria == 'pRFsigma':
-            df = vs.select_voxels(df, inner_border=eroi_range[0], outer_border=eroi_range[-1], dv_to_group=['voxel'], beta_col='betas', near_border=True)
-        df = add_stim_info_to_df(df, stim_df)
-        df = calculate_local_orientation(df)
-        df = calculate_local_sf(df)
-        df['subj'] = subj
-        sigma_v_df = bts.get_multiple_sigma_vs(df, power=[1, 2], columns=['noise_SD', 'sigma_v_squared'], to_sd='betas',
-                                               to_group=['voxel', 'subj'])
-        df = df.merge(sigma_v_df, on=['voxel', 'subj'])
-        df['angle'] = np.deg2rad(df['angle'])
-        if save_df:
-            # save the final output
-            if not os.path.exists(df_save_dir):
-                os.makedirs(df_save_dir)
-            df_save_path = os.path.join(df_save_dir, f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}.csv")
-            df.to_csv(df_save_path, index=False)
-            print(f'... {subj} dataframe saved.')
-            fnl_df = df.groupby(['subj', 'voxel', 'class_idx', 'vroinames', 'names']).median().reset_index()
-            fnl_df = fnl_df.drop(['bootstraps', 'phase'], axis=1)
-            fnl_df['normed_betas'] = model.normalize(fnl_df, 'betas', ['voxel'], phase_info=True)
-            fnl_df_save_path = os.path.join(df_save_dir,  f"{subj}_stim_voxel_info_df_vs-{voxel_criteria}_{roi}_median.csv")
-            fnl_df.to_csv(fnl_df_save_path, index=False)
-            print(f'... {subj} median dataframe dataframe saved.')
-    return fnl_df
+def make_broderick_sf_dataframe(stim_info_path,
+                                lh_varea_path, rh_varea_path,
+                                lh_eccentricity_path, rh_eccentricity_path,
+                                lh_prf_path_list, rh_prf_path_list,
+                                betas_path,
+                                transform_func=_transform_angle_corrected,
+                                eccen_range=[1,12], roi="V1",
+                                angle_to_radians=True, reference_frame='relative',
+                                results_names=['modelmd']):
+    stim_info = load_broderick_stim_info(stim_info_path)
+    mask = make_lh_rh_masks(lh_varea_path, rh_varea_path, lh_eccentricity_path, rh_eccentricity_path, roi, eccen_range)
+    prf_df = load_lh_rh_prf_proporties_as_df(lh_prf_path_list, rh_prf_path_list, mask['lh'], mask['rh'], angle_to_radians, transform_func=transform_func)
+    betas_df = load_betas_as_df(betas_path, mask, results_names)
+    prf_betas_df = merge_prf_and_betas(prf_df, betas_df)
+    prf_betas_df = concat_lh_and_rh_df(prf_betas_df)
+    sf_df = merge_stim_df_and_betas_df(prf_betas_df, stim_info, on='class_idx')
+    sf_df['local_sf'], sf_df['local_ori'] = prep.calculate_local_stim_properties(w_a=sf_df['w_a'], w_r=sf_df['w_r'],
+                                                                                 eccentricity=sf_df['eccentricity'], angle=sf_df['angle'],
+                                                                                 angle_in_radians=angle_to_radians, reference_frame=reference_frame)
+    return sf_df
 
 def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],
                       stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_haji.csv',

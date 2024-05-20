@@ -83,7 +83,7 @@ def plot_curves_sns(df, x, y, hue, hue_order=None,
 
 
 def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
-                   hue_order=None, col_order=None,
+                   hue_order=None, col_order=None, suptitle=None,
                    lgd_title=None, save_path=None, palette=None):
     rc.update({'axes.linewidth': 1.2,
           'xtick.major.width':1.2,
@@ -158,6 +158,8 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
     leg = axes[len(col_order)-1].get_legend()
     leg.legendHandles[0].set_edgecolor('black')
     leg.legendHandles[1].set_color('black')
+    if suptitle is not None:
+        fig.suptitle(suptitle, fontweight="bold")
     fig.supxlabel('Local spatial frequency (cpd)')
     fig.supylabel('Response\n(% BOLD signal change)', ha='center')
     fig.subplots_adjust(wspace=0.5, left=0.1, bottom=0.17)

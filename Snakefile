@@ -30,7 +30,7 @@ FULL_VER = ["True"]
 PW = ["True"]
 SN_LIST = ["{:02d}".format(sn) for sn in np.arange(1,9)]
 broderick_sn_list = [1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121]
-SUBJ_OLD = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
+broderick_subj_list = [utils.sub_number_to_string(sn, dataset="broderick") for sn in broderick_sn_list]
 ROIS = ["V1","V2","V3"]
 PARAMS_2D = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
 PARAMS_GROUP_2D = [0,1,1,2,2,3,3,4,4]
@@ -136,20 +136,47 @@ rule prep_nsdsyn_data:
 
 rule prep_broderick_data:
     input:
-        design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
-        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
-        lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
-        lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
-        lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
-        rh_prfs= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
-        rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
-        rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
+        stim_info = os.path.join(config['BRODERICK_DIR'], 'stimuli', 'task-sfprescaled_stim_description.csv'),
+        lh_eccentricity = os.path.join(config['BRODERICK_DIR'], 'derivatives', 'prf_solutions', 'sub-{subj}', 'bayesian_posterior', 'lh.inferred_eccen.mgz'),
+        lh_angle = os.path.join(config['BRODERICK_DIR'], 'derivatives', 'prf_solutions', 'sub-{subj}', 'bayesian_posterior', 'lh.inferred_angle.mgz'),
+        lh_size = os.path.join(config['BRODERICK_DIR'], 'derivatives', 'prf_solutions', 'sub-{subj}', 'bayesian_posterior', 'lh.inferred_sigma.mgz'),
+        lh_rois = os.path.join(config['BRODERICK_DIR'], 'derivatives', 'prf_solutions', 'sub-{subj}', 'bayesian_posterior', 'lh.inferred_varea.mgz'),
+        rh_eccentricity=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_eccen.mgz'),
+        rh_angle=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_angle.mgz'),
+        rh_size=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_sigma.mgz'),
+        rh_rois=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_varea.mgz'),
+        betas= os.path.join(config['BRODERICK_DIR'], 'derivatives', 'GLMdenoise', 'sub-{subj}_ses-04_task-sfprescaled_results.mat')
     output:
-        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv'),
     params:
-        rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
-        task_keys = ['fixation_task', 'memory_task'],
-        stim_size= get_stim_size_in_degree('nsdsyn')
+        stim_size= get_stim_size_in_degree('broderick')
+    run:
+        from sfp_nsdsyn import brod
+        if wildcards.tfunc == "corrected":
+            transform_func = brod._transform_angle_corrected
+        elif wildcards.tfunc == "uncorrected":
+            transform_func = brod._transform_angle
+        lh_prf_path_list = [input.lh_eccentricity, input.lh_angle, input.lh_size]
+        rh_prf_path_list = [input.rh_eccentricity, input.rh_angle, input.rh_size]
+        bd_df = brod.make_broderick_sf_dataframe(input.stim_info,
+                                                 input.lh_rois, input.rh_rois,
+                                                 input.lh_eccentricity, input.rh_eccentricity,
+                                                 lh_prf_path_list, rh_prf_path_list,
+                                                 input.betas,
+                                                 transform_func=transform_func,
+                                                 eccen_range=params.stim_size, roi=wildcards.roi,
+                                                 angle_to_radians=True,
+                                                 reference_frame='relative',
+                                                 results_names=['modelmd'])
+        bd_df = vs.select_voxels(bd_df, drop_by=wildcards.vs,
+                                 inner_border=params.stim_size[0],
+                                 outer_border=params.stim_size[1],
+                                 to_group=['voxel'],return_voxel_list=False)
+        bd_df.to_csv(output[0], index=False)
+
+rule broderick_data_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv'), subj=make_subj_list('broderick'), roi='V1', vs=['pRFcenter','pRFsize'], tfunc=['corrected','uncorrected'])
 
 rule prep_baseline:
     input:
@@ -394,7 +421,7 @@ rule plot_full_width_half_maximum_1D:
 rule plot_curves_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
-            stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn')[5:6], dset='nsdsyn', vs=['pRFcenter'], fig_format='pdf'),
+            stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
         # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
         # dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='pdf'),
         # c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
