@@ -166,6 +166,8 @@ rule prep_broderick_data:
                                  inner_border=params.stim_size[0],
                                  outer_border=params.stim_size[1],
                                  to_group=['voxel'],return_voxel_list=False)
+        bd_df['sub'] = wildcards.subj
+        bd_df['vroinames'] = wildcards.roi
         bd_df.to_csv(output[0], index=False)
 
 rule broderick_data_all:
@@ -218,15 +220,11 @@ rule prep_baseline:
         baseline_df['sub'] = wildcards.subj
         baseline_df.to_csv(output[0], index=False)
 
-rule baseline_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','baseline', 'baseline_sub-{subj}_roi-{roi}_vs-{vs}.csv'), subj=make_subj_list('nsdsyn'), roi=ROIS, vs=['pRFcenter']),
-
 def get_ecc_bin_list(wildcards):
     bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
     return bin_list, bin_labels
 
-rule binning:
+rule binning_nsdsyn:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
@@ -245,6 +243,32 @@ rule binning:
                                                to_bin=['betas', 'local_sf'],
                                                central_tendency='mean')
         c_df.to_csv(output[0], index=False)
+
+
+rule binning_broderick:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'tfunc-{tfunc}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    log:
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', '{dset}', 'binned', 'tfunc-{tfunc}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+    params:
+        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
+    run:
+        from sfp_nsdsyn import tuning
+        df = pd.read_csv(input.subj_df)
+        df = df.query('~names.str.contains("mixture").values')
+        df['ecc_bin'] = tuning.bin_ecc(df['eccentricity'], bin_list=params.bin_info[0], bin_labels=params.bin_info[1])
+        c_df = tuning.summary_stat_for_ecc_bin(df,
+                                               to_group= ['sub', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
+                                               to_bin=['betas', 'local_sf'],
+                                               central_tendency='mean')
+        c_df.to_csv(output[0], index=False)
+
+rule binning_broderick_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'tfunc-{tfunc}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+            e1=1, e2=12, enum=11, dset='broderick', subj=make_subj_list('broderick'), roi='V1', vs='pRFcenter', tfunc=['corrected', 'uncorrected'])
 
 def _get_bin_number(enum):
     only_num = int(enum.replace('log', ''))
@@ -292,10 +316,50 @@ rule fit_tuning_curves:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+
+rule fit_tuning_curves_broderick:
+    input:
+        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned', 'tfunc-{tfunc}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'tfunc-{tfunc}_model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'tfunc-{tfunc}_loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'tfunc-{tfunc}_model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "{dset}", 'tfunc-{tfunc}_loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_set-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 2000
+    params:
+        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
+    run:
+        subj_df = pd.read_csv(input.input_path)
+        if wildcards.stim_class == "avg":
+            subj_df = subj_df.groupby(['sub','ecc_bin','vroinames','freq_lvl']).mean().reset_index()
+        else:
+            save_stim_type_name = wildcards.stim_class.replace('-',' ')
+            subj_df = subj_df.query('names == @save_stim_type_name')
+
+        save_ecc_bin_name = params.bin_info[1][int(wildcards.curbin)]
+        subj_df = subj_df.query('ecc_bin == @save_ecc_bin_name')
+        model_path_list = get_trained_model_for_all_bins(wildcards)
+        my_model = tuning.LogGaussianTuningModel()
+        my_dataset = tuning.LogGaussianTuningDataset(subj_df['local_sf'], subj_df['betas'])
+        loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset,
+                                                               learning_rate=float(wildcards.lr),
+                                                               max_epoch=int(wildcards.max_epoch),
+                                                               print_every=2000, save_path=output.model)
+        model_history['ecc_bin'] = save_ecc_bin_name
+        loss_history['ecc_bin'] = save_ecc_bin_name
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+
 rule fit_tuning_curves_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-               stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], curbin=np.arange(0,7), dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFcenter'])
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","{dset}",'tfunc-{tfunc}_model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+            tfunc=['corrected','uncorrected'], stim_class='avg', lr=LR,max_epoch=MAX_EPOCH,e1=1,e2=12,enum=11,curbin=np.arange(0,11), dset='broderick',subj=make_subj_list('broderick'), roi='V1', vs='pRFcenter'),
+        # expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        #        stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], curbin=np.arange(0,7), dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFcenter'])
 
 def _get_curbin(enum):
     return np.arange(0, int(enum.replace('log', '')))
@@ -311,6 +375,38 @@ rule plot_tuning_curves:
         os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
     log:
         os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
+    params:
+        roi_list=ROIS,
+        roi_pal=ROI_PAL
+    run:
+        bin_list, bin_labels = tuning.get_bin_labels(float(wildcards.e1), float(wildcards.e2), enum=int(wildcards.enum))
+        # ecc_colors = utils.get_continuous_colors(len(bin_labels) + 1,'#3f0377')
+        # ecc_colors = ecc_colors[1:][::-1]
+        # ecc_colors = dict(zip(bin_labels, ecc_colors))
+        final_params = tuning.load_all_models(input.model_df, *ARGS_1D)
+        bin_df = utils.load_dataframes(input.binned_df, *['sub','dset','roi'])
+        if wildcards.stim_class == "avg":
+            bin_df = bin_df.groupby(['sub', 'ecc_bin', 'vroinames', 'freq_lvl']).mean().reset_index()
+        else:
+            save_stim_type_name = wildcards.stim_class.replace('-',' ')
+            bin_df = bin_df.query('names == @save_stim_type_name')
+        bins_to_plot = [bin_labels[k] for k in bin_to_plot(wildcards.bins_to_plot)]
+        vis1D.plot_sf_curves(df=bin_df.query('ecc_bin in @bins_to_plot'),
+                             params_df=final_params.query('ecc_bin in @bins_to_plot'),
+                             x='local_sf', y='betas', hue='ecc_bin', hue_order=bins_to_plot,
+                             col='vroinames', lgd_title='Eccentricity band',
+                             palette=params.roi_pal,
+                             save_path=output[0])
+
+
+rule plot_tuning_curves_broderick:
+    input:
+        model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'tfunc-{{tfunc}}_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
+        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "{{dset}}", 'binned', 'tfunc-{{tfunc}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_dset-{{dset}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tfunc-{{tfunc}}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+    log:
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "{dset}", 'tfunc-{{tfunc}}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
     params:
         roi_list=ROIS,
         roi_pal=ROI_PAL
