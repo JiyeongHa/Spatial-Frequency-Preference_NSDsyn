@@ -168,6 +168,85 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
     utils.save_fig(save_path)
     return fig, axes
 
+
+def plot_sf_curves_only_for_V1(df, params_df, x, y, hue,
+                               hue_order=None, col_title=None, suptitle=None,
+                               lgd_title=None, save_path=None, palette=None):
+    rc.update({'axes.linewidth': 1.2,
+          'xtick.major.width':1.2,
+          'ytick.major.width':1.2,
+          'xtick.minor.width':1,
+          'xtick.major.size': 5,
+          'ytick.major.size': 5,
+          'xtick.minor.size': 3.5,
+          'axes.labelpad': 8,
+          'axes.titlepad': 15,
+          'axes.titleweight': 'bold',
+          'font.family': 'Helvetica',
+          'axes.edgecolor': 'black',
+          'figure.dpi': 72*2,
+          'savefig.dpi': 72*4})
+    utils.set_rcParams(rc)
+    utils.set_fontsize(11, 11, 15)
+    sns.set_theme("notebook", style='ticks', rc=rc)
+
+    if hue_order is None:
+        hue_order = df[hue].unique()
+    fig, ax = plt.subplots(1, 1,
+                             figsize=(2.5, 7/1.9),
+                             sharex=True, sharey=False)
+    if palette is None:
+        colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
+        colors = colors[1:][::-1]
+    else:
+        cur_color = palette
+        subplot_tmp = df
+        for c, ls, fc, in zip(range(len(hue_order)), ['--','-'], ['w', cur_color]):
+            tmp = subplot_tmp[subplot_tmp[hue] == hue_order[c]]
+            xx = tmp[x]
+            yy = tmp[y]
+            tmp_history = params_df
+            tmp_history = tmp_history[tmp_history[hue] == hue_order[c]]
+            pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(),
+                                                     tmp_history['slope'].item(),
+                                                     tmp_history['mode'].item(),
+                                                     tmp_history['sigma'].item(), n_points=1000)
+            ax.plot(pred_x, pred_y,
+                         color=cur_color,
+                         linestyle=ls,
+                         linewidth=2,
+                         path_effects=[pe.Stroke(linewidth=1, foreground='black'),
+                                       pe.Normal()],
+                         zorder=0)
+            ax.scatter(xx, yy,
+                            s=34,
+                            facecolor=fc, #colors[c],
+                            alpha=0.95,
+                            label=hue_order[c],
+                            edgecolor=cur_color, linewidth=1.5,
+                            zorder=10)
+        plt.xscale('log')
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        if len(ax.get_yticks()) > 4:
+            ax.set_yticks(ax.get_yticks()[::2])
+        ax.tick_params(axis='both')
+    ax.set_title(col_title, fontsize=15)
+    ax.legend(title=lgd_title, loc='center left', bbox_to_anchor=(0.9, 0.9), frameon=False, fontsize=13)
+    leg = ax.get_legend()
+    leg.legendHandles[0].set_edgecolor('black')
+    leg.legendHandles[1].set_color('black')
+    if suptitle is not None:
+        fig.suptitle(suptitle, fontweight="bold")
+    fig.supxlabel('Local spatial frequency (cpd)')
+    fig.supylabel('Response\n(% BOLD signal change)', ha='center')
+    fig.subplots_adjust(left=0.3, bottom=0.17)
+
+
+    utils.save_fig(save_path)
+    return fig, ax
+
+
 def _get_middle_ecc(row):
 
     label = row['ecc_bin']
@@ -241,7 +320,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,4.2), xticks=[0,1,2,3,4], yticks=[0, 0.5, 1])
+    g.set(xlim=(0,5), xticks=[0,1,2,3,4,5], ylim=(0,1), yticks=[0, 0.5, 1])
     grid.set_axis_labels('Eccentricity', 'Preferred period')
 
     grid.fig.suptitle(suptitle, fontweight="bold")

@@ -54,12 +54,12 @@ def bootstrap_dataframe_all_subj(sn_list, df, n_bootstrap=100,
     return all_df
 
 
-def sigma_vi(bts_df, power, to_sd='normed_betas', to_group=['subj', 'voxel', 'class_idx']):
+def sigma_vi(bts_df, power, to_sd='normed_betas', to_group=['sub', 'voxel', 'class_idx']):
     sigma_vi_df = bts_df.groupby(to_group)[to_sd].apply(lambda x: (abs(np.percentile(x, 84)-np.percentile(x, 16))/2)**power)
     sigma_vi_df = sigma_vi_df.reset_index().rename(columns={to_sd: 'sigma_vi'})
     return sigma_vi_df
 
-def sigma_v(bts_df, power, to_sd='normed_betas', to_group=['voxel', 'subj']):
+def sigma_v(bts_df, power, to_sd='normed_betas', to_group=['voxel', 'sub']):
     selected_cols = to_group + ['class_idx']
     sigma_vi_df = sigma_vi(bts_df, power, to_sd=to_sd, to_group=selected_cols)
     sigma_v_df = sigma_vi_df.groupby(to_group)['sigma_vi'].mean().reset_index()
