@@ -197,7 +197,7 @@ def color_husl_palette_different_shades(n_colors, hex_hue):
     pal = sns.color_palette(f'light:{hex_hue}', n_colors=n_colors)
     return pal
 
-def make_dset_palettes(dset):
+def make_dset_palettes(dset=None):
     c_list = sns.diverging_palette(130, 300, s=100, l=30, n=2, as_cmap=False)
     hex_color = c_list.as_hex()
     if dset == 'broderick':
@@ -276,7 +276,7 @@ def get_subject_colors(to_plot, dset='nsdsyn'):
     hex_color = c_list.as_hex()
     subj_list = [sub_number_to_string(sn, dset) for sn in np.arange(1, 9)]
     if dset == 'broderick':
-        pal = sns.color_palette("deep:{hex_code}", as_cmap=False)
+        pal = sns.color_palette(f"deep:{hex_code}", as_cmap=False)
         #pal = color_husl_palette_different_shades(12, hex_color[1])
         #pal.reverse()
     elif dset == 'nsdsyn':
@@ -290,10 +290,23 @@ def get_subject_colors(to_plot, dset='nsdsyn'):
                    (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
                    (189, 189, 189)]
         # expects RGB triplets to lie between 0 and 1, not 0 and 255
-        pal = convert_rgb_to_seaborn_color_palette(palette, len(subj_list))
+        pal = convert_rgb_to_seaborn_color_palette(palette, len(palette))
     map_dict = _map_colors_and_list(subj_list, pal, False)
     sub_list_pal = [c for k,c in map_dict.items() if k in to_plot]
     return sub_list_pal
+
+def new_subj_colors(subj_list):
+    palette = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
+               (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
+               (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
+               (189, 189, 189)]
+    # expects RGB triplets to lie between 0 and 1, not 0 and 255
+    pal = convert_rgb_to_seaborn_color_palette(palette, len(palette))
+    map_dict = _map_colors_and_list(subj_list, pal, False)
+    sub_list_pal = [c for k,c in map_dict.items() if k in subj_list]
+    return sub_list_pal
+
+
 
 def get_continuous_colors(n, hex_code):
     pal = sns.color_palette(f"light:{hex_code}", n_colors=2*n, as_cmap=False)

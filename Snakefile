@@ -641,6 +641,94 @@ rule run_model:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+rule run_model_broderick_et_al:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        param_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'tfunc-{tfunc}_param-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'tfunc-{tfunc}_model_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'tfunc-{tfunc}_loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+    benchmark:
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'tfunc-{tfunc}_loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
+    run:
+        subj_df = pd.read_csv(input.subj_df)
+        precision_df = pd.read_csv(input.precision)
+        df = subj_df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
+        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
+        loss_history, param_history, _ = model.fit_model(subj_model, subj_dataset,
+                                                         learning_rate=float(wildcards.lr),
+                                                         max_epoch=int(wildcards.max_epoch),
+                                                         save_path=output.model,
+                                                         print_every=10000,
+                                                         loss_all_voxels=False,
+                                                         anomaly_detection=False,
+                                                         amsgrad=False,
+                                                         eps=1e-8)
+        param_history.to_hdf(output.param_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+rule plot_2D_model_loss_history_broderick_et_al:
+    input:
+        loss_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'tfunc-{{tfunc}}_loss-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
+    output:
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_roi-{roi}_vs-{vs}.{fig_format}')
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "figures", "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_roi-{roi}_vs-{vs}.{fig_format}.log')
+    run:
+        loss_df = pd.DataFrame({})
+
+        for l_file in input.loss_history:
+            tmp_df = utils.load_dataframes([l_file], *ARGS_2D)
+            tmp_df = tmp_df[tmp_df.epoch % 100 == 0]
+            loss_df = pd.concat((loss_df, tmp_df), axis=0)
+        subj_list = make_subj_list(wildcards.dset)
+        kwargs = {'palette': utils.new_subj_colors(subj_list)}
+        vis.plot_loss_history(loss_df,
+                              hue='sub',
+                              lgd_title='Subjects',
+                              hue_order=subj_list,
+                              log_y=True,
+                              save_path=output[0],
+                              **kwargs)
+
+
+rule plot_2D_model_param_history_broderick_et_al:
+    input:
+        param_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}", 'tfunc-{{tfunc}}_param-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
+    output:
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_param-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_roi-{roi}_vs-{vs}.{fig_format}')
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "figures", "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_param-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_roi-{roi}_vs-{vs}.{fig_format}')
+    params:
+        params_list = PARAMS_2D,
+    run:
+        params_df = pd.DataFrame({})
+        for m_file in input.param_history:
+            tmp_df = utils.load_dataframes([m_file],*ARGS_2D)
+            tmp_df = tmp_df[tmp_df.epoch % 100 == 0]
+            params_df = pd.concat((params_df, tmp_df), axis=0)
+        subj_list = make_subj_list(wildcards.dset)
+        kwargs = {'palette': utils.new_subj_colors(subj_list)}
+        vis.plot_param_history(params_df, params=PARAMS_2D,
+                                hue='sub',lgd_title='Subjects',hue_order=subj_list, save_path=output[0], **kwargs)
+
+rule test:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_{output_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_roi-{roi}_vs-{vs}.pdf'),
+               output_type=['loss','param'], tfunc=['corrected','uncorrected'],  dset='broderick', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi='V1')
+
+
+
+
+
+
 rule calculate_Pv_based_on_model:
     input:
         stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
@@ -842,76 +930,6 @@ rule plot_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}", 'fig-{d_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), d_type=['model','loss'], roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg']),
         expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}'), roi=['V1','V2','V3'], dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs=['pRFsize'], fig_format=['svg'])
-
-rule plot_2D_model_loss_history:
-    input:
-        loss_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'loss-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
-    output:
-        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "figures", "sfp_model", "results_2D", "{dset}",'fig-loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}.log')
-    params:
-        args = ['dset', 'lr', 'eph', 'sub', 'roi']
-    run:
-        loss_history = utils.load_dataframes(input.loss_history,*params.args)
-        subj_list = make_subj_list(wildcards.dset)
-        kwargs = {'palette': utils.subject_color_palettes(wildcards.dset, subj_list)}
-        vis.plot_loss_history(loss_history,
-                              hue='sub',
-                              lgd_title='Subjects',
-                              hue_order=subj_list,
-                              col=None,
-                              log_y=True,
-                              suptitle=wildcards.roi,
-                              save_path=output[0],
-                              **kwargs)
-
-rule plot_2D_model_param_history:
-    input:
-        model_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}",'model-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
-    output:
-        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'fig-model-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "figures", "sfp_model", "results_2D", "{dset}",'fig-model-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-individual_roi-{roi}_vs-{vs}.{fig_format}')
-    params:
-        args=['dset','lr','eph','sub','roi'],
-        params_list = PARAMS_2D,
-    run:
-        model_history = utils.load_dataframes(input.model_history,*params.args)
-        subj_list = make_subj_list(wildcards.dset)
-        kwargs = {'palette': utils.subject_color_palettes(wildcards.dset, subj_list)}
-        vis.plot_param_history(model_history,
-                               params.params_list,
-                               hue='sub',
-                               lgd_title='Subjects',
-                               hue_order=subj_list,
-                               col=None,
-                               height=4,
-                               suptitle=wildcards.roi,
-                               save_path=output[0],
-                               **kwargs)
-
-
-rule plot_all_loss_and_param_history:
-    input:
-        loss_fig = expand(os.path.join(config['OUTPUT_DIR'], "figures", "simulation", "results_2D", 'Epoch_vs_Loss', 'loss_plot_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, pw=PW, n_sd_mtpl=MULTIPLES_OF_NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL),
-        param_fig = expand(os.path.join(config['OUTPUT_DIR'], "figures", "simulation", "results_2D", 'Epoch_vs_Param_values', 'param_history_plot_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.png'), full_ver=FULL_VER, pw=PW, n_sd_mtpl=MULTIPLES_OF_NOISE_SD, lr=LR_RATE, max_epoch=MAX_EPOCH, n_voxels=N_VOXEL)
-
-
-rule plot_tuning_curves_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", 'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e1-{e1}_e2-{e2}_nbin-{enum}.eps'), ebin='all', e1='0.5', e2='4', enum='log3', dset='nsdsyn', stat='mean', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=make_subj_list("nsdsyn")),
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D",'sftuning_plot_ebin-{ebin}_dset-{dset}_bts-{stat}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}_vs-pRFcenter_e1-{e1}_e2-{e2}_nbin-{enum}.eps'), ebin=['159','all'], e1='1',e2='12',enum='11',dset='broderick',stat='median', lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS, subj=make_subj_list("broderick"))
-
-rule run_all_subj:
-    input:
-        #expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", 'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="broderick", stat="median", full_ver="True", subj=_make_subj_list("broderick"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=ROIS),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'loss_history_dset-{dset}_bts-{stat}_full_ver-{full_ver}_{subj}_lr-{lr}_eph-{max_epoch}_{roi}.h5'), dset="nsdsyn", stat="mean", full_ver="True", subj=make_subj_list("nsdsyn"), lr=LR_RATE, max_epoch=MAX_EPOCH, roi=['V1', 'V2', 'V3'])
-
-rule run_simulation_all_subj:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'loss_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}_lr-{lr}_eph-{max_epoch}.csv'), full_ver=FULL_VER, pw=PW, n_sd_mtpl=MULTIPLES_OF_NOISE_SD, sn=SN_LIST,  lr=LR_RATE, max_epoch=MAX_EPOCH)
-
 
 rule generate_synthetic_data:
     input:

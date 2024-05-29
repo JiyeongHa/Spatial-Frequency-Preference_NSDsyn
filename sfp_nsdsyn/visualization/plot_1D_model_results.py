@@ -395,8 +395,6 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
     return g
 
 
-
-
 def calculate_weighted_mean(df, value, precision, groupby=['vroinames']):
     df['ecc'] = df.apply(_get_middle_ecc, axis=1)
     new_df = df.groupby(groupby+['ecc']).apply(lambda x: (x[value] * x[precision]).sum() / x[precision].sum())

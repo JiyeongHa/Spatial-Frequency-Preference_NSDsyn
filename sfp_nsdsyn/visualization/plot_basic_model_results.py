@@ -6,20 +6,27 @@ from matplotlib import pyplot as plt
 from sfp_nsdsyn import utils as utils
 import pandas as pd
 from sfp_nsdsyn.two_dimensional_model import group_params
+import matplotlib as mpl
 
+rc = {'text.color': 'black',
+      'axes.labelcolor': 'black',
+      'xtick.color': 'black',
+      'ytick.color': 'black',
+      'axes.edgecolor': 'black',
+      'font.family': 'Helvetica',
+      'figure.dpi': 72 * 2,
+      'savefig.dpi': 72 * 4
+      }
+mpl.rcParams.update(rc)
 
 
 def plot_loss_history(loss_history_df,
                       hue=None, lgd_title=None, hue_order=None,
-                      height=4, save_path=None, row=None,
+                      height=3, save_path=None, row=None,
                       log_y=True, sharey=False, errorbar=None,
                       suptitle=None, **kwargs):
-    rc = {'text.color': 'black',
-          'axes.titleweight': "bold",
-          "axes.spines.right": False,
-          "axes.spines.top": False,
-          'font.family': 'Helvetica'}
-    sns.set_theme(style="ticks", context='notebook', rc=rc, font_scale=2)
+
+    sns.set_theme(style="ticks", context='notebook', rc=rc, font_scale=1)
 
     grid = sns.FacetGrid(loss_history_df,
                          hue=hue, row=row,
