@@ -524,17 +524,14 @@ rule plot_preferred_period_1D_with_broderick_et_al:
                                         pal=params.roi_pal,
                                         width=3.25, save_path=output[0])
 
-rule test:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'),
-        stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
-
 rule plot_full_width_half_maximum_1D:
     input:
-        models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","{{dset}}",'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'),curbin=_get_curbin(wildcards.enum),subj=make_subj_list(wildcards.dset),roi=ROIS),
-        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-pRFsize.csv')
+        nsd_models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","nsdsyn",'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'),curbin=_get_curbin(wildcards.enum),subj=make_subj_list('nsdsyn'),roi=ROIS),
+        nsd_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        broderick_models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","broderick",'tfunc-corrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'),broderick_curbin=np.arange(0,11),broderick_subj=make_subj_list('broderick')),
+        broderick_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
     params:
         roi_list=ROIS,
         roi_pal=ROI_PAL
@@ -555,36 +552,60 @@ rule plot_full_width_half_maximum_1D:
                                     suptitle=None, width=3.25, errorbar=("ci", 68),
                                     save_path=output[0])
 
+rule plot_full_width_half_maximum_1D_with_broderick_et_al:
+    input:
+        nsd_models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","nsdsyn",'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'),curbin=_get_curbin(wildcards.enum),subj=make_subj_list('nsdsyn'),roi=ROIS),
+        nsd_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        broderick_models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","broderick",'tfunc-corrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'),broderick_curbin=np.arange(0,11),broderick_subj=make_subj_list('broderick')),
+        broderick_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
+    params:
+        roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
+        roi_pal=ROI_PAL
+    run:
+        args = ['sub', 'class', 'dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
+        tuning_with_precision_df = pd.DataFrame({})
+        fit_bandwidth_df = pd.DataFrame({})
+        for precision_input, model_input in zip([input.nsd_precision_s, input.broderick_precision_s],
+                                                [input.nsd_models, input.broderick_models]):
+            precision_s = pd.read_csv(precision_input)
+            params_df = tuning.load_all_models(model_input,*args)
+            tmp_tuning_df = params_df.merge(precision_s[['sub', 'vroinames', 'precision']],on=['sub', 'vroinames'])
+            if precision_input == input.nsd_precision_s:
+                tmp_tuning_df['dset_type'] = tmp_tuning_df['vroinames'].apply(lambda x: f'NSD {x}')
+            else:
+                tmp_tuning_df = tmp_tuning_df.query('vroinames == "V1"')
+                tmp_tuning_df['dset_type'] = 'Broderick et al. V1'
+            tmp_tuning_df['fwhm'] = tmp_tuning_df['sigma'] * 2.335  #fwhm
+            tmp_fit_bandwidth_df = vis1D.fit_line_to_weighted_mean(tmp_tuning_df,'fwhm','precision',groupby=['vroinames','dset_type'])
+
+            tuning_with_precision_df = pd.concat((tuning_with_precision_df, tmp_tuning_df), axis=0)
+            fit_bandwidth_df = pd.concat((fit_bandwidth_df, tmp_fit_bandwidth_df), axis=0)
+
+        params.roi_pal.insert(0, (0.5,0.5,0.5))
+        vis1D.plot_bandwidth_in_octave(tuning_with_precision_df,
+                                    bandwidth='fwhm', precision='precision',
+                                    hue='dset_type', hue_order=params.roi_list,
+                                    fit_df=fit_bandwidth_df,
+                                    pal=params.roi_pal,
+                                    lgd_title='ROIs',
+                                    col=None, col_order=None,
+                                    suptitle=None, width=3.25, errorbar=("ci", 68),
+                                    save_path=output[0])
+
 rule plot_curves_all:
     input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'), stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
         # a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
         #     stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
-        b= expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D","{dset}",'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
-            tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
+        # b= expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D","{dset}",'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
+        #     tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
         # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
         # dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='pdf'),
         # c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
         # dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='pdf')
 
-
-# rule plot_preferred_period_1D:
-#     input:
-#         models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-params_class-{stim_class}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.pt'), stim_class=[k.replace(' ', '-') for k in STIM_LIST], curbin=_get_curbin(wildcards.enum), subj=make_subj_list(wildcards.dset)),
-#         precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
-#     output:
-#         os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-all_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_roi-{roi}_vs-{vs}.{fig_format}')
-#     run:
-#         args = ['sub', 'class','dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
-#         precision_s = pd.read_csv(input.precision_s)
-#         precision_s = precision_s.query('vroinames == @wildcards.roi')
-#         final_params= tuning.load_all_models(input.models, *args)
-#         tuning_with_precision_df = final_params.merge(precision_s[['sub', 'vroinames', 'precision']], on=['sub', 'vroinames'])
-#
-#         fit_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df,'mode','precision',groupby=['vroinames'])
-#         g = vis1D.plot_preferred_period(tuning_with_precision_df,
-#                                         sf_peak='mode',precision='precision',hue='vroinames',
-#                                         hue_order=['V1', 'V2', 'V3'], fit_df=fit_df, lgd_title='ROI',
-#                                         width=7, save_path=output[0])
 
 rule run_model:
     input:
