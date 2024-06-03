@@ -427,6 +427,10 @@ rule plot_tuning_curves_broderick:
                              palette=params.roi_pal[0],
                              save_path=output[0])
 
+rule test_test:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
+            tfunc=['corrected'], dset='broderick', stim_class=STIM_LIST, lr=LR,max_epoch=MAX_EPOCH,e1=1,e2=12,enum=11,bins_to_plot=['1-8','1-9','2-9'], subj=make_subj_list('broderick')[:1], roi='V1', vs='pRFcenter', fig_format=['png'])
 
 rule make_precision_v_df:
     input:
@@ -698,7 +702,6 @@ rule plot_2D_model_loss_history_broderick_et_al:
                               save_path=output[0],
                               **kwargs)
 
-
 rule plot_2D_model_param_history_broderick_et_al:
     input:
         param_history = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{{dset}}", 'tfunc-{{tfunc}}_param-history_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{{roi}}_vs-{{vs}}.h5'), subj=make_subj_list(wildcards.dset))
@@ -719,15 +722,55 @@ rule plot_2D_model_param_history_broderick_et_al:
         vis.plot_param_history(params_df, params=PARAMS_2D,
                                 hue='sub',lgd_title='Subjects',hue_order=subj_list, save_path=output[0], **kwargs)
 
+
+rule plot_precision_weighted_avg_2D_model_parameters:
+    input:
+        broderick_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "broderick", 'tfunc-corrected_model_lr-{{lr}}_eph-{{max_epoch}}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_subj=make_subj_list('broderick')),
+        broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','broderick', 'precision', 'precision-s_dset-broderick_vs-{vs}.csv'),
+        nsd_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), roi=ROIS, subj=make_subj_list('nsdsyn')),
+        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn', 'precision', 'precision-s_dset-nsdsyn_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "all", 'params-avg_lr-{lr}_eph-{max_epoch}_vs-{vs}.{fig_format}')
+    params:
+        ylim_list = [(1.6, 4.75), (0.04, 0.43), (-0.15, 0.15),(-0.7, 0.15), (-0.04, 0.065)],
+        ytick_list=  [[2, 3, 4], [0.1, 0.2,0.3,0.4], [-0.15,0,0.15], [-0.6, -0.3,0], [-0.03,0,0.03,0.06]],
+        param_group = [1,2,2,3,3,4,4,5,5],
+        roi_pal=ROI_PAL
+    run:
+        broderick_params = model.load_all_models(input.broderick_model_params, *ARGS_2D)
+        broderick_precision_s =  pd.read_csv(input.broderick_precision_s)
+        broderick_df = pd.merge(broderick_params, broderick_precision_s[['sub','vroinames','precision']], on=['sub','vroinames'])
+        broderick_df['dset_type'] = 'Broderick et al. V1'
+
+        nsd_params = model.load_all_models(input.nsd_model_params, *ARGS_2D)
+        nsd_precision_s =  pd.read_csv(input.nsd_precision_s)
+        nsd_df = pd.merge(nsd_params, nsd_precision_s[['sub','vroinames','precision']], on=['sub','vroinames'])
+        nsd_df['dset_type'] = nsd_df['vroinames'].apply(lambda x: f'NSD {x}')
+
+        final_df = pd.concat((broderick_df, nsd_df),axis=0)
+        params.roi_pal.insert(0, (0.5,0.5,0.5))
+
+        grid = vis2D.plot_precision_weighted_avg_parameters(final_df,
+                                                            PARAMS_2D,
+                                                            params.param_group,
+                                                            hue='dset_type',
+                                                            hue_order=['Broderick et al. V1',
+                                                                       'NSD V1',
+                                                                       'NSD V2',
+                                                                       'NSD V3'],
+                                                            lgd_title='ROI',
+                                                            width=6,
+                                                            pal=params.roi_pal,
+                                                            dodge=0.26,
+                                                            dot_scale=1,
+                                                            ylim_list=params.ylim_list,
+                                                            ytick_list=params.ytick_list,
+                                                            save_path=output[0])
+
 rule test:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "{dset}",'tfunc-{tfunc}_{output_type}-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_roi-{roi}_vs-{vs}.pdf'),
-               output_type=['loss','param'], tfunc=['corrected','uncorrected'],  dset='broderick', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi='V1')
-
-
-
-
-
+        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","all",'params-avg_lr-{lr}_eph-{max_epoch}_vs-{vs}.{fig_format}'),
+                lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs='pRFsize', fig_format='pdf')
 
 rule calculate_Pv_based_on_model:
     input:
@@ -886,41 +929,6 @@ rule plot_individual_model_parameters:
                                                      save_path=output[0], suptitle=wildcards.roi)
 
 
-rule plot_model_parameter_comparison:
-    input:
-        broderick_model_params = expand(os.path.join(config['OUTPUT_OLD_DIR'], "sfp_model","results_2D", 'model_history_dset-broderick_bts-median_full_ver-True_sub-{subj}_lr-0.0005_eph-30000_V1.h5'), subj=make_subj_list('broderick')),
-        broderick_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','broderick', 'precision', 'precision-v_dset-broderick_sub-{subj}_roi-V1_vs-{{vs}}.csv'), subj=make_subj_list('broderick')),
-        nsd_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.pt'), subj=make_subj_list('nsdsyn')),
-        nsd_precision_v = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn', 'precision', 'precision-v_dset-nsdsyn_sub-{subj}_roi-V1_vs-{{vs}}.csv'), subj=make_subj_list('nsdsyn'))
-    output:
-        os.path.join(config['OUTPUT_DIR'], "figures", "sfp_model", "results_2D", "dset_comparison", 'fig-params_lr-{lr}_eph-{max_epoch}_dset-all_sub-all_roi-V1_vs-{vs}.{fig_format}')
-    params:
-        param_list = PARAMS_2D,
-        param_group = PARAMS_GROUP_2D
-    run:
-        broderick_model_df = utils.load_dataframes(input.broderick_model_params,'sub','dset')
-        broderick_model_df['vroinames'] = 'V1'
-        broderick_model_df = broderick_model_df.query('epoch == 29999') #TODO: make it with new bd dataframes
-        broderick_precision_v = utils.load_dataframes(input.broderick_precision_v)
-        broderick_precision_s = broderick_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
-        broderick_df = broderick_model_df.merge(broderick_precision_s[['sub', 'vroinames', 'sigma_v_squared']], on=['sub', 'vroinames'])
-
-        nsd_model_df = model.load_all_models(input.nsd_model_params, *ARGS_2D)
-        nsd_precision_v = utils.load_dataframes(input.nsd_precision_v)
-        nsd_precision_s = nsd_precision_v.groupby(['sub','vroinames'], group_keys=False).mean().reset_index()
-        nsd_df = nsd_model_df.merge(nsd_precision_s, on=['sub','vroinames'])
-
-        all_df = broderick_df.append(nsd_df)
-        all_df['precision'] = 1/all_df['sigma_v_squared']
-        vis2D.plot_precision_weighted_avg_parameters(all_df,
-                                                     params.param_list,
-                                                     params.param_group,
-                                                     hue='dset',
-                                                     hue_order=['broderick','nsdsyn'],
-                                                     lgd_title=['Dataset'],
-                                                     height=7,
-                                                     pal=utils.get_colors('dset', to_plot=['broderick','nsdsyn']),
-                                                     save_path=output[0])
 
 
 
@@ -1262,36 +1270,6 @@ rule save_precision_s:
             precision_df = precision_df.append(tmp)
             precision_df.to_csv(output[0], index=False)
 
-rule plot_precision_weighted_2D_parameters:
-    input:
-        model_history=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D",'model_history_dset-{{dset}}_bts-{{stat}}_full_ver-True_{subj}_lr-{{lr}}_eph-{{max_epoch}}_{roi}.h5'),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
-        #subj_df=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"dataframes","{{dset}}","{subj}_stim_voxel_info_df_vs-pRFsigma_{roi}.csv"),subj=make_subj_list(wildcards), roi=['V1','V2','V3']),
-        precision_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"dataframes","{{dset}}","precision_s_{{dset}}_{roi}.csv"), roi=['V1','V2','V3'])
-    output:
-        os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D",'pointplot-precision-weighted-params_avg-True_dset-{dset}_bts-{stat}_lr-{lr}_eph-{max_epoch}_vs-pRFsigma_roi-V1V2V3.{fig_format}'),
-    params:
-        df_dir = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D"),
-        sn_list = lambda wildcards: get_sn_list(wildcards.dset),
-        params_order = PARAMS_2D,
-        params_group = PARAMS_GROUP_2D
-    run:
-        from sfp_nsdsyn import model
-        from sfp_nsdsyn import bts
-        from sfp_nsdsyn import vis
-        model_history = model.load_history_files(input.model_history)
-        #model_history = model.load_history_df_subj(output_dir=params.df_dir, dataset=wildcards.dset, stat=wildcards.stat, full_ver=[True], sn_list=params.sn_list, lr_rate=[float(wildcards.lr)], max_epoch=[int(wildcards.max_epoch)], df_type="model", roi=[wildcards.roi])
-        final_params = model_history[model_history.epoch == int(wildcards.max_epoch) - 1]
-        precision_df = pd.DataFrame({})
-        for tmp in input.precision_df:
-            tmp_df = pd.read_csv(tmp)
-            tmp_df['vroinames'] = tmp.split('_')[-1][:2]
-            precision_df = precision_df.append(tmp_df, ignore_index=True)
-        final_params_with_precision = pd.merge(final_params, precision_df, on=['subj','vroinames'])
-        grid = vis.plot_precision_weighted_avg_parameters(final_params_with_precision,
-                                                          params.params_order,
-                                                          params.params_group,
-                                                          roi='all', hue='vroinames', hue_order=['V1','V2','V3'], lgd_title='Visual areas')
-        utils.save_fig(save_fig=True,save_path=output[0])
 
 rule plot_2D_parameters_individual:
     input:

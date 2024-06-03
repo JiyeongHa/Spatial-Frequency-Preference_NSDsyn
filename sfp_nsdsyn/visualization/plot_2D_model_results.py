@@ -9,6 +9,27 @@ from sfp_nsdsyn.two_dimensional_model import group_params
 from sfp_nsdsyn.preprocessing import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
 
+mpl.rcParams.update(mpl.rcParamsDefault)
+
+rc = {'text.color': 'black',
+      'axes.labelcolor': 'black',
+      'xtick.color': 'black',
+      'ytick.color': 'black',
+      'axes.edgecolor': 'black',
+      'font.family': 'Helvetica',
+      'font.size': 12,
+      'axes.titlesize': 13,
+      'axes.labelsize': 15,
+      'xtick.labelsize': 12,
+      'ytick.labelsize': 12,
+      'legend.title_fontsize': 15,
+      'legend.fontsize': 15,
+      'figure.titlesize': 15,
+      'figure.dpi': 72 * 3,
+      'savefig.dpi': 72 * 4
+      }
+mpl.rcParams.update(rc)
+
 def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
@@ -99,21 +120,10 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
                                            weight='precision', dodge=0.14,
                                            save_path=None, pal=None, dot_scale=1,
-                                           height=6, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
-    sns.set_context("notebook", font_scale=2.9)
-    rc = {'axes.labelpad': 15,
-          'axes.linewidth': 2.5,
-          'xtick.major.pad': 15,
-          'xtick.major.width': 2.5,
-          'xtick.major.size': 15,
-          'ytick.major.pad': 8,
-          'ytick.major.width': 2,
-          'ytick.major.size': 10,
-          'grid.linewidth': 2.5,
-          'font.family': 'Helvetica',
-          'lines.linewidth': 2.5,
-          "figure.subplot.wspace": 0.7}
-    utils.set_rcParams(rc)
+                                           width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
+    rc.update({'axes.labelpad': 8,
+               'xtick.labelsize': 13})
+    sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
@@ -127,18 +137,19 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
         pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
     grid = sns.FacetGrid(df,
                          col="group",
-                         height=height,
+                         height=utils.get_height_based_on_width(7, 0.59),
                          legend_out=True,
-                         sharex=False, sharey=False, aspect=0.59, gridspec_kws={'width_ratios': counts}, **kwargs)
+                         sharex=False, sharey=False,
+                         aspect=0.59,
+                         gridspec_kws={'width_ratios': counts}, **kwargs)
 
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
-                 dodge=dodge, palette=pal, edgecolor='black', linewidth=20,
-                 estimator=weighted_mean, linestyles='', scale=dot_scale,
-                 joint=False, orient="v", errorbar=("ci", 68))
+                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', scale=dot_scale,
+                 orient="v", errorbar=("ci", 68))
     for ax in grid.axes.flatten():
         ticks = [t.get_text() for t in ax.get_xticklabels()]
         if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
-            ax.axhline(y=0, color='gray', linestyle='--', linewidth=2, alpha=0.9)
+            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
         if len(ticks) == 2:
             ax.margins(x=0.22)
     grid.axes[0, 2].margins(x=0.1)
