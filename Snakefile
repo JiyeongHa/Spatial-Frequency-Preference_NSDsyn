@@ -767,12 +767,9 @@ rule plot_precision_weighted_avg_2D_model_parameters:
                                                             ytick_list=params.ytick_list,
                                                             save_path=output[0])
 
-rule test:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","all",'params-avg_lr-{lr}_eph-{max_epoch}_vs-{vs}.{fig_format}'),
-                lr=LR_2D, max_epoch=MAX_EPOCH_2D, vs='pRFsize', fig_format='pdf')
 
-rule calculate_Pv_based_on_model:
+
+rule predict_Pv_based_on_model:
     input:
         stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
         model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'model-params_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
@@ -791,19 +788,16 @@ rule calculate_Pv_based_on_model:
                                                                    angle_in_radians=True,
                                                                    reference_frame=wildcards.frame)
         syn_df.to_hdf(output[0], key='stage', mode='w')
-#TODO: combine these two rules (Pv calculation rules) later
 
-rule calculate_broderick_Pv_based_on_model:
+rule predict_Pv_based_on_model_broderick_et_al:
     input:
-        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
-        model = os.path.join(config['OUTPUT_OLD_DIR'], "sfp_model","results_2D",'model_history_dset-broderick_bts-median_full_ver-True_sub-{subj}_lr-0.0005_eph-30000_V1.h5'),
+        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'), #doesn't matter which file we use
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "broderick", 'tfunc-corrected_model_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.pt'),
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5')
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'tfunc-corrected_prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.h5')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
-        broderick_model_df = utils.load_dataframes([input.model],'dset','sub')
-        broderick_model_df['vroinames'] = 'V1'
-        final_params = broderick_model_df.query('epoch == 29999')  #TODO: make it with new bd dataframes
+        final_params = model.model_to_df(input.model, *ARGS_2D)
         syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info, final_params,
                                                                    ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
                                                                    n_ecc=int(wildcards.n_ecc),
@@ -815,6 +809,14 @@ rule calculate_broderick_Pv_based_on_model:
                                                                    reference_frame=wildcards.frame)
 
         syn_df.to_hdf(output[0], key='stage', mode='w')
+
+rule test:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'tfunc-corrected_prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.h5'),
+            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize', ecc1='0', ecc2='12', n_ecc='121', ang1='0', ang2='360', n_ang='360', frame=['relative','absolute'], subj=make_subj_list('broderick')),
+        b= expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize',ecc1='0',ecc2='12',n_ecc='121',ang1='0',ang2='360',n_ang='360',frame=['relative', 'absolute'],subj=make_subj_list('nsdsyn'), roi=ROIS)
+
 
 rule calculate_all:
     input:
