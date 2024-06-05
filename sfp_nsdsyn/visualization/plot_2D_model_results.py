@@ -228,7 +228,7 @@ def plot_preferred_period(df,
                           xlim=(0,10), yticks=[0, 0.5, 1, 1.5, 2],
                           projection=None, save_path=None,
                           **kwarg):
-    sns.set_theme("notebook", style='whitegrid', rc=rc, font_scale=1)
+    sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     if projection == 'polar':
         despine = False
         xticks = [0, np.pi/4, 2*np.pi/4, 3*np.pi/4, np.pi, 5*np.pi/4, 6*np.pi/4, 7*np.pi/4, 2*np.pi]
@@ -808,10 +808,10 @@ def calculate_preferred_period_for_synthetic_df(stim_info, final_params,
                                                          reference_frame=reference_frame)
     merged_df['Pv'] = merged_df.apply(get_Pv_row, params=final_params, axis=1)
     if reference_frame == 'absolute':
-        rename_cols = {'forward spiral': 'left oblique',
-                       'reverse spiral': 'right oblique',
-                       'annulus': 'horizontal',
-                       'pinwheel': 'vertical'}
+        rename_cols = {'forward spiral': 'right oblique',
+                       'reverse spiral': 'left oblique',
+                       'annulus': 'vertical',
+                       'pinwheel': 'horizontal'}
         merged_df = merged_df.replace({'names': rename_cols})
     merged_df['frame'] = reference_frame
     return merged_df
