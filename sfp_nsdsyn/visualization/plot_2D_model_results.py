@@ -225,7 +225,7 @@ def plot_preferred_period(df,
                           hue=None, hue_order=None,
                           col=None, col_wrap=None,
                           lgd_title=None, width=3, aspect=1.2,
-                          xlim=(0,10), yticks=[0, 0.5, 1, 1.5, 2],
+                          xlim=(0,10), ylim=(0,2), yticks=[0, 0.5, 1, 1.5, 2],
                           projection=None, save_path=None,
                           **kwarg):
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
@@ -241,25 +241,6 @@ def plot_preferred_period(df,
                    'ytick.labelsize': 8,
                    'axes.labelpad': 4,
                    'figure.subplot.left': 0.4})
-        #
-        #
-        # rc = {'text.color': 'black',
-        #       'axes.labelcolor': 'black',
-        #       'xtick.color': 'black',
-        #       'ytick.color': 'black',
-        #       'axes.edgecolor': 'black',
-        #       'font.family': 'Helvetica',
-        #       'font.size': 12,
-        #       'axes.titlesize': 13,
-        #       'axes.labelsize': 15,
-        #       'xtick.labelsize': 12,
-        #       'ytick.labelsize': 12,
-        #       'legend.title_fontsize': 15,
-        #       'legend.fontsize': 15,
-        #       'figure.titlesize': 15,
-        #       'figure.dpi': 72 * 3,
-        #       'savefig.dpi': 72 * 4
-        #       }
         utils.set_rcParams(rc)
     else:
         despine = True
@@ -283,7 +264,7 @@ def plot_preferred_period(df,
                     linewidth=2, estimator=weighted_mean,
                     n_boot=100, err_style='band', errorbar=('ci',68))
     grid.set_axis_labels(x.title(), y_label)
-    grid.set(xlim=xlim, xticks=xticks, xticklabels=xticklabels, yticks=yticks)
+    grid.set(xlim=xlim, xticks=xticks, xticklabels=xticklabels, ylim=ylim, yticks=yticks)
 
     if col is not None:
         for subplot_title, ax in grid.axes_dict.items():

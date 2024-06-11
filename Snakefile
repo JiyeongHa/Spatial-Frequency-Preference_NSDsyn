@@ -813,9 +813,9 @@ rule predict_Pv_based_on_model_broderick_et_al:
 rule test:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'tfunc-corrected_prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.h5'),
-            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize', ecc1='0', ecc2='12', n_ecc='121', ang1='0', ang2='360', n_ang='360', frame=['relative','absolute'], subj=make_subj_list('broderick')),
+            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize', ecc1='0', ecc2='12', n_ecc='121', ang1='0', ang2='360', n_ang='361', frame=['relative','absolute'], subj=make_subj_list('broderick')),
         b= expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize',ecc1='0',ecc2='12',n_ecc='121',ang1='0',ang2='360',n_ang='360',frame=['relative', 'absolute'],subj=make_subj_list('nsdsyn'), roi=ROIS)
+            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize',ecc1='0',ecc2='12',n_ecc='121',ang1='0',ang2='360',n_ang='361',frame=['relative', 'absolute'],subj=make_subj_list('nsdsyn'), roi=ROIS)
 
 
 rule calculate_all:

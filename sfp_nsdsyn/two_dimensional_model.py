@@ -66,6 +66,13 @@ def get_Pv_row(row, params, p_part_only=False):
 
     return Pv
 
+def get_p1v_row(row, params):
+    if params.shape[0] != 1:
+        raise Exception('params should be a df with one row!')
+    #params = params.iloc[0]
+    ecc_dependency = params.slope * row.eccentricity + params.intercept
+    p1v = ecc_dependency * (1 + params.p_1 * np.cos(2 * row.local_ori))
+    return p1v
 
 def get_Pv(slope, eccentricity, intercept,
            local_ori, angle,
