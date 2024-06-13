@@ -320,7 +320,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,5), xticks=[0,1,2,3,4,5], ylim=(0,1), yticks=[0, 0.5, 1])
+    g.set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
     grid.set_axis_labels('Eccentricity', 'Preferred period')
 
     grid.fig.suptitle(suptitle, fontweight="bold")
@@ -385,7 +385,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,5), xticks=[0,1,2,3,4,5], ylim=(2,10))
+    g.set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,10))
 
     grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
 

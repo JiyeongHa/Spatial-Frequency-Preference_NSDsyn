@@ -530,12 +530,11 @@ rule plot_preferred_period_1D_with_broderick_et_al:
 
 rule plot_full_width_half_maximum_1D:
     input:
-        nsd_models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","nsdsyn",'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'),curbin=_get_curbin(wildcards.enum),subj=make_subj_list('nsdsyn'),roi=ROIS),
-        nsd_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
-        broderick_models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","broderick",'tfunc-corrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'),broderick_curbin=np.arange(0,11),broderick_subj=make_subj_list('broderick')),
-        broderick_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
+        models=lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","{{dset}}",'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'),curbin=_get_curbin(wildcards.enum),subj=make_subj_list('nsdsyn'),roi=ROIS),
+        precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-pRFsize.csv'),
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","{dset}", "fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}")
+
     params:
         roi_list=ROIS,
         roi_pal=ROI_PAL
@@ -600,15 +599,15 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
 
 rule plot_curves_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'), stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
-        # a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
-        #     stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
-        # b= expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D","{dset}",'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
-        #     tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
-        # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
-        # dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='pdf'),
-        # c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
-        # dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='pdf')
+        #a = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'), stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
+         #a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
+         #    stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
+         #b= expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D","{dset}",'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
+         #    tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
+         b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
+         dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg'),
+         c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
+         dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg')
 
 
 rule run_model:
