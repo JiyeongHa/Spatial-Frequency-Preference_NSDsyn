@@ -9,7 +9,7 @@ from sfp_nsdsyn.two_dimensional_model import group_params
 from sfp_nsdsyn.preprocessing import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
 
-mpl.rcParams.update(mpl.rcParamsDefault)
+#mpl.rcParams.update(mpl.rcParamsDefault)
 
 rc = {'text.color': 'black',
       'axes.labelcolor': 'black',
@@ -17,11 +17,11 @@ rc = {'text.color': 'black',
       'ytick.color': 'black',
       'axes.edgecolor': 'black',
       'font.family': 'Helvetica',
-      'font.size': 12,
-      'axes.titlesize': 13,
+      'font.size': 13,
+      'axes.titlesize': 15,
       'axes.labelsize': 15,
-      'xtick.labelsize': 12,
-      'ytick.labelsize': 12,
+      'xtick.labelsize': 13,
+      'ytick.labelsize': 13,
       'legend.title_fontsize': 15,
       'legend.fontsize': 15,
       'figure.titlesize': 15,
@@ -129,11 +129,11 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
     groups, counts = np.unique(subplot_group, return_counts=True)
-    counts[0] = 1.5
-    counts[1] = 2.8
-    counts[2] = 2.6
-    counts[3] = 2
-    counts[4] = 2.6
+    #counts[0] = 1.5
+    #counts[1] = 2.8
+    # counts[2] = 2.6
+    # counts[3] = 2
+    # counts[4] = 2.6
     if pal is None:
         pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
     grid = sns.FacetGrid(df,
@@ -141,7 +141,7 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                          height=utils.get_height_based_on_width(7, 0.59),
                          legend_out=True,
                          sharex=False, sharey=False,
-                         aspect=0.59,
+                         aspect=0.5,
                          gridspec_kws={'width_ratios': counts}, **kwargs)
 
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
@@ -220,10 +220,82 @@ def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj', 
     grid.set_axis_labels("", y_label)
     return grid
 
+
+def plot_preferred_period_difference(df,
+                                      x, y='Pv_diff', precision='precision',
+                                      hue=None, hue_order=None,
+                                      col=None, col_wrap=None, ylabel=r'$P_v$ horizontal - $P_v$ vertical',
+                                      lgd_title=None, width=3, aspect=1.3,
+                                      xlim=(0,10), ylim=(-0.4,0.4), yticks=[-0.4,0,0.4],
+                                      projection=None, save_path=None,
+                                      **kwarg):
+    if projection == 'polar':
+        despine = False
+        xticks = [0, np.pi/4, 2*np.pi/4, 3*np.pi/4, np.pi, 5*np.pi/4, 6*np.pi/4, 7*np.pi/4, 2*np.pi]
+        xticklabels = []
+        xlim=(0, 2*np.pi)
+        rc.update({'polaraxes.grid': True,
+                   'axes.grid': True,
+                   'axes.linewidth': 2,
+                   'grid.alpha':0.8,
+                   'axes.labelpad': 4,
+                   'figure.subplot.left': 0.4})
+    else:
+        despine = True
+        xticks=[0, 5, 10]
+        xticklabels = xticks
+    x_label = x.title()
+    #mpl.rcParamsDefault.update()
+    rc.update({'axes.grid': False,
+               'axes.titlepad': 13,
+              'axes.linewidth': 2,
+              'axes.labelpad': 6,
+              'axes.linewidth': 2,
+              'xtick.major.pad': 10,
+              'xtick.major.width': 2,
+              'ytick.major.width': 2,
+              'lines.linewidth': 2,
+              'figure.subplot.left': 0.4,
+               })
+    sns.set_theme(style='ticks', rc=rc, font_scale=1)
+    utils.scale_fonts(1.1)
+    df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
+    # plotting average of prediction, not the prediction of average
+    grid = sns.FacetGrid(df,
+                         hue=hue,
+                         hue_order=hue_order,
+                         height=utils.get_height_based_on_width(width, aspect),
+                         col=col, col_wrap=col_wrap,
+                         aspect=aspect,
+                         subplot_kws={'projection': projection},
+                         legend_out=True, despine=despine,
+                         sharex=True, sharey=False,
+                         **kwarg)
+    grid = grid.map(sns.lineplot, x, "value_and_weights",
+                    linewidth=3, estimator=weighted_mean,
+                    n_boot=100, err_style='band', errorbar=('ci',68))
+    grid.set_axis_labels(x.title(), ylabel)
+    grid.set(xlim=xlim, xticks=xticks, xticklabels=xticklabels)
+    if ylim is not None:
+        grid.set(ylim=ylim)
+    if yticks is not None:
+        grid.set(yticks=yticks)
+
+    for ax in grid.axes.flatten():
+        ax.axhline(y=0, color='k', linestyle='--', linewidth=1.5, alpha=0.9, zorder=0)
+    if col is not None:
+        for subplot_title, ax in grid.axes_dict.items():
+            ax.set_title(f"{subplot_title}")
+    if lgd_title is not None:
+        grid.add_legend(title=lgd_title, bbox_to_anchor=(1, 0.7))
+    utils.save_fig(save_path)
+    return grid
+
+
 def plot_preferred_period(df,
                           x, y='Pv', precision='precision',
                           hue=None, hue_order=None,
-                          col=None, col_wrap=None,
+                          col=None, col_wrap=None, ylabel='Preferred period',
                           lgd_title=None, width=3, aspect=1.2,
                           xlim=(0,10), ylim=(0,2), yticks=[0, 0.5, 1, 1.5, 2],
                           projection=None, save_path=None,
@@ -247,7 +319,6 @@ def plot_preferred_period(df,
         xticks=[0, 5, 10]
         xticklabels = xticks
     x_label = x.title()
-    y_label = "Preferred period"
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     # plotting average of prediction, not the prediction of average
     grid = sns.FacetGrid(df,
@@ -263,12 +334,18 @@ def plot_preferred_period(df,
     grid = grid.map(sns.lineplot, x, "value_and_weights",
                     linewidth=2, estimator=weighted_mean,
                     n_boot=100, err_style='band', errorbar=('ci',68))
-    grid.set_axis_labels(x.title(), y_label)
+    grid.set_axis_labels(x.title(), ylabel)
     grid.set(xlim=xlim, xticks=xticks, xticklabels=xticklabels, ylim=ylim, yticks=yticks)
 
     if col is not None:
         for subplot_title, ax in grid.axes_dict.items():
             ax.set_title(f"{subplot_title}")
+            if y == 'Pv_diff':
+                ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+    else:
+        if y == 'Pv_diff':
+            grid.ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+
     if lgd_title is not None:
         grid.add_legend(title=lgd_title, bbox_to_anchor=(1, 0.8))
     utils.save_fig(save_path)
