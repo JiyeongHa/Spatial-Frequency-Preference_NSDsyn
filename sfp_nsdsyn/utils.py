@@ -376,7 +376,7 @@ def combine_dorsal_and_ventral_rois(all_df):
 
 def get_height_based_on_width(width, aspect_ratio):
 
-    return aspect_ratio * width
+    return width/aspect_ratio
 
 def scale_fonts(font_scale):
     import matplotlib

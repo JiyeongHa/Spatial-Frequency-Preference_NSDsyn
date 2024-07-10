@@ -401,7 +401,7 @@ def plot_datapoints(df, col='names', hue='ecc_bin', lgd_title='Eccentricity', he
     return grid
 
 
-def _get_x_and_y_prediction(min, max, slope, peak, sigma, n_points=100):
+def _get_x_and_y_prediction(min, max, slope, peak, sigma, n_points=500):
     x = np.linspace(min, max, n_points)
     y = [np_log_norm_pdf(k, slope, peak, sigma) for k in x]
     return x, y

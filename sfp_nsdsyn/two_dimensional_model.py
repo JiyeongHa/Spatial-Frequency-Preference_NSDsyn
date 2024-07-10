@@ -48,22 +48,18 @@ def break_down_phase(df):
 
 
 
-def get_Pv_row(row, params, p_part_only=False):
+def get_Pv_row(row, params, modulator=True):
     if params.shape[0] != 1:
         raise Exception('params should be a df with one row!')
     #params = params.iloc[0]
     ecc_dependency = params.slope * row.eccentricity + params.intercept
-    if p_part_only is False:
+    if modulator is True:
         Pv = ecc_dependency * (1 + params.p_1 * np.cos(2 * row.local_ori) +
                                params.p_2 * np.cos(4 * row.local_ori) +
                                params.p_3 * np.cos(2 * (row.local_ori - row.angle)) +
                                params.p_4 * np.cos(4 * (row.local_ori - row.angle)))
-    elif p_part_only is True:
-        Pv = (1 + params.p_1 * np.cos(2 * row.local_ori) +
-              params.p_2 * np.cos(4 * row.local_ori) +
-              params.p_3 * np.cos(2 * (row.local_ori - row.angle)) +
-              params.p_4 * np.cos(4 * (row.local_ori - row.angle)))
-
+    elif modulator is False:
+        Pv = ecc_dependency
     return Pv
 
 def get_p1v_row(row, params):
@@ -77,18 +73,15 @@ def get_p1v_row(row, params):
 def get_Pv(slope, eccentricity, intercept,
            local_ori, angle,
            p_1, p_2, p_3, p_4,
-           p_part_only=False):
+           modulator=True):
     ecc_dependency = slope * eccentricity + intercept
-    if p_part_only is False:
+    if modulator is True:
         Pv = ecc_dependency * (1 + p_1 * np.cos(2 * local_ori) +
                                p_2 * np.cos(4 * local_ori) +
                                p_3 * np.cos(2 * (local_ori - angle)) +
                                p_4 * np.cos(4 * (local_ori - angle)))
-    elif p_part_only is True:
-        Pv = (1 + p_1 * np.cos(2 * local_ori) +
-              p_2 * np.cos(4 * local_ori) +
-              p_3 * np.cos(2 * (local_ori - angle)) +
-              p_4 * np.cos(4 * (local_ori - angle)))
+    elif modulator is False:
+        Pv = ecc_dependency
 
     return Pv
 

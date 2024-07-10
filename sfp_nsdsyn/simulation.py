@@ -8,6 +8,7 @@ from . import two_dimensional_model as model
 from . import bootstrapping as bts
 from . import binning as binning
 from . import one_dimensional_model as fitting
+from . import preprocessing as prep
 import re
 
 class SynthesizeData():
@@ -27,7 +28,7 @@ class SynthesizeData():
         self.syn_voxels = self.generate_synthetic_voxels()
 
     def get_stim_info_for_n_voxels(self, stim_info_path):
-        stim_info = preprocessing.load_stim_info_as_df(stim_info_path, drop_phase=True)
+        stim_info = prep.load_stim_info_as_df(stim_info_path, drop_phase=True)
         stim_info['voxel'] = 0
         tmp_df = stim_info.copy()
         for i in np.arange(1, self.n_voxels):

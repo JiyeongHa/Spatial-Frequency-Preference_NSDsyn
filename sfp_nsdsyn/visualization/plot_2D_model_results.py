@@ -17,6 +17,12 @@ rc = {'text.color': 'black',
       'ytick.color': 'black',
       'axes.edgecolor': 'black',
       'font.family': 'Helvetica',
+      'axes.linewidth': 2,
+      'axes.labelpad': 6,
+      'xtick.major.pad': 10,
+      'xtick.major.width': 2,
+      'ytick.major.width': 2,
+      'lines.linewidth': 2,
       'font.size': 13,
       'axes.titlesize': 15,
       'axes.labelsize': 15,
@@ -118,11 +124,11 @@ def _find_ylim(ax, roi, avg=True):
 
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            hue, hue_order=None, lgd_title=None,
-                                           weight='precision', dodge=0.14,
+                                           weight='precision', dodge=0.14, height=5,
                                            save_path=None, pal=None, dot_scale=1,
                                            width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
-    rc.update({'axes.labelpad': 8,
-               'xtick.labelsize': 13})
+    #rc.update({'axes.labelpad': 8,
+    #           'xtick.labelsize': 13})
 
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     df = group_params(df, params, subplot_group)
@@ -134,14 +140,16 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     # counts[2] = 2.6
     # counts[3] = 2
     # counts[4] = 2.6
+    utils.scale_fonts(1.3)
+
     if pal is None:
         pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
     grid = sns.FacetGrid(df,
                          col="group",
-                         height=utils.get_height_based_on_width(7, 0.59),
+                         height=height,
                          legend_out=True,
                          sharex=False, sharey=False,
-                         aspect=0.5,
+                         aspect=width/height,
                          gridspec_kws={'width_ratios': counts}, **kwargs)
 
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
@@ -318,6 +326,19 @@ def plot_preferred_period(df,
         despine = True
         xticks=[0, 5, 10]
         xticklabels = xticks
+        # mpl.rcParamsDefault.update()
+        rc.update({'axes.grid': False,
+                   'axes.titlepad': 13,
+                   'axes.linewidth': 2,
+                   'axes.labelpad': 6,
+                   'xtick.major.pad': 10,
+                   'xtick.major.width': 2,
+                   'ytick.major.width': 2,
+                   'lines.linewidth': 2,
+                   'figure.subplot.left': 0.4,
+                   })
+        sns.set_theme(style='ticks', rc=rc, font_scale=1)
+        utils.scale_fonts(1.1)
     x_label = x.title()
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     # plotting average of prediction, not the prediction of average

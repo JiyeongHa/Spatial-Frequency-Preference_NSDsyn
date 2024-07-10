@@ -17,7 +17,21 @@ rc = {'text.color': 'black',
       'ytick.color': 'black',
       'axes.edgecolor': 'black',
       'font.family': 'Helvetica',
-      'figure.dpi': 72 * 2,
+      'axes.linewidth': 2,
+      'axes.labelpad': 6,
+      'xtick.major.pad': 10,
+      'xtick.major.width': 2,
+      'ytick.major.width': 2,
+      'lines.linewidth': 2,
+      'font.size': 13,
+      'axes.titlesize': 15,
+      'axes.labelsize': 15,
+      'xtick.labelsize': 13,
+      'ytick.labelsize': 13,
+      'legend.title_fontsize': 15,
+      'legend.fontsize': 15,
+      'figure.titlesize': 15,
+      'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
 mpl.rcParams.update(rc)
@@ -128,6 +142,8 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
                                                      tmp_history['slope'].item(),
                                                      tmp_history['mode'].item(),
                                                      tmp_history['sigma'].item(), n_points=1000)
+            #np.min(pred_y)
+
             axes[g].set_title(col_order[g], fontsize=15)
             axes[g].plot(pred_x, pred_y,
                          color=cur_color,
@@ -168,6 +184,124 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
     utils.save_fig(save_path)
     return fig, axes
 
+#
+# def plot_sf_curves_nsd_broderick(df, params_df, x, y, hue, col, baseline=None,
+#                    nsd_hue_order=None, broderick_hue_order=None,
+#                                  col_order=None, suptitle=None,
+#                    lgd_title=None, save_path=None, palette=None):
+#     rc.update({'axes.linewidth': 1.2,
+#           'xtick.major.width':1.2,
+#           'ytick.major.width':1.2,
+#           'xtick.minor.width':1,
+#           'xtick.major.size': 5,
+#           'ytick.major.size': 5,
+#           'xtick.minor.size': 3.5,
+#           'axes.labelpad': 8,
+#           'axes.titlepad': 15,
+#           'axes.titleweight': 'bold',
+#           'font.family': 'Helvetica',
+#           'axes.edgecolor': 'black',
+#           'figure.dpi': 72*2,
+#           'savefig.dpi': 72*4})
+#     utils.set_rcParams(rc)
+#     utils.set_fontsize(11, 11, 15)
+#     sns.set_theme("notebook", style='ticks', rc=rc)
+#
+#     if col_order is None:
+#         col_order = df[col].unique()
+#     fig, axes = plt.subplots(1, len(col_order),
+#                              figsize=(7, 7/1.9),
+#                              sharex=True, sharey=False)
+#     if palette is None:
+#         colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
+#         colors = colors[1:][::-1]
+#     else:
+#         colors = palette
+#
+#     subplot_tmp = df[df[col] == col_order[g]]
+#     cur_color = colors[0]
+#     for c, ls, fc, in zip(range(len(nsd_hue_order)), ['--', '-'], ['w', cur_color]):
+#     tmp = subplot_tmp[subplot_tmp[hue] == nsd_hue_order[c]]
+#     xx = tmp[x]
+#     yy = tmp[y]
+#     tmp_history = params_df[params_df[col] == col_order[g]]
+#     tmp_history = tmp_history[tmp_history[hue] == nsd_hue_order[c]]
+#     pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(),
+#                                              tmp_history['slope'].item(),
+#                                              tmp_history['mode'].item(),
+#                                              tmp_history['sigma'].item(), n_points=1000)
+#     # np.min(pred_y)
+#     axes[0].set_title('NSD', fontsize=15)
+#     axes[0].plot(pred_x, pred_y,
+#                  color=cur_color,
+#                  linestyle=ls,
+#                  linewidth=2,
+#                  path_effects=[pe.Stroke(linewidth=1, foreground='black'),
+#                                pe.Normal()],
+#                  zorder=0)
+#     axes[g].scatter(xx, yy,
+#                     s=34,
+#                     facecolor=fc,  # colors[c],
+#                     alpha=0.95,
+#                     label=hue_order[c],
+#                     edgecolor=cur_color, linewidth=1.5,
+#                     zorder=10)
+#
+#     for i, g in enumerate(range(len(col_order))):
+#         subplot_tmp = df[df[col] == col_order[g]]
+#         cur_color = colors[i]
+#         for c, ls, fc, in zip(range(len(hue_order)), ['--','-'], ['w', cur_color]):
+#             tmp = subplot_tmp[subplot_tmp[hue] == hue_order[c]]
+#             xx = tmp[x]
+#             yy = tmp[y]
+#             tmp_history = params_df[params_df[col] == col_order[g]]
+#             tmp_history = tmp_history[tmp_history[hue] == hue_order[c]]
+#             pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(),
+#                                                      tmp_history['slope'].item(),
+#                                                      tmp_history['mode'].item(),
+#                                                      tmp_history['sigma'].item(), n_points=1000)
+#             #np.min(pred_y)
+#
+#             axes[g].set_title(col_order[g], fontsize=15)
+#             axes[g].plot(pred_x, pred_y,
+#                          color=cur_color,
+#                          linestyle=ls,
+#                          linewidth=2,
+#                          path_effects=[pe.Stroke(linewidth=1, foreground='black'),
+#                                        pe.Normal()],
+#                          zorder=0)
+#             axes[g].scatter(xx, yy,
+#                             s=34,
+#                             facecolor=fc, #colors[c],
+#                             alpha=0.95,
+#                             label=hue_order[c],
+#                             edgecolor=cur_color, linewidth=1.5,
+#                             zorder=10)
+#
+#         if baseline is not None:
+#             baseline_example_df = baseline[baseline[col] == col_order[g]]
+#             yy = np.mean(baseline_example_df[y])
+#             axes[g].axhline([yy], color='grey', linestyle='--', linewidth=1, zorder=20)
+#         plt.xscale('log')
+#         axes[g].spines['top'].set_visible(False)
+#         axes[g].spines['right'].set_visible(False)
+#         if len(axes[g].get_yticks()) > 4:
+#             axes[g].set_yticks(axes[g].get_yticks()[::2])
+#         axes[g].tick_params(axis='both')
+#     axes[len(col_order)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(0.9, 0.9), frameon=False, fontsize=13)
+#     leg = axes[len(col_order)-1].get_legend()
+#     leg.legendHandles[0].set_edgecolor('black')
+#     leg.legendHandles[1].set_color('black')
+#     if suptitle is not None:
+#         fig.suptitle(suptitle, fontweight="bold")
+#     fig.supxlabel('Local spatial frequency (cpd)')
+#     fig.supylabel('Response\n(% BOLD signal change)', ha='center')
+#     fig.subplots_adjust(wspace=0.5, left=0.1, bottom=0.17)
+#
+#
+#     utils.save_fig(save_path)
+#     return fig, axes
+#
 
 def plot_sf_curves_only_for_V1(df, params_df, x, y, hue,
                                hue_order=None, col_title=None, suptitle=None,
@@ -262,16 +396,12 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
 
 def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_df,
                           pal=sns.color_palette("tab10"),
-                          lgd_title=None,
+                          lgd_title=None, height=5,
                           col=None, col_order=None,
                           suptitle=None, width=3.25, errorbar=("ci", 68),
                           save_path=None):
-    rc.update({'axes.edgecolor': 'black',
-               'axes.labelpad': 5,
-               'figure.dpi': 72*4})
+
     sns.set_theme("notebook", style='ticks', rc=rc)
-    utils.set_fontsize(11, 11, 15)
-    height = utils.get_height_based_on_width(width, 0.85)
 
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
@@ -285,7 +415,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                          col=col,
                          col_order=col_order,
                          height=height,
-                         aspect=1.2,
+                         aspect=width/height,
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
                  hue, hue_order=hue_order, marker='o', palette=pal,
@@ -332,14 +462,9 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                               pal=sns.color_palette("tab10"),
                               lgd_title=None,
                               col=None, col_order=None,
-                              suptitle=None, width=3.25, errorbar=("ci", 68),
+                              suptitle=None, height=4, width=3.25, errorbar=("ci", 68),
                               save_path=None):
 
-    rc.update({'axes.labelpad': 5,
-               'axes.edgecolor': 'black',
-               'figure.dpi': 72*4})
-    sns.set_theme("notebook", style='ticks', font_scale=0.9, rc=rc)
-    height = utils.get_height_based_on_width(width, 0.85)
 
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
@@ -350,7 +475,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                          col=col,
                          col_order=col_order,
                          height=height,
-                         aspect=1.2,
+                         aspect=width/height,
                          sharex=True, sharey=True)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
                  hue, hue_order=hue_order, marker='o', palette=pal,
@@ -385,7 +510,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,10))
+    g.set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(3,10), yticks=[4,6,8,10])
 
     grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
 
@@ -398,6 +523,12 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
 def calculate_weighted_mean(df, value, precision, groupby=['vroinames']):
     df['ecc'] = df.apply(_get_middle_ecc, axis=1)
     new_df = df.groupby(groupby+['ecc']).apply(lambda x: (x[value] * x[precision]).sum() / x[precision].sum())
+    new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
+    return new_df
+
+
+def calculate_weighted_mean2(df, value, precision, groupby=['vroinames']):
+    new_df = df.groupby(groupby).apply(lambda x: (x[value] * x[precision]).sum() / x[precision].sum())
     new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
     return new_df
 
