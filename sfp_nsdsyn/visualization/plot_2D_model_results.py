@@ -17,20 +17,20 @@ rc = {'text.color': 'black',
       'ytick.color': 'black',
       'axes.edgecolor': 'black',
       'font.family': 'Helvetica',
-      'axes.linewidth': 2,
+      'axes.linewidth': 1,
       'axes.labelpad': 6,
       'xtick.major.pad': 10,
-      'xtick.major.width': 2,
-      'ytick.major.width': 2,
-      'lines.linewidth': 2,
-      'font.size': 13,
-      'axes.titlesize': 15,
-      'axes.labelsize': 15,
-      'xtick.labelsize': 13,
-      'ytick.labelsize': 13,
-      'legend.title_fontsize': 15,
-      'legend.fontsize': 15,
-      'figure.titlesize': 15,
+      'xtick.major.width': 1,
+      'ytick.major.width': 1,
+      'lines.linewidth': 1,
+      'font.size': 12,
+      'axes.titlesize': 12,
+      'axes.labelsize': 12,
+      'xtick.labelsize': 12,
+      'ytick.labelsize': 12,
+      'legend.title_fontsize': 12,
+      'legend.fontsize': 12,
+      'figure.titlesize': 12,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -127,20 +127,25 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                                            weight='precision', dodge=0.14, height=5,
                                            save_path=None, pal=None, dot_scale=1,
                                            width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
-    #rc.update({'axes.labelpad': 8,
-    #           'xtick.labelsize': 13})
+    rc.update({
+          'axes.linewidth': 1,
+          'axes.labelpad': 5,
+          'xtick.major.pad': 5,
+          'xtick.major.width': 1,
+          'ytick.major.width': 1,
+          'lines.linewidth': 1,
+          'legend.title_fontsize': 11*0.8,
+          'legend.fontsize': 12*0.8,
+          })
 
-    sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
+    sns.set_theme("paper", style='ticks', rc=rc)
+    utils.scale_fonts(0.8)
+
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
     groups, counts = np.unique(subplot_group, return_counts=True)
-    #counts[0] = 1.5
-    #counts[1] = 2.8
-    # counts[2] = 2.6
-    # counts[3] = 2
-    # counts[4] = 2.6
-    utils.scale_fonts(1.3)
+    utils.scale_fonts(0.8)
 
     if pal is None:
         pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
@@ -153,16 +158,18 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
                          gridspec_kws={'width_ratios': counts}, **kwargs)
 
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
-                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', scale=dot_scale,
+                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', errwidth=1.2, scale=dot_scale,
                  orient="v", errorbar=("ci", 68))
     for ax in grid.axes.flatten():
         ticks = [t.get_text() for t in ax.get_xticklabels()]
         if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
             ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
         if len(ticks) == 2:
-            ax.margins(x=0.22)
+            ax.margins(x=0.2)
+    grid.axes[0, 1].margins(x=0.2)
     grid.axes[0, 2].margins(x=0.1)
     grid.axes[0, 4].margins(x=0.1)
+    grid.axes[0, -1].margins(x=0.1)
     if ylim_list is not None:
         for ax in range(len(groups)):
             grid.axes[0, ax].set_ylim(ylim_list[ax])
@@ -173,10 +180,11 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
         ax.set_title(f" ")
     grid.set_axis_labels("", 'Value')
     if lgd_title is not None:
-        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.725))
+        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.6), fontsize=rc['legend.title_fontsize'])
     if suptitle is not None:
         g.fig.suptitle(suptitle, fontweight="bold")
     grid.set_axis_labels("", "Parameter value")
+    grid.fig.subplots_adjust(wspace=0.9)
     utils.save_fig(save_path)
     return grid
 
