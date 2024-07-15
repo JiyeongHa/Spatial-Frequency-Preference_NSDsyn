@@ -344,16 +344,15 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
 
 def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_df,
                           pal=sns.color_palette("tab10"),
-                          lgd_title=None, height=5,
+                          lgd_title=None, height=2.9,
                           col=None, col_order=None,
-                          suptitle=None, width=3.25, errorbar=("ci", 68),
+                          suptitle=None, width=3.4, errorbar=("ci", 68),
                           save_path=None):
-
+    rc.update({'axes.titlepad': 10})
     sns.set_theme("notebook", style='ticks', rc=rc)
 
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
-
     new_df['ecc'] = _add_jitter(new_df, 'ecc', subset=hue, jitter_scale=0.08)
     new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc', jitter_scale=0.03)
 
@@ -364,7 +363,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                          col_order=col_order,
                          height=height,
                          aspect=width/height,
-                         sharex=True, sharey=True)
+                         sharex=False, sharey=False)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
                  hue, hue_order=hue_order, marker='o', palette=pal,
                  linestyle='', markersize=5, mew=0.1, mec='white',
@@ -383,9 +382,9 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                 handle.set_linewidth(4)  # Set line width to 3
                 handle.set_alpha(1)
         if col is not None:
-            grid.axes[0,-1].legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+            grid.axes[0,-1].legend(handles=handles, labels=labels, loc=(1.1, 0.4), title=lgd_title, frameon=False)
         else:
-            grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+            grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.5), title=lgd_title, frameon=False)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(f"{subplot_title.title()}")
 
@@ -394,14 +393,17 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
             for i, cur_hue in enumerate(hue_order):
                 tmp_fit_df = fit_df.copy()
                 if col is not None:
-                    tmp_fit_df = tmp_fit_df[fit_df[col] == ax.get_title()]
+                    tmp_fit_df = tmp_fit_df[tmp_fit_df[col] == ax.get_title()]
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
-    grid.set_axis_labels('Eccentricity', 'Preferred period')
 
+    grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10], ylim=(0,2), yticks=[0, 1, 2])
+    grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
+    grid.set_axis_labels('Eccentricity', 'Preferred period')
     grid.fig.suptitle(suptitle, fontweight="bold")
+    grid.fig.subplots_adjust(wspace=0.5)
+
 
     utils.save_fig(save_path)
     return g
@@ -410,9 +412,11 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                               pal=sns.color_palette("tab10"),
                               lgd_title=None,
                               col=None, col_order=None,
-                              suptitle=None, height=4, width=3.25, errorbar=("ci", 68),
+                              suptitle=None, height=2.9, width=3.4, errorbar=("ci", 68),
                               save_path=None):
 
+    rc.update({'axes.titlepad': 10})
+    sns.set_theme("notebook", style='ticks', rc=rc)
 
     new_df = df.copy()
     new_df['ecc'] = df.apply(_get_middle_ecc, axis=1)
@@ -424,7 +428,7 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                          col_order=col_order,
                          height=height,
                          aspect=width/height,
-                         sharex=True, sharey=True)
+                         sharex=False, sharey=False)
     g = grid.map(sns.lineplot, 'ecc', 'value_and_weight',
                  hue, hue_order=hue_order, marker='o', palette=pal,
                  linestyle='', markersize=5, mew=0.1, mec='white',
@@ -458,12 +462,12 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
-    g.set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(3,10), yticks=[4,6,8,10])
 
     grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
-
+    grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10],ylim=(4,10), yticks=[4,6,8,10])
+    grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4],ylim=(4,10), yticks=[4,6,8,10])
     grid.fig.suptitle(suptitle, fontweight="bold")
-
+    grid.fig.subplots_adjust(wspace=0.5)
     utils.save_fig(save_path)
     return g
 
