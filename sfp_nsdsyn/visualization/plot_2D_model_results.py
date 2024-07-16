@@ -8,9 +8,9 @@ import matplotlib as mpl
 from sfp_nsdsyn.two_dimensional_model import group_params
 from sfp_nsdsyn.preprocessing import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
+from sfp_nsdsyn.visualization.plot_1D_model_results import  _get_x_and_y_prediction
 
-#mpl.rcParams.update(mpl.rcParamsDefault)
-
+mpl.rcParams.update(mpl.rcParamsDefault)
 rc = {'text.color': 'black',
       'axes.labelcolor': 'black',
       'xtick.color': 'black',
@@ -19,18 +19,20 @@ rc = {'text.color': 'black',
       'font.family': 'Helvetica',
       'axes.linewidth': 1,
       'axes.labelpad': 6,
-      'xtick.major.pad': 10,
+      'axes.spines.right': False,
+      'axes.spines.top': False,
+      'xtick.major.pad': 5,
       'xtick.major.width': 1,
       'ytick.major.width': 1,
       'lines.linewidth': 1,
-      'font.size': 12,
-      'axes.titlesize': 12,
-      'axes.labelsize': 12,
-      'xtick.labelsize': 12,
-      'ytick.labelsize': 12,
-      'legend.title_fontsize': 12,
-      'legend.fontsize': 12,
-      'figure.titlesize': 12,
+      'font.size': 11,
+      'axes.titlesize': 11,
+      'axes.labelsize': 11,
+      'xtick.labelsize': 11,
+      'ytick.labelsize': 11,
+      'legend.title_fontsize': 11,
+      'legend.fontsize': 11,
+      'figure.titlesize': 11,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -38,7 +40,9 @@ mpl.rcParams.update(rc)
 
 def weighted_mean(x, **kws):
     """store weights as imaginery number"""
-    return np.sum(np.real(x) * np.imag(x)) / np.sum(np.imag(x))
+    numerator = np.sum(np.real(x) * np.imag(x))
+    denominator = np.sum(np.imag(x))
+    return numerator / denominator
 
 def violinplot_parameters(df, params, subplot_group,
                                                  save_fig=False,
@@ -71,55 +75,11 @@ def _change_params_to_math_symbols(params_col):
                                      'intercept': r"$Intercept$" "\n" r"$b$",
                                      'p_1': r"$Horizontal$" "\n" r"$p_1$",
                                      'p_2': r"$Oblique$" "\n"r"$p_2$",
-                                     'p_3': r"$Radial$" "\n"r"$p_3$",
+                                     'p_3': r"$Pinwheel$" "\n"r"$p_3$",
                                      'p_4': r"$Spiral$" "\n"r"$p_4$",
                                      'A_1': r"$Horizontal$" "\n"r"$A_1$",
                                      'A_2': r"$Oblique$" "\n"r"$A_2$"})
     return params_col
-
-def _find_ylim(ax, roi, avg=True):
-    if avg is True:
-        if roi == "V1":
-            switcher = {0: [0, 2.6],
-                        1: [0, 0.5],
-                        2: [-0.2, 0.2]}
-        elif roi == "V2":
-            switcher = {0: [1, 4],
-                        1: [0, 0.5],
-                        2: [-0.4, 0.2]}
-        elif roi == "V3":
-            switcher = {0: [2, 5],
-                        1: [0, 0.5],
-                        2: [-0.6, 0.2]}
-        else:
-            switcher = {0: [2, 5],
-                        1: [0, 0.3],
-                        2: [-0.15, 0.1],
-                        3: [-0.7, 0.3],
-                        4: [-0.05, 0.05]}
-        return switcher.get(ax)
-    elif avg is False:
-        if roi == "V1":
-            switcher = {0: [1.5, 3.1],
-                        1: [0, 0.3],
-                        2: [0.0, 0.5],
-                        3: [-0.4, 0.2]}
-        elif roi == "V2":
-            switcher = {0: [2.5, 4.5],
-                        1: [0.05, 0.35],
-                        2: [0.0, 0.5],
-                        3: [-0.4, 0.4]}
-        elif roi == "V3":
-            switcher = {0: [1.5, 6.5],
-                        1: [0, 0.5],
-                        2: [0.0, 0.5],
-                        3: [-0.4, 0.7]}
-        else:
-            switcher = {0: [1.8, 7],
-                        1: [0, 0.5],
-                        2: [-0.03, 0.5],
-                        3: [-1.5, 0.5]}
-        return switcher.get(ax)
 
 
 def plot_precision_weighted_avg_parameters(df, params, subplot_group,
@@ -141,6 +101,7 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     sns.set_theme("paper", style='ticks', rc=rc)
     utils.scale_fonts(0.8)
 
+
     df = group_params(df, params, subplot_group)
     df['params'] = _change_params_to_math_symbols(df['params'])
     df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
@@ -160,6 +121,8 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
                  dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', errwidth=1.2, scale=dot_scale,
                  orient="v", errorbar=("ci", 68))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
     for ax in grid.axes.flatten():
         ticks = [t.get_text() for t in ax.get_xticklabels()]
         if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
@@ -176,15 +139,128 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     if ytick_list is not None:
         for ax in range(len(groups)):
             grid.axes[0, ax].set_yticks(ytick_list[ax])
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
     grid.set_axis_labels("", 'Value')
     if lgd_title is not None:
         g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.6), fontsize=rc['legend.title_fontsize'])
     if suptitle is not None:
         g.fig.suptitle(suptitle, fontweight="bold")
     grid.set_axis_labels("", "Parameter value")
-    grid.fig.subplots_adjust(wspace=0.9)
+    grid.fig.subplots_adjust(wspace=0.2)
+    utils.save_fig(save_path)
+    return grid
+
+
+def plot_param_and_prediction(params_df, params, hue, hue_order, ylim=None, yticks=None, **kwargs):
+    sns.set_theme("paper", style='ticks', rc=rc)
+    fig, axes = plt.subplots(1, 2, figsize=(3, 1.5),
+                             gridspec_kw={'width_ratios': [1, 4]},
+                             sharey=False, sharex=False)
+    g = plot_precision_weighted_avg_parameter(params_df, params, hue, hue_order, axes[0], ylim=ylim, yticks=yticks, **kwargs)
+    g.legend_.remove()
+    fig.subplots_adjust(wspace=0.5)
+
+    return axes
+
+
+def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, **kwargs):
+    sns.set_theme("paper", style='ticks', rc=rc)
+
+    tmp = group_params(df, params, [1]*len(params))
+    tmp = tmp.query('params == @params')
+    tmp['value_and_weights'] = tmp.apply(lambda row: row.value + row.precision * 1j, axis=1)
+    tmp['params'] = _change_params_to_math_symbols(tmp['params'])
+    g = sns.pointplot(data=tmp,
+                      x='params', y='value_and_weights',
+                      hue=hue, hue_order=hue_order,
+                      estimator=weighted_mean, errorbar=("ci", 68),
+                      dodge=0.14,
+                      ax=ax, **kwargs)
+    g.set(ylabel='Value', xlabel=None)
+    if ylim is not None:
+        g.set(ylim=ylim)
+    if yticks is not None:
+        g.set(yticks=yticks)
+
+    ticks = [t.get_text() for t in g.get_xticklabels()]
+    if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
+        g.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+
+    return g
+
+
+def plot_precision_weighted_avg_parameters_updated(df, params, subplot_group, col, col_order,
+                                                   hue, hue_order=None, lgd_title=None,
+                                                   weight='precision', dodge=0.14, height=5,
+                                                   save_path=None, pal=None, dot_scale=1,
+                                                   width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
+    rc.update({
+          'axes.linewidth': 1,
+          'axes.labelpad': 4,
+          'xtick.major.pad': 2,
+          'ytick.major.pad': 2,
+          'xtick.major.width': 1,
+          'ytick.major.width': 1,
+          'lines.linewidth': 1,
+          'legend.title_fontsize': 10*0.8,
+          'legend.fontsize': 10*0.8,
+          })
+
+    sns.set_theme("paper", style='ticks', rc=rc)
+    utils.scale_fonts(0.7)
+    df = group_params(df, params, subplot_group)
+    df['params'] = _change_params_to_math_symbols(df['params'])
+    df['value_and_weights'] = df.apply(lambda row: row.value + row.precision*1j, axis=1)
+    #df['value_and_weights'] = df.apply(lambda row: [v + w*1j for v, w in zip(df['value'], df[weight])]
+    groups, counts = np.unique(subplot_group, return_counts=True)
+
+    if pal is None:
+        pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
+    grid = sns.FacetGrid(df,
+                         row="group",
+                         col=col,
+                         col_order=col_order,
+                         height=height,
+                         legend_out=True,
+                         sharex=False, sharey=False,
+                         aspect=width/height,
+                         **kwargs)
+
+    g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
+                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', errwidth=1.2, scale=dot_scale,
+                 orient="v", errorbar=("ci", 68))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+
+    for ax in grid.axes.flatten():
+        ticks = [t.get_text() for t in ax.get_xticklabels()]
+        if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
+            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+
+
+    grid.axes[1, 1].margins(x=0.15)
+    grid.axes[1, 0].margins(x=0.2)
+    grid.axes[1, 1].margins(x=0.15)
+    grid.axes[-1, 0].margins(x=0.12)
+    grid.axes[-1, 1].margins(x=0.1)
+    grid.axes[-1,0].set()
+    if ylim_list is not None:
+        for i in range(len(groups)):
+            grid.axes[i,0].set_ylim(ylim_list[i])
+            grid.axes[i,1].set_ylim(ylim_list[i])
+
+    if ytick_list is not None:
+        for i in range(len(groups)):
+            grid.axes[i,0].set_yticks(ytick_list[i])
+            grid.axes[i,1].set_yticks(ytick_list[i])
+
+    grid.set_axis_labels("", 'Value')
+    if lgd_title is not None:
+        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.6), fontsize=rc['legend.title_fontsize'])
+    if suptitle is not None:
+        g.fig.suptitle(suptitle, fontweight="bold")
+    grid.set_axis_labels("", "")
+
+    grid.fig.subplots_adjust(wspace=1.2, hspace=0.8, top=0.9)
     utils.save_fig(save_path)
     return grid
 
@@ -241,7 +317,7 @@ def plot_preferred_period_difference(df,
                                       x, y='Pv_diff', precision='precision',
                                       hue=None, hue_order=None,
                                       col=None, col_wrap=None, ylabel=r'$P_v$ horizontal - $P_v$ vertical',
-                                      lgd_title=None, width=3, aspect=1.3,
+                                      lgd_title=None, width=3, height=1.2,
                                       xlim=(0,10), ylim=(-0.4,0.4), yticks=[-0.4,0,0.4],
                                       projection=None, save_path=None,
                                       **kwarg):
@@ -257,38 +333,45 @@ def plot_preferred_period_difference(df,
                    'axes.labelpad': 4,
                    'figure.subplot.left': 0.4})
     else:
+        rc.update({
+            'axes.linewidth': 1,
+            'axes.labelpad': 3,
+            'xtick.major.pad': 2,
+            'ytick.major.pad': 2,
+            'xtick.major.size': 3,
+            'ytick.major.size': 2.5,
+            'xtick.minor.size': 1.8,
+            'xtick.major.width': 1,
+            'xtick.minor.width': 0.8,
+            'ytick.major.width': 1,
+            'lines.linewidth': 1,
+            'xtick.labelsize': 8,
+            'ytick.labelsize': 8,
+            'axes.labelsize': 10,
+            'legend.title_fontsize': 10 * 0.8,
+            'legend.fontsize': 10 * 0.8,
+        })
+        utils.set_rcParams(rc)
         despine = True
         xticks=[0, 5, 10]
         xticklabels = xticks
     x_label = x.title()
-    #mpl.rcParamsDefault.update()
-    rc.update({'axes.grid': False,
-               'axes.titlepad': 13,
-              'axes.linewidth': 2,
-              'axes.labelpad': 6,
-              'axes.linewidth': 2,
-              'xtick.major.pad': 10,
-              'xtick.major.width': 2,
-              'ytick.major.width': 2,
-              'lines.linewidth': 2,
-              'figure.subplot.left': 0.4,
-               })
     sns.set_theme(style='ticks', rc=rc, font_scale=1)
-    utils.scale_fonts(1.1)
+    utils.scale_fonts(0.8)
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     # plotting average of prediction, not the prediction of average
     grid = sns.FacetGrid(df,
                          hue=hue,
                          hue_order=hue_order,
-                         height=utils.get_height_based_on_width(width, aspect),
+                         height=height,
                          col=col, col_wrap=col_wrap,
-                         aspect=aspect,
+                         aspect=width/height,
                          subplot_kws={'projection': projection},
                          legend_out=True, despine=despine,
                          sharex=True, sharey=False,
                          **kwarg)
     grid = grid.map(sns.lineplot, x, "value_and_weights",
-                    linewidth=3, estimator=weighted_mean,
+                    linewidth=1.5, estimator=weighted_mean,
                     n_boot=100, err_style='band', errorbar=('ci',68))
     grid.set_axis_labels(x.title(), ylabel)
     grid.set(xlim=xlim, xticks=xticks, xticklabels=xticklabels)
@@ -301,9 +384,11 @@ def plot_preferred_period_difference(df,
         ax.axhline(y=0, color='k', linestyle='--', linewidth=1.5, alpha=0.9, zorder=0)
     if col is not None:
         for subplot_title, ax in grid.axes_dict.items():
-            ax.set_title(f"{subplot_title}")
+            ax.set_title(None)
     if lgd_title is not None:
         grid.add_legend(title=lgd_title, bbox_to_anchor=(1, 0.7))
+    grid.fig.subplots_adjust(top=0.9, wspace=0.6)
+    grid.axes[0, 1].set_ylabel(ylabel)
     utils.save_fig(save_path)
     return grid
 
@@ -312,7 +397,7 @@ def plot_preferred_period(df,
                           x, y='Pv', precision='precision',
                           hue=None, hue_order=None,
                           col=None, col_wrap=None, ylabel='Preferred period',
-                          lgd_title=None, width=3, aspect=1.2,
+                          lgd_title=None, width=3, height=3,
                           xlim=(0,10), ylim=(0,2), yticks=[0, 0.5, 1, 1.5, 2],
                           projection=None, save_path=None,
                           **kwarg):
@@ -331,44 +416,52 @@ def plot_preferred_period(df,
                    'figure.subplot.left': 0.4})
         utils.set_rcParams(rc)
     else:
+        rc.update({
+            'axes.linewidth': 1,
+            'axes.labelpad': 3,
+            'xtick.major.pad': 2,
+            'ytick.major.pad': 2,
+            'xtick.major.size': 3,
+            'ytick.major.size': 2.5,
+            'xtick.minor.size': 1.8,
+            'xtick.major.width': 1,
+            'xtick.minor.width': 0.8,
+            'ytick.major.width': 1,
+            'lines.linewidth': 1,
+            'xtick.labelsize': 8,
+            'ytick.labelsize': 8,
+            'axes.labelsize': 10,
+            'legend.title_fontsize': 10 * 0.8,
+            'legend.fontsize': 10 * 0.8,
+        })
+        utils.set_rcParams(rc)
         despine = True
         xticks=[0, 5, 10]
         xticklabels = xticks
-        # mpl.rcParamsDefault.update()
-        rc.update({'axes.grid': False,
-                   'axes.titlepad': 13,
-                   'axes.linewidth': 2,
-                   'axes.labelpad': 6,
-                   'xtick.major.pad': 10,
-                   'xtick.major.width': 2,
-                   'ytick.major.width': 2,
-                   'lines.linewidth': 2,
-                   'figure.subplot.left': 0.4,
-                   })
-        sns.set_theme(style='ticks', rc=rc, font_scale=1)
-        utils.scale_fonts(1.1)
+        sns.set_theme(style='ticks', rc=rc)
+        utils.scale_fonts(0.8)
     x_label = x.title()
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     # plotting average of prediction, not the prediction of average
     grid = sns.FacetGrid(df,
                          hue=hue,
                          hue_order=hue_order,
-                         height=utils.get_height_based_on_width(width, aspect),
+                         height=height,
                          col=col, col_wrap=col_wrap,
-                         aspect=aspect,
+                         aspect=width/height,
                          subplot_kws={'projection': projection},
                          legend_out=True, despine=despine,
-                         sharex=True, sharey=True,
+                         sharex=True, sharey=False,
                          **kwarg)
     grid = grid.map(sns.lineplot, x, "value_and_weights",
-                    linewidth=2, estimator=weighted_mean,
+                    linewidth=1.5, estimator=weighted_mean,
                     n_boot=100, err_style='band', errorbar=('ci',68))
     grid.set_axis_labels(x.title(), ylabel)
     grid.set(xlim=xlim, xticks=xticks, xticklabels=xticklabels, ylim=ylim, yticks=yticks)
 
     if col is not None:
         for subplot_title, ax in grid.axes_dict.items():
-            ax.set_title(f"{subplot_title}")
+            ax.set_title(None)
             if y == 'Pv_diff':
                 ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
     else:
@@ -377,6 +470,8 @@ def plot_preferred_period(df,
 
     if lgd_title is not None:
         grid.add_legend(title=lgd_title, bbox_to_anchor=(1, 0.8))
+    grid.fig.subplots_adjust(top=0.9, wspace=0.5)
+    grid.axes[0,1].set_ylabel('Preferred period')
     utils.save_fig(save_path)
     return grid
 
@@ -912,3 +1007,76 @@ def calculate_preferred_period_for_all_subjects(subj_list, synthetic_df, final_p
         tmp['Pv'] = tmp.apply(get_Pv_row, params=tmp_params, axis=1)
         all_subj_df = all_subj_df.append(tmp, ignore_index=True)
     return all_subj_df
+
+
+
+def plot_bandwidth_prediction(df, pal, ax, hue, hue_order):
+    for i, dset in enumerate(hue_order):
+        tmp = df[df[hue] == dset]
+        pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
+                                                 tmp['Av'].item(),
+                                                 tmp['Pv'].item(),
+                                                 tmp['sigma'].item(), n_points=1000)
+
+        ax.plot(pred_x, pred_y, linewidth=1, color=pal[i], label=dset)
+        ax.set_xscale('log')
+        ax.set_ylim(0, 1)
+        ax.set_yticks([0, 0.5, 1])
+        ax.set_xlabel('Spatial frequency (cpd)')
+        ax.set_ylabel('Predicted\nBOLD Response')
+        return
+
+def plot_bandwidth_prediction(weighted_mean_df, pal, linewidth=1, width=6, height=7/2.5, save_path=None):
+    rc.update({
+        'axes.linewidth': 1,
+        'axes.labelpad': 4,
+        'xtick.major.pad': 2,
+        'ytick.major.pad': 2,
+        'xtick.major.size': 3,
+        'ytick.major.size': 2.5,
+        'xtick.minor.size': 1.8,
+        'xtick.major.width': 1,
+        'xtick.minor.width': 0.8,
+        'ytick.major.width': 1,
+        'lines.linewidth': 1,
+        'xtick.labelsize': 8,
+        'ytick.labelsize': 8,
+        'legend.title_fontsize': 10 * 0.8,
+        'legend.fontsize': 10 * 0.8,
+    })
+    sns.set_theme("paper", style='ticks', rc=rc)
+    utils.scale_fonts(0.7)
+    fig, axes = plt.subplots(1, 2,
+                             figsize=(width, height),
+                             sharex=False, sharey=False)
+
+    for i, dset in enumerate(['broderick', 'nsdsyn']):
+        tmp = weighted_mean_df.query('dset == @dset & vroinames == "V1"')
+        pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
+                                                 tmp['Av'].item(),
+                                                 tmp['Pv'].item(),
+                                                 tmp['sigma'].item(), n_points=1000)
+        label = 'Broderick et al. V1' if dset == 'broderick' else 'NSD V1'
+        axes[0].plot(pred_x, pred_y, linewidth=linewidth, color=pal[i], label=label)
+
+    axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[1], label=label)
+    ##
+    for i, nsd_roi in enumerate(['V2', 'V3']):
+        tmp = weighted_mean_df.query('dset == "nsdsyn" & vroinames == @nsd_roi')
+        pred_x, pred_y = _get_x_and_y_prediction(0.01, 100,
+                                                 tmp['Av'].item(),
+                                                 tmp['Pv'].item(),
+                                                 tmp['sigma'].item(), n_points=2000)
+
+        axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[2+i], label=f'NSD {nsd_roi}')
+
+    for g in range(len(axes)):
+        axes[g].set_xscale('log')
+        axes[g].spines['top'].set_visible(False)
+        axes[g].spines['right'].set_visible(False)
+        axes[g].set_ylim(0, 1)
+        axes[g].set_yticks([0, 0.5, 1])
+        axes[g].set_xlabel('Spatial frequency (cpd)')
+        axes[g].set_ylabel('Predicted\nBOLD Response')
+    fig.subplots_adjust(wspace=1, left=0.15)
+    utils.save_fig(save_path)
