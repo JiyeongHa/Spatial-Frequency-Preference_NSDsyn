@@ -172,7 +172,7 @@ def plot_param_and_prediction(params_df, params,
                                           hline=True, ylim=prediction_ylim, yticks=prediction_yticks,
                                           ylabel=prediction_ylabel, hue=hue, hue_order=hue_order,
                                           pal=pal, ax=axes[1])
-    g.legend(bbox_to_anchor=(1.05, 1), frameon=False)
+    g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
     fig.subplots_adjust(wspace=1)
     utils.save_fig(save_path)
     return fig, axes
@@ -957,6 +957,21 @@ def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_pa
 def get_Pv_difference(df, orientation_1, orientation_2, to_group=['sub','dset_type','eccentricity','vroinames'],
                       orientation_col='names'):
     all_cols = to_group + ['Pv']
+    if 'cardinal' == orientation_1 or 'cardinal' == orientation_2:
+        df = df.replace({orientation_col: {'horizontal': 'cardinal',
+                                           'vertical': 'cardinal',
+                                           'left oblique': 'oblique',
+                                           'right oblique': 'oblique'}})
+        df = df.groupby(to_group+[orientation_col]).mean().reset_index()
+    elif orientation_1 == 'spirals' or orientation_2 == 'spirals':
+        df = df.replace({orientation_col: {'forward spiral': 'spirals',
+                                           'reverse spiral': 'spirals',
+                                           'pinwheel': 'non-spirals',
+                                           'annulus': 'non-spirals'}})
+        df = df.groupby(to_group+[orientation_col]).mean().reset_index()
+    else:
+        df = df
+
     ori_df_1 = df[df[orientation_col] == orientation_1]
     ori_df_2 = df[df[orientation_col] == orientation_2]
 
