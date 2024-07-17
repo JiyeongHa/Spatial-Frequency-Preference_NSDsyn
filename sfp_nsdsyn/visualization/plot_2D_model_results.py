@@ -8,7 +8,7 @@ import matplotlib as mpl
 from sfp_nsdsyn.two_dimensional_model import group_params
 from sfp_nsdsyn.preprocessing import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
-from sfp_nsdsyn.visualization.plot_1D_model_results import  _get_x_and_y_prediction
+from sfp_nsdsyn.visualization.plot_1D_model_results import _get_x_and_y_prediction
 
 mpl.rcParams.update(mpl.rcParamsDefault)
 rc = {'text.color': 'black',
@@ -18,7 +18,7 @@ rc = {'text.color': 'black',
       'axes.edgecolor': 'black',
       'font.family': 'Helvetica',
       'axes.linewidth': 1,
-      'axes.labelpad': 6,
+      'axes.labelpad': 3,
       'axes.spines.right': False,
       'axes.spines.top': False,
       'xtick.major.pad': 5,
@@ -28,8 +28,8 @@ rc = {'text.color': 'black',
       'font.size': 11,
       'axes.titlesize': 11,
       'axes.labelsize': 11,
-      'xtick.labelsize': 11,
-      'ytick.labelsize': 11,
+      'xtick.labelsize': 9,
+      'ytick.labelsize': 9,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
       'figure.titlesize': 11,
@@ -43,30 +43,6 @@ def weighted_mean(x, **kws):
     numerator = np.sum(np.real(x) * np.imag(x))
     denominator = np.sum(np.imag(x))
     return numerator / denominator
-
-def violinplot_parameters(df, params, subplot_group,
-                                                 save_fig=False,
-                                                 save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=2.5)
-    groups, counts = np.unique(subplot_group, return_counts=True)
-    df = group_params(df, params, subplot_group)
-    grid = sns.FacetGrid(df,
-                         col="group",
-                         height=8,
-                         legend_out=True,
-                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-    pal = sns.diverging_palette(145,300,s=100, l=65, n=2, as_cmap=False)
-    grid = grid.map(sns.violinplot, "params", "value", 'dset', hue_order=['nsdsyn','broderick'], split=True,
-                    palette=pal, inner='stick', linewidth=3, saturation=0.5)
-    axes = grid.axes
-    axes[0, 0].margins(x=0.2)
-    axes[0, 1].margins(x=0.2)
-    axes[0, 2].margins(x=0.05)
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
-    grid.add_legend()
-    grid.set_axis_labels('', 'Value')
-    utils.save_fig(save_fig, save_path)
 
 
 def _change_params_to_math_symbols(params_col):
@@ -149,33 +125,38 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     utils.save_fig(save_path)
     return grid
 
+#
+# def plot_param_and_prediction(params_df, params, hue, hue_order, ylim=None, yticks=None, **kwargs):
+#     sns.set_theme("paper", style='ticks', rc=rc)
+#     fig, axes = plt.subplots(1, 2, figsize=(3, 1.5),
+#                              gridspec_kw={'width_ratios': [1, 4]},
+#                              sharey=False, sharex=False)
+#     g = plot_precision_weighted_avg_parameter(params_df, params, hue, hue_order, axes[0], ylim=ylim, yticks=yticks, **kwargs)
+#     g.legend_.remove()
+#     fig.subplots_adjust(wspace=0.5)
+#     weighted_mean_df = vis2D.get_weighted_average_of_params(final_params, ['vroinames', 'dset'], ecc, angle, local_ori)
+#     plot_bandwidth_prediction(weighted_mean_df, hue='dset', hue_order=['Broderick et al. V1', 'NSD V1'],
+#                               palette=roi_pal, ax=axes[1], save_path=None)
+#
+#     return axes
 
-def plot_param_and_prediction(params_df, params, hue, hue_order, ylim=None, yticks=None, **kwargs):
-    sns.set_theme("paper", style='ticks', rc=rc)
-    fig, axes = plt.subplots(1, 2, figsize=(3, 1.5),
-                             gridspec_kw={'width_ratios': [1, 4]},
-                             sharey=False, sharex=False)
-    g = plot_precision_weighted_avg_parameter(params_df, params, hue, hue_order, axes[0], ylim=ylim, yticks=yticks, **kwargs)
-    g.legend_.remove()
-    fig.subplots_adjust(wspace=0.5)
 
-    return axes
-
-
-def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, **kwargs):
+def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
     sns.set_theme("paper", style='ticks', rc=rc)
 
     tmp = group_params(df, params, [1]*len(params))
-    tmp = tmp.query('params == @params')
+    tmp = tmp.query('params in @params')
     tmp['value_and_weights'] = tmp.apply(lambda row: row.value + row.precision * 1j, axis=1)
     tmp['params'] = _change_params_to_math_symbols(tmp['params'])
     g = sns.pointplot(data=tmp,
                       x='params', y='value_and_weights',
                       hue=hue, hue_order=hue_order,
+                      palette=pal, linestyles='',
                       estimator=weighted_mean, errorbar=("ci", 68),
-                      dodge=0.14,
+                      dodge=0.2,
                       ax=ax, **kwargs)
     g.set(ylabel='Value', xlabel=None)
+    g.tick_params(axis='x', pad=5)
     if ylim is not None:
         g.set(ylim=ylim)
     if yticks is not None:
@@ -392,6 +373,19 @@ def plot_preferred_period_difference(df,
     utils.save_fig(save_path)
     return grid
 
+def plot_preferred_period_in_axes(df, x, y, ax, hue=None, hue_order=None, pal=None, ylabel='Preferred period', precision='precision'):
+    sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
+    df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
+    g = sns.lineplot(df, x=x, y="value_and_weights",
+                     hue=hue, hue_order=hue_order,
+                     linewidth=1.5, estimator=weighted_mean, palette=pal,
+                     err_style='band', errorbar=('ci', 68), ax=ax)
+    g.legend_.remove()
+    g.set(ylim=(0,2), yticks=[0,1,2], ylabel='Preferred period (deg)')
+    g.set(xlim=(0, 10), xticks=[0, 5, 10], xlabel=x.title())
+    g.tick_params(axis='x', which='major', pad=3)
+    return g
+
 
 def plot_preferred_period(df,
                           x, y='Pv', precision='precision',
@@ -476,95 +470,6 @@ def plot_preferred_period(df,
     return grid
 
 
-def beta_comp(sn, df, to_subplot="vroinames", to_label="eccrois",
-              dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
-              x_axis_label='Measured Betas', y_axis_label="Model estimation",
-              legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
-              n_row=4, legend_out=True, alpha=0.5, set_max=True,
-              save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
-              save_file_name='model_pred.png'):
-    subj = utils.sub_number_to_string(sn)
-    cur_df = df.query('subj == @subj')
-    col_order = utils.sort_a_df_column(cur_df[to_subplot])
-    grid = sns.FacetGrid(cur_df,
-                         col=to_subplot, col_order=col_order,
-                         hue=to_label,
-                         palette=sns.color_palette("husl"),
-                         col_wrap=n_row,
-                         legend_out=legend_out,
-                         sharex=True, sharey=True)
-    if set_max:
-        max_point = cur_df[[dp_to_x_axis, dp_to_y_axis]].max().max()
-        grid.set(xlim=(0, max_point + 0.025), ylim=(0, max_point + 0.025))
-
-    g = grid.map(sns.scatterplot, dp_to_x_axis, dp_to_y_axis, alpha=alpha)
-    grid.set_axis_labels(x_axis_label, y_axis_label)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1),
-                    labels=labels, fontsize=15)
-    # Put the legend out of the figure
-    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
-        ax.set_aspect('equal', adjustable='box')
-    grid.fig.subplots_adjust(top=0.8, right=0.9)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
-    # grid.tight_layout()
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
-        plt.savefig(save_path, bbox_inches='tight')
-    plt.show()
-    return grid
-
-
-def beta_2Dhist(sn, df, to_subplot="vroinames", to_label="eccrois",
-                dp_to_x_axis='norm_betas', dp_to_y_axis='norm_pred',
-                x_axis_label='Measured Betas', y_axis_label="Model estimation",
-                legend_title="Eccentricity", labels=['~0.5°', '0.5-1°', '1-2°', '2-4°', '4+°'],
-                n_row=4, legend_out=True, alpha=0.5, bins=30, set_max=False,
-                save_fig=False, save_dir='/Users/auna/Dropbox/NYU/Projects/SF/MyResults/',
-                save_file_name='model_pred.png'):
-    subj = utils.sub_number_to_string(sn)
-    cur_df = df.query('subj == @subj')
-    col_order = utils.sort_a_df_column(cur_df[to_subplot])
-    grid = sns.FacetGrid(cur_df,
-                         col=to_subplot,
-                         col_order=col_order,
-                         hue=to_label,
-                         palette=sns.color_palette("husl"),
-                         col_wrap=n_row,
-                         legend_out=legend_out,
-                         sharex=True, sharey=True)
-    if set_max:
-        max_point = cur_df[[dp_to_x_axis, dp_to_y_axis]].max().max()
-        grid.set(xlim=(0, max_point), ylim=(0, max_point))
-    g = grid.map(sns.histplot, dp_to_x_axis, dp_to_y_axis, bins=bins, alpha=alpha)
-    grid.set_axis_labels(x_axis_label, y_axis_label)
-    grid.fig.legend(title=legend_title, bbox_to_anchor=(1, 1), labels=labels, fontsize=15)
-    # Put the legend out of the figure
-    # g.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
-        ax.set_xlim(ax.get_ylim())
-        ax.set_aspect('equal')
-    grid.fig.subplots_adjust(top=0.8)  # adjust the Figure in rp
-    grid.fig.suptitle(f'{subj}', fontsize=18, fontweight="bold")
-    grid.tight_layout()
-    if save_fig:
-        if not save_dir:
-            raise Exception("Output directory is not defined!")
-        fig_dir = os.path.join(save_dir + y_axis_label + '_vs_' + x_axis_label)
-        if not os.path.exists(fig_dir):
-            os.makedirs(fig_dir)
-        save_path = os.path.join(fig_dir, f'{sn}_{save_file_name}')
-        plt.savefig(save_path)
-    plt.show()
-
-
 def plot_grouped_parameters_subj(df, params, col_group,
                             to_label="study_type", lgd_title="Study", label_order=None,
                             height=7,
@@ -596,91 +501,6 @@ def plot_grouped_parameters_subj(df, params, col_group,
     grid.set_axis_labels("", y_label)
     utils.save_fig(save_fig, save_path)
 
-
-def scatter_comparison(df, x, y, col, col_order,
-                       to_label="study_type", lgd_title="Study", label_order=None,
-                       height=7, x_label="Broderick et al.(2022)", y_label="My_value",
-                       save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    sns.set_context("notebook", font_scale=1.5)
-    pal = [(235, 172, 35), (0, 187, 173), (184, 0, 88), (0, 140, 249),
-           (0, 110, 0), (209, 99, 230), (178, 69, 2), (135, 133, 0),
-           (89, 84, 214), (255, 146, 135), (0, 198, 248), (0, 167, 108),
-           (189, 189, 189)]
-    n_labels = df[to_label].nunique()
-    # expects RGB triplets to lie between 0 and 1, not 0 and 255
-    pal = sns.color_palette(np.array(pal) / 255, n_labels)
-    grid = sns.relplot(data=df, x=x, y=y, kind="scatter",
-                       col=col, col_wrap=3, col_order=col_order,
-                       palette=pal, facet_kws={'sharey': False, 'sharex': False},
-                       hue=to_label, hue_order=label_order,
-                       height=height, s=100)
-    for _, ax in grid.axes_dict.items():
-        x0, x1 = ax.get_xlim()
-        y0, y1 = ax.get_ylim()
-        newlim = [min(x0, y0), max(x1, y1)]
-        lims = [newlim[0], newlim[1]]
-        ax.plot(lims, lims, '--k', linewidth=2)
-        ax.set_xlim(xmin=newlim[0], xmax=newlim[1])
-        ax.set_ylim(ymin=newlim[0], ymax=newlim[1])
-        ax.set_xticks(np.round(np.linspace(newlim[0], newlim[1], 4), 1))
-        ax.set_yticks(np.round(np.linspace(newlim[0], newlim[1], 4), 1))
-        ax.axis('scaled')
-    grid.set_axis_labels(x_label, y_label)
-    #grid.fig.legend(title=lgd_title, labels=label_order)
-    utils.save_fig(save_fig, save_path)
-    return grid
-
-def scatterplot_two_avg_params(x_df, y_df, params_list, params_group, x_label='Broderick et al.(2022) values',
-                               y_label = 'My values',
-                               save_fig=False, save_path='/Volumes/server/Projects/sfp_nsd/derivatives/figures/sfp_model/results_2D/scatterplot.png'):
-    params_order = np.arange(0, len(params_list))
-    colors = mpl.cm.tab10(np.linspace(0, 1, len(params_list)))
-    n_subplots = len(set(params_group))
-    fig, axes = plt.subplots(1, n_subplots, figsize=(20, 5), dpi=300)
-    axes[2].axvline(x=0, color='gray', linestyle='--')
-    axes[2].axhline(y=0, color='gray', linestyle='--')
-    axes[3].axvline(x=0, color='gray', linestyle='--')
-    axes[3].axhline(y=0, color='gray', linestyle='--')
-    for g in range(n_subplots):
-        tmp_params_list = [i for (i, v) in zip(params_list, params_group) if v == g]
-        tmp_params_order = [i for (i, v) in zip(params_order, params_group) if v == g]
-        for p, c in zip(tmp_params_list, tmp_params_order):
-            x = x_df.query('params == @p')['mean_value']
-            xerr = x_df.query('params == @p')['std_value']
-            y = y_df.query('params == @p')['mean_value']
-            yerr = y_df.query('params == @p')['std_value']
-            axes[g].errorbar(x, y, xerr=xerr, yerr=yerr, fmt="o", color=colors[c], ecolor=colors[c], label=p)
-            axes[g].legend(loc='best', ncol=1)
-        axes[g].axis('scaled')
-        newlim = _get_common_lim(axes[g])
-        if g == 0:
-            newlim = [1.5, 2.5]
-        elif g == 1:
-            newlim = [0, 0.41]
-        elif g == 2:
-            newlim = [-0.17, 0.10]
-        elif g == 3:
-            newlim = [-0.05, 0.05]
-        axes[g].set_xlim(newlim[0], newlim[1])
-        axes[g].set_ylim(newlim[0], newlim[1])
-        if (g == 2):
-            axes[g].set_xticks([-0.15, -0.1, -0.05, 0, 0.05, 0.1])
-            axes[g].set_yticks([-0.15, -0.1, -0.05, 0, 0.05, 0.1])
-        elif (g == 3):
-            axes[g].set_xticks([-0.05 , -0.025,  0,  0.025,  0.05 ])
-            axes[g].set_yticks([-0.05 , -0.025,  0,  0.025,  0.05 ])
-        else:
-            axes[g].set_xticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
-            axes[g].set_yticks(np.round(np.linspace(newlim[0], newlim[1], 5), 2))
-        axes[g].plot(newlim, newlim, '--k', linewidth=2)
-        control_fontsize(14, 20, 15)
-
-    # common axis labels
-    fig.supxlabel(x_label, fontsize=20)
-    fig.supylabel(y_label, fontsize=20)
-    plt.tight_layout(w_pad=2)
-    fig.subplots_adjust(left=.09, bottom=0.15)
-    utils.save_fig(save_fig, save_path)
 
 
 def plot_final_params(df, comb, params_list, params_group, save_fig=True, save_path='/Volumes/server/Projects/sfp_nsd/figures/pic.png'):
@@ -767,27 +587,6 @@ def plot_final_params_2(df, comb, params_list, params_group, save_fig=True, save
     fig.subplots_adjust(left=.09, bottom=0.15)
     utils.save_fig(save_fig, save_path)
 
-
-def SD_histogram(df, col='dset', save_fig=False, save_path='/',
-                 col_wrap=None, **kwargs):
-    grid = sns.FacetGrid(df,
-                         height=7,
-                         col=col,
-                         col_order=['NSD','Broderick'],
-                         hue="subj",
-                         col_wrap=col_wrap,
-                         palette=sns.color_palette("husl"),
-                         sharex=False, sharey=False)
-    grid = grid.map(sns.histplot, "sigma_v_squared", edgecolor='gray', linewidth=1,
-                    stat="density", alpha=0.7, **kwargs)
-    grid.set_axis_labels(r'$\sigma^2_v$', 'Density')
-    axes = grid.axes
-    axes[0, 0].set_xlim([0, 55])
-    axes[0, 1].set_xlim([0, 2])
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(subplot_title)
-    utils.save_fig(save_fig, save_path)
-    return grid
 
 
 def plot_sd_with_different_shades(df):
@@ -1008,75 +807,101 @@ def calculate_preferred_period_for_all_subjects(subj_list, synthetic_df, final_p
         all_subj_df = all_subj_df.append(tmp, ignore_index=True)
     return all_subj_df
 
+def get_Av(row, local_ori):
+    return 1 + row['A_1'] * np.cos(2*local_ori) + row['A_2'] * np.cos(4*local_ori)
+
+def get_peak(row, local_ori, ecc, angle):
+    ecc_dependency = row['slope']*ecc + row['intercept']
+    pv = ecc_dependency* (1 + row['p_1'] * np.cos(2*local_ori) +
+                            row['p_2'] * np.cos(4*local_ori) +
+                            row['p_3'] * np.cos(2*(local_ori - angle)) +
+                            row['p_4'] * np.cos(4*(local_ori - angle)))
+    return 1/pv
+
+def get_weighted_average_of_params(params_df, groupby, ecc, angle, local_ori):
+
+    params_df['Av'] = params_df.apply(get_Av, local_ori=local_ori, axis=1)
+    params_df['Pv'] = params_df.apply(get_peak, local_ori=local_ori, ecc=ecc, angle=angle, axis=1)
+
+    weighted_mean_df = params_df[groupby].drop_duplicates(subset=groupby).copy()
+    for param in ['Av', 'Pv', 'sigma']:
+        tmp = params_df.groupby(groupby).apply(
+            lambda x: (x[param] * x['precision']).sum() / x['precision'].sum())
+        tmp = tmp.reset_index().rename(columns={0: f'{param}'})
+        weighted_mean_df = pd.merge(weighted_mean_df, tmp, on=groupby)
+    return weighted_mean_df
 
 
-def plot_bandwidth_prediction(df, pal, ax, hue, hue_order):
+def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_path=None):
+    sns.set_theme("paper", style='ticks', rc=rc, font_scale=1)
+
     for i, dset in enumerate(hue_order):
-        tmp = df[df[hue] == dset]
+        tmp = weighted_mean_df[weighted_mean_df[hue] == dset]
         pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
                                                  tmp['Av'].item(),
                                                  tmp['Pv'].item(),
                                                  tmp['sigma'].item(), n_points=1000)
+        ax.plot(pred_x, pred_y, linewidth=1.5, color=pal[i], label=dset)
 
-        ax.plot(pred_x, pred_y, linewidth=1, color=pal[i], label=dset)
-        ax.set_xscale('log')
-        ax.set_ylim(0, 1)
-        ax.set_yticks([0, 0.5, 1])
-        ax.set_xlabel('Spatial frequency (cpd)')
-        ax.set_ylabel('Predicted\nBOLD Response')
-        return
-
-def plot_bandwidth_prediction(weighted_mean_df, pal, linewidth=1, width=6, height=7/2.5, save_path=None):
-    rc.update({
-        'axes.linewidth': 1,
-        'axes.labelpad': 4,
-        'xtick.major.pad': 2,
-        'ytick.major.pad': 2,
-        'xtick.major.size': 3,
-        'ytick.major.size': 2.5,
-        'xtick.minor.size': 1.8,
-        'xtick.major.width': 1,
-        'xtick.minor.width': 0.8,
-        'ytick.major.width': 1,
-        'lines.linewidth': 1,
-        'xtick.labelsize': 8,
-        'ytick.labelsize': 8,
-        'legend.title_fontsize': 10 * 0.8,
-        'legend.fontsize': 10 * 0.8,
-    })
-    sns.set_theme("paper", style='ticks', rc=rc)
-    utils.scale_fonts(0.7)
-    fig, axes = plt.subplots(1, 2,
-                             figsize=(width, height),
-                             sharex=False, sharey=False)
-
-    for i, dset in enumerate(['broderick', 'nsdsyn']):
-        tmp = weighted_mean_df.query('dset == @dset & vroinames == "V1"')
-        pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
-                                                 tmp['Av'].item(),
-                                                 tmp['Pv'].item(),
-                                                 tmp['sigma'].item(), n_points=1000)
-        label = 'Broderick et al. V1' if dset == 'broderick' else 'NSD V1'
-        axes[0].plot(pred_x, pred_y, linewidth=linewidth, color=pal[i], label=label)
-
-    axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[1], label=label)
-    ##
-    for i, nsd_roi in enumerate(['V2', 'V3']):
-        tmp = weighted_mean_df.query('dset == "nsdsyn" & vroinames == @nsd_roi')
-        pred_x, pred_y = _get_x_and_y_prediction(0.01, 100,
-                                                 tmp['Av'].item(),
-                                                 tmp['Pv'].item(),
-                                                 tmp['sigma'].item(), n_points=2000)
-
-        axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[2+i], label=f'NSD {nsd_roi}')
-
-    for g in range(len(axes)):
-        axes[g].set_xscale('log')
-        axes[g].spines['top'].set_visible(False)
-        axes[g].spines['right'].set_visible(False)
-        axes[g].set_ylim(0, 1)
-        axes[g].set_yticks([0, 0.5, 1])
-        axes[g].set_xlabel('Spatial frequency (cpd)')
-        axes[g].set_ylabel('Predicted\nBOLD Response')
-    fig.subplots_adjust(wspace=1, left=0.15)
-    utils.save_fig(save_path)
+    ax.set_xscale('log')
+    ax.set_ylim(0, 1)
+    ax.set_yticks([0, 0.5, 1])
+    ax.tick_params(axis='x', which='major', labelsize=7, pad=3)
+    ax.set_xlabel('Spatial frequency (cpd)')
+    ax.set_ylabel('Predicted\nBOLD Response')
+    return ax
+#
+# def plot_bandwidth_prediction(weighted_mean_df, pal, linewidth=1, width=6, height=7/2.5, save_path=None):
+#     rc.update({
+#         'axes.linewidth': 1,
+#         'axes.labelpad': 4,
+#         'xtick.major.pad': 2,
+#         'ytick.major.pad': 2,
+#         'xtick.major.size': 3,
+#         'ytick.major.size': 2.5,
+#         'xtick.minor.size': 1.8,
+#         'xtick.major.width': 1,
+#         'xtick.minor.width': 0.8,
+#         'ytick.major.width': 1,
+#         'lines.linewidth': 1,
+#         'xtick.labelsize': 8,
+#         'ytick.labelsize': 8,
+#         'legend.title_fontsize': 10 * 0.8,
+#         'legend.fontsize': 10 * 0.8,
+#     })
+#     sns.set_theme("paper", style='ticks', rc=rc)
+#     utils.scale_fonts(0.7)
+#     fig, axes = plt.subplots(1, 2,
+#                              figsize=(width, height),
+#                              sharex=False, sharey=False)
+#
+#     for i, dset in enumerate(['broderick', 'nsdsyn']):
+#         tmp = weighted_mean_df.query('dset == @dset & vroinames == "V1"')
+#         pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
+#                                                  tmp['Av'].item(),
+#                                                  tmp['Pv'].item(),
+#                                                  tmp['sigma'].item(), n_points=1000)
+#         label = 'Broderick et al. V1' if dset == 'broderick' else 'NSD V1'
+#         axes[0].plot(pred_x, pred_y, linewidth=linewidth, color=pal[i], label=label)
+#
+#     axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[1], label=label)
+#     ##
+#     for i, nsd_roi in enumerate(['V2', 'V3']):
+#         tmp = weighted_mean_df.query('dset == "nsdsyn" & vroinames == @nsd_roi')
+#         pred_x, pred_y = _get_x_and_y_prediction(0.01, 100,
+#                                                  tmp['Av'].item(),
+#                                                  tmp['Pv'].item(),
+#                                                  tmp['sigma'].item(), n_points=2000)
+#
+#         axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[2+i], label=f'NSD {nsd_roi}')
+#
+#     for g in range(len(axes)):
+#         axes[g].set_xscale('log')
+#         axes[g].spines['top'].set_visible(False)
+#         axes[g].spines['right'].set_visible(False)
+#         axes[g].set_ylim(0, 1)
+#         axes[g].set_yticks([0, 0.5, 1])
+#         axes[g].set_xlabel('Spatial frequency (cpd)')
+#         axes[g].set_ylabel('Predicted\nBOLD Response')
+#     fig.subplots_adjust(wspace=1, left=0.15)
+#     utils.save_fig(save_path)

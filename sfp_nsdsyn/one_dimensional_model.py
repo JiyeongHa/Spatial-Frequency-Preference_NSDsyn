@@ -8,7 +8,6 @@ from timeit import default_timer as timer
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import optimize
-from .visualization import plot_2D_model_results as vis2D
 
 
 def torch_log_norm_pdf(x, amp, mode, sigma):
