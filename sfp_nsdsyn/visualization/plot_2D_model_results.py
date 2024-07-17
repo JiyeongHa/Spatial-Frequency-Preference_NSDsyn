@@ -125,20 +125,57 @@ def plot_precision_weighted_avg_parameters(df, params, subplot_group,
     utils.save_fig(save_path)
     return grid
 
-#
-# def plot_param_and_prediction(params_df, params, hue, hue_order, ylim=None, yticks=None, **kwargs):
-#     sns.set_theme("paper", style='ticks', rc=rc)
-#     fig, axes = plt.subplots(1, 2, figsize=(3, 1.5),
-#                              gridspec_kw={'width_ratios': [1, 4]},
-#                              sharey=False, sharex=False)
-#     g = plot_precision_weighted_avg_parameter(params_df, params, hue, hue_order, axes[0], ylim=ylim, yticks=yticks, **kwargs)
-#     g.legend_.remove()
-#     fig.subplots_adjust(wspace=0.5)
-#     weighted_mean_df = vis2D.get_weighted_average_of_params(final_params, ['vroinames', 'dset'], ecc, angle, local_ori)
-#     plot_bandwidth_prediction(weighted_mean_df, hue='dset', hue_order=['Broderick et al. V1', 'NSD V1'],
-#                               palette=roi_pal, ax=axes[1], save_path=None)
-#
-#     return axes
+def filter_for_goal(params_df, goal):
+    roi_pal = [sns.color_palette('dark', 10)[:][k] for k in [3, 2, 0]]
+    roi_pal.insert(0, (0.3, 0.3, 0.3))
+
+    if goal == 'replication':
+        df = params_df.query('vroinames == "V1"')
+        hue_order = ['Broderick et al. V1', 'NSD V1']
+        pal = roi_pal[:2]
+    elif goal == 'extension':
+        df = params_df.query('dset == "nsdsyn"')
+        hue_order = ['NSD V1','NSD V2','NSD V3']
+        pal = roi_pal[1:]
+    else:
+        df = params_df
+        hue_order = ['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3']
+        pal = roi_pal
+    return df, hue_order, pal
+
+def plot_param_and_prediction(params_df, params,
+                              prediction_df,
+                              pal, hue, hue_order,
+                              prediction_y=None,
+                              params_ylim=None, params_yticks=None,
+                              prediction_ylim=None, prediction_yticks=None,
+                              prediction_ylabel='Preferred period (deg)',
+                              figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None):
+
+    sns.set_theme("paper", style='ticks', rc=rc)
+    fig, axes = plt.subplots(1, 2, figsize=figsize,
+                             gridspec_kw={'width_ratios': width_ratios},
+                             sharey=False, sharex=False)
+
+    g = plot_precision_weighted_avg_parameter(params_df, params,
+                                              hue, hue_order,
+                                              ax=axes[0], pal=pal,
+                                              ylim=params_ylim, yticks=params_yticks)
+    g.legend_.remove()
+    if len(params) > 1:
+        g.margins(x=0.1)
+    if 'sigma' in params:
+        g = plot_bandwidth_prediction(prediction_df, hue=hue, hue_order=hue_order,
+                                      ax=axes[1], pal=pal)
+    else:
+        g = plot_preferred_period_in_axes(prediction_df, x='eccentricity', y=prediction_y, precision='precision',
+                                          hline=True, ylim=prediction_ylim, yticks=prediction_yticks,
+                                          ylabel=prediction_ylabel, hue=hue, hue_order=hue_order,
+                                          pal=pal, ax=axes[1])
+    g.legend(bbox_to_anchor=(1.05, 1), frameon=False)
+    fig.subplots_adjust(wspace=1)
+    utils.save_fig(save_path)
+    return fig, axes
 
 
 def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
@@ -373,7 +410,12 @@ def plot_preferred_period_difference(df,
     utils.save_fig(save_path)
     return grid
 
-def plot_preferred_period_in_axes(df, x, y, ax, hue=None, hue_order=None, pal=None, ylabel='Preferred period', precision='precision'):
+
+
+
+def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
+                                  ylim=None, yticks=None, ylabel='Preferred period (deg)',
+                                  hue=None, hue_order=None, pal=None, precision='precision'):
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     g = sns.lineplot(df, x=x, y="value_and_weights",
@@ -381,7 +423,13 @@ def plot_preferred_period_in_axes(df, x, y, ax, hue=None, hue_order=None, pal=No
                      linewidth=1.5, estimator=weighted_mean, palette=pal,
                      err_style='band', errorbar=('ci', 68), ax=ax)
     g.legend_.remove()
-    g.set(ylim=(0,2), yticks=[0,1,2], ylabel='Preferred period (deg)')
+    if ylim is not None:
+        g.set(ylim=ylim)
+    if yticks is not None:
+        g.set(yticks=yticks)
+    if hline is True:
+        g.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+    g.set(ylabel=ylabel)
     g.set(xlim=(0, 10), xticks=[0, 5, 10], xlabel=x.title())
     g.tick_params(axis='x', which='major', pad=3)
     return g
@@ -905,3 +953,16 @@ def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_pa
 #         axes[g].set_ylabel('Predicted\nBOLD Response')
 #     fig.subplots_adjust(wspace=1, left=0.15)
 #     utils.save_fig(save_path)
+
+def get_Pv_difference(df, orientation_1, orientation_2, to_group=['sub','dset_type','eccentricity','vroinames'],
+                      orientation_col='names'):
+    all_cols = to_group + ['Pv']
+    ori_df_1 = df[df[orientation_col] == orientation_1]
+    ori_df_2 = df[df[orientation_col] == orientation_2]
+
+    p_df = pd.merge(ori_df_1, ori_df_2[all_cols],
+                    on=to_group, suffixes=('_1', '_2'))
+
+    p_df['Pv_diff'] = p_df[f'Pv_1'] - p_df[f'Pv_2']
+    p_df = p_df.groupby(to_group).mean().reset_index()
+    return p_df
