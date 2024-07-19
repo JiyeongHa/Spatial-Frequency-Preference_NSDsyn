@@ -49,12 +49,12 @@ def _change_params_to_math_symbols(params_col):
     params_col = params_col.replace({'sigma': r"$Bandwidth$" "\n" r"$\sigma$",
                                      'slope': r"$Slope$" "\n" r"$a$",
                                      'intercept': r"$Intercept$" "\n" r"$b$",
-                                     'p_1': r"$Horizontal$" "\n" r"$p_1$",
-                                     'p_2': r"$Oblique$" "\n"r"$p_2$",
-                                     'p_3': r"$Pinwheel$" "\n"r"$p_3$",
-                                     'p_4': r"$Spiral$" "\n"r"$p_4$",
-                                     'A_1': r"$Horizontal$" "\n"r"$A_1$",
-                                     'A_2': r"$Oblique$" "\n"r"$A_2$"})
+                                     'p_1': r"$p_1$",
+                                     'p_2': r"$p_2$",
+                                     'p_3': r"$p_3$",
+                                     'p_4': r"$p_4$",
+                                     'A_1': r"$A_1$",
+                                     'A_2': r"$A_2$"})
     return params_col
 
 
@@ -149,7 +149,7 @@ def plot_param_and_prediction(params_df, params,
                               prediction_y=None,
                               params_ylim=None, params_yticks=None,
                               prediction_ylim=None, prediction_yticks=None,
-                              prediction_ylabel='Preferred period (deg)',
+                              prediction_ylabel='Preferred period (deg)', title=None,
                               figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None):
 
     sns.set_theme("paper", style='ticks', rc=rc)
@@ -173,6 +173,8 @@ def plot_param_and_prediction(params_df, params,
                                           ylabel=prediction_ylabel, hue=hue, hue_order=hue_order,
                                           pal=pal, ax=axes[1])
     g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
+    if title is not None:
+        axes[1].set_title(title, fontweight="bold", pad=8)
     fig.subplots_adjust(wspace=1)
     utils.save_fig(save_path)
     return fig, axes
@@ -192,8 +194,11 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
                       estimator=weighted_mean, errorbar=("ci", 68),
                       dodge=0.2,
                       ax=ax, **kwargs)
-    g.set(ylabel='Value', xlabel=None)
-    g.tick_params(axis='x', pad=5)
+    g.set(ylabel='Parameter estimates', xlabel=None)
+    if 'p_' in params[0] or 'A_' in params[0]:
+        g.tick_params(axis='x', labelsize=rc['axes.labelsize'], pad=5)
+    else:
+        g.tick_params(axis='x', pad=5)
     if ylim is not None:
         g.set(ylim=ylim)
     if yticks is not None:
@@ -898,61 +903,7 @@ def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_pa
     ax.set_xlabel('Spatial frequency (cpd)')
     ax.set_ylabel('Predicted\nBOLD Response')
     return ax
-#
-# def plot_bandwidth_prediction(weighted_mean_df, pal, linewidth=1, width=6, height=7/2.5, save_path=None):
-#     rc.update({
-#         'axes.linewidth': 1,
-#         'axes.labelpad': 4,
-#         'xtick.major.pad': 2,
-#         'ytick.major.pad': 2,
-#         'xtick.major.size': 3,
-#         'ytick.major.size': 2.5,
-#         'xtick.minor.size': 1.8,
-#         'xtick.major.width': 1,
-#         'xtick.minor.width': 0.8,
-#         'ytick.major.width': 1,
-#         'lines.linewidth': 1,
-#         'xtick.labelsize': 8,
-#         'ytick.labelsize': 8,
-#         'legend.title_fontsize': 10 * 0.8,
-#         'legend.fontsize': 10 * 0.8,
-#     })
-#     sns.set_theme("paper", style='ticks', rc=rc)
-#     utils.scale_fonts(0.7)
-#     fig, axes = plt.subplots(1, 2,
-#                              figsize=(width, height),
-#                              sharex=False, sharey=False)
-#
-#     for i, dset in enumerate(['broderick', 'nsdsyn']):
-#         tmp = weighted_mean_df.query('dset == @dset & vroinames == "V1"')
-#         pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
-#                                                  tmp['Av'].item(),
-#                                                  tmp['Pv'].item(),
-#                                                  tmp['sigma'].item(), n_points=1000)
-#         label = 'Broderick et al. V1' if dset == 'broderick' else 'NSD V1'
-#         axes[0].plot(pred_x, pred_y, linewidth=linewidth, color=pal[i], label=label)
-#
-#     axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[1], label=label)
-#     ##
-#     for i, nsd_roi in enumerate(['V2', 'V3']):
-#         tmp = weighted_mean_df.query('dset == "nsdsyn" & vroinames == @nsd_roi')
-#         pred_x, pred_y = _get_x_and_y_prediction(0.01, 100,
-#                                                  tmp['Av'].item(),
-#                                                  tmp['Pv'].item(),
-#                                                  tmp['sigma'].item(), n_points=2000)
-#
-#         axes[1].plot(pred_x, pred_y, linewidth=linewidth, color=pal[2+i], label=f'NSD {nsd_roi}')
-#
-#     for g in range(len(axes)):
-#         axes[g].set_xscale('log')
-#         axes[g].spines['top'].set_visible(False)
-#         axes[g].spines['right'].set_visible(False)
-#         axes[g].set_ylim(0, 1)
-#         axes[g].set_yticks([0, 0.5, 1])
-#         axes[g].set_xlabel('Spatial frequency (cpd)')
-#         axes[g].set_ylabel('Predicted\nBOLD Response')
-#     fig.subplots_adjust(wspace=1, left=0.15)
-#     utils.save_fig(save_path)
+
 
 def get_Pv_difference(df, orientation_1, orientation_2, to_group=['sub','dset_type','eccentricity','vroinames'],
                       orientation_col='names'):

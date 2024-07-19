@@ -344,7 +344,7 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
 
 def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_df,
                           pal=sns.color_palette("tab10"),
-                          lgd_title=None, height=2.9,
+                          lgd_title=None, height=2.5,
                           col=None, col_order=None,
                           suptitle=None, width=3.4, errorbar=("ci", 68),
                           save_path=None):
@@ -400,19 +400,19 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
 
     grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10], ylim=(0,2), yticks=[0, 1, 2])
     grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
-    grid.set_axis_labels('Eccentricity', 'Preferred period')
+    grid.set_axis_labels('Eccentricity', 'Preferred period (deg)')
     grid.fig.suptitle(suptitle, fontweight="bold")
-    grid.fig.subplots_adjust(wspace=0.5)
+    grid.fig.subplots_adjust(wspace=0.4)
 
 
     utils.save_fig(save_path)
     return g
 
-def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
+def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
                               pal=sns.color_palette("tab10"),
                               lgd_title=None,
                               col=None, col_order=None,
-                              suptitle=None, height=2.9, width=3.4, errorbar=("ci", 68),
+                              suptitle=None, height=2.5, width=3.4, errorbar=("ci", 68),
                               save_path=None):
 
     rc.update({'axes.titlepad': 10})
@@ -463,11 +463,11 @@ def plot_bandwidth_in_octave(df, bandwidth, precision, hue, hue_order, fit_df,
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
 
-    grid.set_axis_labels('Eccentricity', 'Tuning curve FWHM (octave)')
+    grid.set_axis_labels('Eccentricity', 'FWHM (in octaves)')
     grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10],ylim=(4,10), yticks=[4,6,8,10])
     grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4],ylim=(4,10), yticks=[4,6,8,10])
     grid.fig.suptitle(suptitle, fontweight="bold")
-    grid.fig.subplots_adjust(wspace=0.5)
+    grid.fig.subplots_adjust(wspace=0.4)
     utils.save_fig(save_path)
     return g
 

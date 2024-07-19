@@ -561,15 +561,8 @@ rule plot_full_width_half_maximum_1D:
         tuning_with_precision_df = params_df.merge(precision_s[['sub', 'vroinames', 'precision']],on=['sub', 'vroinames'])
         tuning_with_precision_df['fwhm'] = tuning_with_precision_df['sigma']*2.335 #fwhm
         fit_bandwidth_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df, 'fwhm', 'precision', groupby=['vroinames'])
-        vis1D.plot_bandwidth_in_octave(tuning_with_precision_df,
-                                    bandwidth='fwhm', precision='precision',
-                                    hue='vroinames', hue_order=params.roi_list,
-                                    fit_df=fit_bandwidth_df,
-                                    pal=params.roi_pal,
-                                    lgd_title='ROIs',
-                                    col=None, col_order=None, height=4, width=3,
-                                    suptitle=None, errorbar=("ci", 68),
-                                    save_path=output[0])
+        vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,bandwidth='fwhm',precision='precision',hue='vroinames',hue_order=params.roi_list,fit_df=fit_bandwidth_df,pal=params.roi_pal,lgd_title='ROIs',col=None,col_order=None,suptitle=None,height=4,width=3,errorbar=(
+        "ci", 68),save_path=output[0])
 
 rule plot_full_width_half_maximum_1D_with_broderick_et_al:
     input:
@@ -603,15 +596,8 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
             fit_bandwidth_df = pd.concat((fit_bandwidth_df, tmp_fit_bandwidth_df), axis=0)
 
         params.roi_pal.insert(0, (0.5,0.5,0.5))
-        vis1D.plot_bandwidth_in_octave(tuning_with_precision_df,
-                                    bandwidth='fwhm', precision='precision',
-                                    hue='dset_type', hue_order=params.roi_list,
-                                    fit_df=fit_bandwidth_df,
-                                    pal=params.roi_pal,
-                                    lgd_title='ROIs',
-                                    col=None, col_order=None,
-                                    suptitle=None, width=3.25, errorbar=("ci", 68),
-                                    save_path=output[0])
+        vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,bandwidth='fwhm',precision='precision',hue='dset_type',hue_order=params.roi_list,fit_df=fit_bandwidth_df,pal=params.roi_pal,lgd_title='ROIs',col=None,col_order=None,suptitle=None,width=3.25,errorbar=(
+        "ci", 68),save_path=output[0])
 
 rule plot_curves_all:
     input:
