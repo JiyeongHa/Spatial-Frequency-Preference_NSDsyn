@@ -32,7 +32,7 @@ rc = {'text.color': 'black',
       'ytick.labelsize': 9,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
-      'figure.titlesize': 11,
+      'figure.titlesize': 12,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -174,7 +174,8 @@ def plot_param_and_prediction(params_df, params,
                                           pal=pal, ax=axes[1])
     g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
     if title is not None:
-        axes[1].set_title(title, fontweight="bold", pad=8)
+        fig.suptitle(title, fontweight="bold")
+        fig.subplots_adjust(top=0.7)
     fig.subplots_adjust(wspace=1)
     utils.save_fig(save_path)
     return fig, axes
