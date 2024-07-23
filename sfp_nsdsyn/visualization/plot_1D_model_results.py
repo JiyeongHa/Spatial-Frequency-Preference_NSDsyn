@@ -31,7 +31,7 @@ rc = {'text.color': 'black',
       'ytick.labelsize': 12,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
-      'figure.titlesize': 12,
+      'figure.titlesize': 15,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -386,26 +386,25 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
         else:
             grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.5), title=lgd_title, frameon=False)
     for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
+        ax.set_title(None)
 
     if fit_df is not None:
-        for ax in g.axes.flatten():
+        for ax, col_name in zip(g.axes.flatten(), col_order):
             for i, cur_hue in enumerate(hue_order):
                 tmp_fit_df = fit_df.copy()
                 if col is not None:
-                    tmp_fit_df = tmp_fit_df[tmp_fit_df[col] == ax.get_title()]
+                    tmp_fit_df = tmp_fit_df[tmp_fit_df[col] == col_name]
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
 
     grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10], ylim=(0,2), yticks=[0, 1, 2])
     grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
-    grid.set_axis_labels('Eccentricity', 'Preferred period (deg)')
-    grid.fig.suptitle(suptitle, fontweight="bold")
+    grid.set_axis_labels('Eccentricity (deg)', 'Deg per cycle')
+    grid.fig.text(0.55, 0.95, suptitle, fontweight='bold', ha='center', fontsize=rc['figure.titlesize'])
     grid.fig.subplots_adjust(wspace=0.4)
-
-
     utils.save_fig(save_path)
+
     return g
 
 def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
@@ -451,22 +450,22 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
         else:
             grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
     for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
+        ax.set_title(None)
 
     if fit_df is not None:
-        for ax in g.axes.flatten():
+        for ax, col_name in zip(g.axes.flatten(), col_order):
             for i, cur_hue in enumerate(hue_order):
                 tmp_fit_df = fit_df.copy()
                 if col is not None:
-                    tmp_fit_df = tmp_fit_df[fit_df[col] == ax.get_title()]
+                    tmp_fit_df = tmp_fit_df[fit_df[col] == col_name]
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
 
-    grid.set_axis_labels('Eccentricity', 'FWHM (in octaves)')
+    grid.set_axis_labels('Eccentricity (deg)', 'FWHM (in octaves)')
     grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10],ylim=(4,10), yticks=[4,6,8,10])
-    grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4],ylim=(4,10), yticks=[4,6,8,10])
-    grid.fig.suptitle(suptitle, fontweight="bold")
+    grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,10), yticks=[4,6,8,10])
+    grid.fig.text(0.55, 0.95, suptitle, weight='bold', ha='center', fontsize=rc['figure.titlesize'])
     grid.fig.subplots_adjust(wspace=0.4)
     utils.save_fig(save_path)
     return g
