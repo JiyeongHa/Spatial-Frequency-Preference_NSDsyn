@@ -384,3 +384,20 @@ def scale_fonts(font_scale):
              "xtick.labelsize", "ytick.labelsize", "font.size"]
     font_dict = {k: matplotlib.rcParams[k] * font_scale for k in font_keys}
     matplotlib.rcParams.update(font_dict)
+
+
+def calculate_weighted_mean2(df, value, weight, groupby=['vroinames']):
+    new_df = df.groupby(groupby).apply(lambda x: {value: (x[value] * x[weight]).sum() / x[weight].sum()})
+    new_df = new_df.apply(pd.Series).reset_index()
+    #new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
+    return new_df
+
+
+def calculate_weighted_mean(df, values, weight, groupby=['vroinames']):
+    result = df.groupby(groupby).apply(
+        lambda x: {value: (x[value] * x[weight]).sum() / x[weight].sum() for value in values}
+    )
+    # Convert the resulting dictionary into a dataframe
+    result_df = result.apply(pd.Series).reset_index()
+
+    return result_df

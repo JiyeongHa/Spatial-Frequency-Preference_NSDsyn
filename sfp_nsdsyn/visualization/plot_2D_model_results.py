@@ -32,7 +32,7 @@ rc = {'text.color': 'black',
       'ytick.labelsize': 9,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
-      'figure.titlesize': 12,
+      'figure.titlesize': 14,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -46,7 +46,7 @@ def weighted_mean(x, **kws):
 
 
 def _change_params_to_math_symbols(params_col):
-    params_col = params_col.replace({'sigma': r"$Bandwidth$" "\n" r"$\sigma$",
+    params_col = params_col.replace({'sigma': r"$\sigma$",
                                      'slope': r"$Slope$" "\n" r"$a$",
                                      'intercept': r"$Intercept$" "\n" r"$b$",
                                      'p_1': r"$p_1$",
@@ -58,72 +58,6 @@ def _change_params_to_math_symbols(params_col):
     return params_col
 
 
-def plot_precision_weighted_avg_parameters(df, params, subplot_group,
-                                           hue, hue_order=None, lgd_title=None,
-                                           weight='precision', dodge=0.14, height=5,
-                                           save_path=None, pal=None, dot_scale=1,
-                                           width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
-    rc.update({
-          'axes.linewidth': 1,
-          'axes.labelpad': 5,
-          'xtick.major.pad': 5,
-          'xtick.major.width': 1,
-          'ytick.major.width': 1,
-          'lines.linewidth': 1,
-          'legend.title_fontsize': 11*0.8,
-          'legend.fontsize': 12*0.8,
-          })
-
-    sns.set_theme("paper", style='ticks', rc=rc)
-    utils.scale_fonts(0.8)
-
-
-    df = group_params(df, params, subplot_group)
-    df['params'] = _change_params_to_math_symbols(df['params'])
-    df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
-    groups, counts = np.unique(subplot_group, return_counts=True)
-    utils.scale_fonts(0.8)
-
-    if pal is None:
-        pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
-    grid = sns.FacetGrid(df,
-                         col="group",
-                         height=height,
-                         legend_out=True,
-                         sharex=False, sharey=False,
-                         aspect=width/height,
-                         gridspec_kws={'width_ratios': counts}, **kwargs)
-
-    g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
-                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', errwidth=1.2, scale=dot_scale,
-                 orient="v", errorbar=("ci", 68))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
-    for ax in grid.axes.flatten():
-        ticks = [t.get_text() for t in ax.get_xticklabels()]
-        if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
-            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
-        if len(ticks) == 2:
-            ax.margins(x=0.2)
-    grid.axes[0, 1].margins(x=0.2)
-    grid.axes[0, 2].margins(x=0.1)
-    grid.axes[0, 4].margins(x=0.1)
-    grid.axes[0, -1].margins(x=0.1)
-    if ylim_list is not None:
-        for ax in range(len(groups)):
-            grid.axes[0, ax].set_ylim(ylim_list[ax])
-    if ytick_list is not None:
-        for ax in range(len(groups)):
-            grid.axes[0, ax].set_yticks(ytick_list[ax])
-    grid.set_axis_labels("", 'Value')
-    if lgd_title is not None:
-        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.6), fontsize=rc['legend.title_fontsize'])
-    if suptitle is not None:
-        g.fig.suptitle(suptitle, fontweight="bold")
-    grid.set_axis_labels("", "Parameter value")
-    grid.fig.subplots_adjust(wspace=0.2)
-    utils.save_fig(save_path)
-    return grid
 
 def filter_for_goal(params_df, goal):
     roi_pal = [sns.color_palette('dark', 10)[:][k] for k in [3, 2, 0]]
@@ -181,7 +115,7 @@ def plot_param_and_prediction(params_df, params,
     return fig, axes
 
 
-def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
+def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, errwidth=2, dot_scale=1, ylim=None, yticks=None, pal=None, **kwargs):
     sns.set_theme("paper", style='ticks', rc=rc)
 
     tmp = group_params(df, params, [1]*len(params))
@@ -196,7 +130,7 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
                       dodge=0.2,
                       ax=ax, **kwargs)
     g.set(ylabel='Parameter estimates', xlabel=None)
-    if 'p_' in params[0] or 'A_' in params[0]:
+    if 'p_' in params[0] or 'A_' in params[0] or 'sigma' in params[0]:
         g.tick_params(axis='x', labelsize=rc['axes.labelsize'], pad=5)
     else:
         g.tick_params(axis='x', pad=5)
@@ -211,6 +145,105 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
 
     return g
 
+
+def plot_precision_weighted_avg_parameters(df, params, subplot_group,
+                                           hue, hue_order=None, lgd_title=None,
+                                           weight='precision', dodge=0.14, height=5,
+                                           save_path=None, pal=None, dot_scale=1,
+                                           width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
+
+    rc.update({'xtick.labelsize': 11})
+    sns.set_theme("paper", style='ticks', rc=rc)
+
+    df = group_params(df, params, subplot_group)
+    df['params'] = _change_params_to_math_symbols(df['params'])
+    df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
+
+    if pal is None:
+        pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
+    grid = sns.FacetGrid(df,
+                         col="group",
+                         height=height,
+                         legend_out=True,
+                         sharex=False, sharey=False,
+                         aspect=width/height,
+                         gridspec_kws={'width_ratios': counts}, **kwargs)
+
+    g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
+                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', errwidth=1.2, scale=dot_scale,
+                 orient="v", errorbar=("ci", 68))
+    for subplot_title, ax in grid.axes_dict.items():
+        ax.set_title(f" ")
+    for ax in grid.axes.flatten():
+        ticks = [t.get_text() for t in ax.get_xticklabels()]
+        if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
+            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+        if len(ticks) == 2:
+            ax.margins(x=0.2)
+    grid.axes[0,1].margins(x=0.1)
+    if ylim_list is not None:
+        for ax in range(len(groups)):
+            grid.axes[0, ax].set_ylim(ylim_list[ax])
+    if ytick_list is not None:
+        for ax in range(len(groups)):
+            grid.axes[0, ax].set_yticks(ytick_list[ax])
+    g.set(ylabel='Parameter estimates', xlabel=None)
+    g.tick_params(axis='x', labelsize=rc['axes.labelsize'], pad=5)
+    for i in np.arange(1, 5):
+        grid.axes[0, i].set_ylabel('')
+    if lgd_title is not None:
+        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.6), fontsize=rc['legend.title_fontsize'])
+    if suptitle is not None:
+        g.fig.suptitle(suptitle, fontweight="bold")
+    #grid.fig.subplots_adjust(wspace=0.7)
+    utils.save_fig(save_path)
+    return grid
+
+def make_param_summary_fig(params_df, hue, hue_order, pal,
+                           params_list, ylim_list, yticks_list,
+                           errwidth=1.2, dot_scale=1, title_list=None,
+                           width_ratios=(0.8,1.8,1.3,1.3,1.3), fig_size=(7, 1.5),
+                           save_path=None):
+    rc.update({
+          'axes.titlesize': 11,
+          'axes.titlepad': 20,
+          'axes.labelsize': 9.5,
+          'ytick.labelsize': 9,
+           'legend.title_fontsize': 9.5,
+        'legend.fontsize': 9.5,
+          })
+    sns.set_theme("paper", style='ticks', rc=rc)
+
+    fig, axes = plt.subplots(1, len(params_list), figsize=fig_size,
+                             gridspec_kw={'width_ratios': width_ratios},
+                             sharey=False, sharex=False)
+
+    for i, ax in enumerate(axes.flatten()):
+        g = plot_precision_weighted_avg_parameter(params_df, params_list[i],
+                                                  hue, hue_order,
+                                                  ylim=ylim_list[i],
+                                                  yticks=yticks_list[i], errwidth=errwidth,
+                                                  ax=ax, dot_scale=dot_scale,
+                                                  pal=pal)
+
+        g.legend_.remove()
+        if title_list is not None:
+            ax.set_title(title_list[i], fontweight="bold")
+        if len(params_list[i]) > 1:
+            g.margins(x=0.15)
+        if 'p_' in params_list[i][0] or 'A_' in params_list[i][0] or 'sigma' in params_list[i][0]:
+            g.tick_params(axis='x', labelsize=rc['axes.labelsize']+1, pad=5)
+        else:
+            g.margins(x=0.1)
+            g.tick_params(axis='x', labelsize=rc['axes.labelsize']-0.6, pad=5)
+    g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
+
+    for i in np.arange(1, len(axes)):
+        axes[i].set(ylabel='')
+
+    fig.subplots_adjust(wspace=0.8, top=0.9)
+    utils.save_fig(save_path)
+    return fig, axes
 
 def plot_precision_weighted_avg_parameters_updated(df, params, subplot_group, col, col_order,
                                                    hue, hue_order=None, lgd_title=None,
@@ -228,7 +261,6 @@ def plot_precision_weighted_avg_parameters_updated(df, params, subplot_group, co
           'legend.title_fontsize': 10*0.8,
           'legend.fontsize': 10*0.8,
           })
-
     sns.set_theme("paper", style='ticks', rc=rc)
     utils.scale_fonts(0.7)
     df = group_params(df, params, subplot_group)
@@ -436,7 +468,7 @@ def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
     if hline is True:
         g.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
     g.set(ylabel=ylabel)
-    g.set(xlim=(0, 10), xticks=[0, 5, 10], xlabel=x.title())
+    g.set(xlim=(0, 10), xticks=[0, 5, 10], xlabel='Eccentricity (deg)')
     g.tick_params(axis='x', which='major', pad=3)
     return g
 

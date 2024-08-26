@@ -478,11 +478,6 @@ def calculate_weighted_mean(df, value, precision, groupby=['vroinames']):
     return new_df
 
 
-def calculate_weighted_mean2(df, value, precision, groupby=['vroinames']):
-    new_df = df.groupby(groupby).apply(lambda x: (x[value] * x[precision]).sum() / x[precision].sum())
-    new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
-    return new_df
-
 def _add_ecc_0(df, groupby=['vroinames']):
     unique_df = df.drop_duplicates(subset=groupby, inplace=False)
     unique_df['ecc'] = 0
