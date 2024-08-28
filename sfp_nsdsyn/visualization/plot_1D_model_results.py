@@ -344,9 +344,9 @@ def _add_jitter(df, to_jitter, subset, jitter_scale=0.01):
 
 def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_df,
                           pal=sns.color_palette("tab10"),
-                          lgd_title=None, height=2.5,
-                          col=None, col_order=None,
-                          suptitle=None, width=3.4, errorbar=("ci", 68),
+                          lgd_title=None,
+                          row=None, row_order=None,
+                          suptitle=None, width=3.4,height=2.5, errorbar=("ci", 68),
                           save_path=None):
     rc.update({'axes.titlepad': 10})
     sns.set_theme("notebook", style='ticks', rc=rc)
@@ -359,8 +359,8 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
 
     new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df[preferred_period], new_df[precision])]
     grid = sns.FacetGrid(new_df,
-                         col=col,
-                         col_order=col_order,
+                         row=row,
+                         row_order=row_order,
                          height=height,
                          aspect=width/height,
                          sharex=False, sharey=False)
@@ -368,11 +368,11 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                  hue, hue_order=hue_order, marker='o', palette=pal,
                  linestyle='', markersize=5, mew=0.1, mec='white',
                  estimator=utils.weighted_mean, errorbar=errorbar,
-                 err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
+                 err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.9, zorder=10)
 
     if lgd_title is not None:
-        if col is not None:
-            handles, labels = g.axes[0,-1].get_legend_handles_labels()
+        if row is not None:
+            handles, labels = g.axes[-1,0].get_legend_handles_labels()
         else:
             handles, labels = g.ax.get_legend_handles_labels()
 
@@ -381,28 +381,31 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
             if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
                 handle.set_linewidth(4)  # Set line width to 3
                 handle.set_alpha(1)
-        if col is not None:
-            grid.axes[0,-1].legend(handles=handles, labels=labels, loc=(1.1, 0.4), title=lgd_title, frameon=False)
+        if row is not None:
+            grid.axes[0,0].legend(handles=handles, labels=labels, loc=(1.1, 0.3), title=lgd_title, frameon=False)
         else:
-            grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.5), title=lgd_title, frameon=False)
+            grid.ax.legend(handles=handles, labels=labels, loc=(1.1, 0.3), title=lgd_title, frameon=False)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(None)
 
     if fit_df is not None:
-        for ax, col_name in zip(g.axes.flatten(), col_order):
+        for ax, col_name in zip(g.axes.flatten(), row_order):
             for i, cur_hue in enumerate(hue_order):
                 tmp_fit_df = fit_df.copy()
-                if col is not None:
-                    tmp_fit_df = tmp_fit_df[tmp_fit_df[col] == col_name]
+                if row is not None:
+                    tmp_fit_df = tmp_fit_df[tmp_fit_df[row] == col_name]
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
-                ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
-                        color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
 
-    grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10], ylim=(0,2), yticks=[0, 1, 2])
-    grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
+                ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
+                        color=pal[i], linestyle='-', linewidth=1.5, zorder=10-i)
+
+
+
+    grid.axes[0,0].set(xlim=(0,12), xticks=[0,2,4,6,8,10,12], ylim=(0,2), yticks=[0, 1, 2])
+    grid.axes[-1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
     grid.set_axis_labels('Eccentricity (deg)', 'Deg per cycle')
     grid.fig.text(0.55, 0.95, suptitle, fontweight='bold', ha='center', fontsize=rc['figure.titlesize'])
-    grid.fig.subplots_adjust(wspace=0.4)
+    grid.fig.subplots_adjust(hspace=0.5)
     utils.save_fig(save_path)
 
     return g
@@ -410,7 +413,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
 def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
                               pal=sns.color_palette("tab10"),
                               lgd_title=None,
-                              col=None, col_order=None,
+                              row=None, row_order=None,
                               suptitle=None, height=2.5, width=3.4, errorbar=("ci", 68),
                               save_path=None):
 
@@ -423,8 +426,8 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
     new_df['ecc'] = _add_jitter(new_df, 'ecc', 'ecc', jitter_scale=0.03)
     new_df['value_and_weight'] = [v + w * 1j for v, w in zip(new_df[bandwidth], new_df[precision])]
     grid = sns.FacetGrid(new_df,
-                         col=col,
-                         col_order=col_order,
+                         row=row,
+                         row_order=row_order,
                          height=height,
                          aspect=width/height,
                          sharex=False, sharey=False)
@@ -432,11 +435,11 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
                  hue, hue_order=hue_order, marker='o', palette=pal,
                  linestyle='', markersize=5, mew=0.1, mec='white',
                  estimator=utils.weighted_mean, errorbar=errorbar,
-                 err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=10)
+                 err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=20)
 
     if lgd_title is not None:
-        if col is not None:
-            handles, labels = g.axes[0,-1].get_legend_handles_labels()
+        if row is not None:
+            handles, labels = g.axes[-1,0].get_legend_handles_labels()
         else:
             handles, labels = g.ax.get_legend_handles_labels()
 
@@ -445,28 +448,28 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
             if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
                 handle.set_linewidth(4)  # Set line width to 3
                 handle.set_alpha(1)
-        if col is not None:
-            grid.axes[0,-1].legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+        if row is not None:
+            grid.axes[0,0].legend(handles=handles, labels=labels, loc=(1.1, 0.3), title=lgd_title, frameon=False)
         else:
-            grid.ax.legend(handles=handles, labels=labels, loc=(1.02, 0.55), title=lgd_title, frameon=False)
+            grid.ax.legend(handles=handles, labels=labels, loc=(1.1, 0.3), title=lgd_title, frameon=False)
     for subplot_title, ax in grid.axes_dict.items():
         ax.set_title(None)
 
     if fit_df is not None:
-        for ax, col_name in zip(g.axes.flatten(), col_order):
+        for ax, col_name in zip(g.axes.flatten(), row_order):
             for i, cur_hue in enumerate(hue_order):
                 tmp_fit_df = fit_df.copy()
-                if col is not None:
-                    tmp_fit_df = tmp_fit_df[fit_df[col] == col_name]
+                if row is not None:
+                    tmp_fit_df = tmp_fit_df[fit_df[row] == col_name]
                 tmp_fit_df = tmp_fit_df[tmp_fit_df[hue] == cur_hue]
                 ax.plot(tmp_fit_df['ecc'], tmp_fit_df['fitted'], alpha=1,
-                        color=pal[i], linestyle='-', linewidth=1.5, zorder=0)
+                        color=pal[i], linestyle='-', linewidth=1.5, zorder=10-i)
 
     grid.set_axis_labels('Eccentricity (deg)', 'FWHM (in octaves)')
-    grid.axes[0,0].set(xlim=(0,10), xticks=[0,2,4,6,8,10],ylim=(4,10), yticks=[4,6,8,10])
-    grid.axes[0,1].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,10), yticks=[4,6,8,10])
+    grid.axes[0,0].set(xlim=(0,12), xticks=[0,2,4,6,8,10,12],ylim=(4,8), yticks=[4,6,8])
+    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,10), yticks=[4,6,8,10])
     grid.fig.text(0.55, 0.95, suptitle, weight='bold', ha='center', fontsize=rc['figure.titlesize'])
-    grid.fig.subplots_adjust(wspace=0.4)
+    grid.fig.subplots_adjust(hspace=0.5)
     utils.save_fig(save_path)
     return g
 

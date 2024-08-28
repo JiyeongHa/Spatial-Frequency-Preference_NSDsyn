@@ -965,3 +965,13 @@ def get_Pv_difference(df, orientation_1, orientation_2, to_group=['sub','dset_ty
     p_df['Pv_diff'] = p_df[f'Pv_1'] - p_df[f'Pv_2']
     p_df = p_df.groupby(to_group).mean().reset_index()
     return p_df
+
+
+def plot_parameter_across_rois(df, y, hue, ax, save_path=None):
+    sns.set_theme("paper", style='ticks', rc=rc, font_scale=1)
+
+    g = sns.pointplot(data=df, x='vroinames', y=y, hue=hue, ax=ax)
+    g.legend_.remove()
+    ax.set_xlabel('ROI')
+    return ax
+
