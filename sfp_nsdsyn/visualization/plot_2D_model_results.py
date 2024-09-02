@@ -83,6 +83,7 @@ def plot_param_and_prediction(params_df, params,
                               prediction_y=None,
                               params_ylim=None, params_yticks=None,
                               prediction_ylim=None, prediction_yticks=None,
+                              xlim=(0,10), xticks=[0,5,10],
                               prediction_ylabel='Preferred period (deg)', title=None,
                               figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None):
 
@@ -104,7 +105,7 @@ def plot_param_and_prediction(params_df, params,
     else:
         g = plot_preferred_period_in_axes(prediction_df, x='eccentricity', y=prediction_y, precision='precision',
                                           hline=True, ylim=prediction_ylim, yticks=prediction_yticks,
-                                          ylabel=prediction_ylabel, hue=hue, hue_order=hue_order,
+                                          ylabel=prediction_ylabel, xlim=xlim, xticks=xticks, hue=hue, hue_order=hue_order,
                                           pal=pal, ax=axes[1])
     g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
     if title is not None:
@@ -452,7 +453,7 @@ def plot_preferred_period_difference(df,
 
 
 def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
-                                  ylim=None, yticks=None, ylabel='Preferred period (deg)',
+                                  ylim=None, yticks=None, xlim=(0,10), xticks=[0,5,10], ylabel='Preferred period (deg)',
                                   hue=None, hue_order=None, pal=None, precision='precision'):
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
@@ -461,6 +462,7 @@ def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
                      linewidth=1.5, estimator=weighted_mean, palette=pal,
                      err_style='band', errorbar=('ci', 68), ax=ax)
     g.legend_.remove()
+
     if ylim is not None:
         g.set(ylim=ylim)
     if yticks is not None:
@@ -468,7 +470,8 @@ def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
     if hline is True:
         g.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
     g.set(ylabel=ylabel)
-    g.set(xlim=(0, 10), xticks=[0, 5, 10], xlabel='Eccentricity (deg)')
+
+    g.set(xlim=xlim, xticks=xticks, xlabel='Eccentricity (deg)')
     g.tick_params(axis='x', which='major', pad=3)
     return g
 
@@ -966,12 +969,37 @@ def get_Pv_difference(df, orientation_1, orientation_2, to_group=['sub','dset_ty
     p_df = p_df.groupby(to_group).mean().reset_index()
     return p_df
 
+def calculate_within_subject_error_for_V123(df, value, subject='sub', roi='vroinames'):
+    # Pivoting the dataframe
+    new_df = df.pivot(index=subject, columns=roi, values=value)
 
-def plot_parameter_across_rois(df, y, hue, ax, save_path=None):
+    # Renaming the columns to 'sigma_V1', 'sigma_V2', 'sigma_V3'
+    new_df.columns = [f'{value}_{roi}' for roi in new_df.columns]
+
+    # Resetting the index if needed
+    new_df = new_df.reset_index()
+    new_df[f'V3_minus_V2'] = new_df[f'{value}_V3'] - new_df[f'{value}_V2']
+    new_df[f'V2_minus_V1'] = new_df[f'{value}_V2'] - new_df[f'{value}_V1']
+    new_df = new_df.drop(columns=[f'{value}_V1', f'{value}_V2', f'{value}_V3'])
+    new_df = new_df.melt(id_vars=[subject], value_vars=[f'V3_minus_V2', f'V2_minus_V1'], value_name=value)
+
+    return new_df
+
+def plot_within_subject_error_for_V123(df, to_plot, precision, ax=None, title=None, save_path=None):
     sns.set_theme("paper", style='ticks', rc=rc, font_scale=1)
+    df['value_and_weights'] = df.apply(lambda row: row[to_plot] + row[precision] * 1j, axis=1)
+    #new_names = ['V2\n''$\it{minus}$' '\nV1','V3\n''$\it{minus}$' '\nV2']
+    new_names = ['V2—V1','V3—V2']
+    df = df.replace({'variable': {'V2_minus_V1': new_names[0],
+                                  'V3_minus_V2': new_names[1]}})
 
-    g = sns.pointplot(data=df, x='vroinames', y=y, hue=hue, ax=ax)
-    g.legend_.remove()
-    ax.set_xlabel('ROI')
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(1.5, 1.8))
+    ax = sns.barplot(data=df, x='variable', y='value_and_weights', order=new_names,
+                     estimator=weighted_mean, color='gray', ax=ax)
+    ax.set(xlabel='', ylabel='Parameter difference', ylim=(-1, 1), yticks=[-1,0,1])
+    ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=1)
+    ax.set_title(title)
+    utils.save_fig(save_path)
     return ax
 

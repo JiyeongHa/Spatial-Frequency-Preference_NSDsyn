@@ -97,7 +97,7 @@ rule prep_nsdsyn_data:
         rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
         rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
     output:
-        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
     params:
         rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation_task', 'memory_task'],
@@ -110,14 +110,14 @@ rule prep_nsdsyn_data:
                                        rois=input.lh_rois, rois_vals=params.rois_vals,
                                        prfs=input.lh_prfs,
                                        betas=input.lh_betas,
-                                       task_keys=params.task_keys, task_average=True,
+                                       task_keys=params.task_keys, task_average=(wildcards.tavg=="True"),
                                        angle_to_radians=True)
         rh_df = prep.make_sf_dataframe(stim_info=input.stim_info,
                                        design_mat=input.design_mat,
                                        rois=input.rh_rois, rois_vals=params.rois_vals,
                                        prfs=input.rh_prfs,
                                        betas=input.rh_betas,
-                                       task_keys=params.task_keys, task_average=True,
+                                       task_keys=params.task_keys, task_average=(wildcards.tavg=="True"),
                                        angle_to_radians=True)
         sf_df = prep.concat_lh_rh_df(lh_df, rh_df)
         if wildcards.vs != 'None':
@@ -127,6 +127,36 @@ rule prep_nsdsyn_data:
                                      to_group=['voxel'], return_voxel_list=False)
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
+
+rule nsdsyn_data_for_bootstraps:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    run:
+        import random
+        subj_df = pd.read_csv(input.subj_df)
+        phase_list = subj_df.phase.unique()
+        task_list = subj_df.task.unique()
+        bootstrap_df = pd.DataFrame({})
+        assert subj_df.class_idx.nunique() == 28
+        for i in subj_df.class_idx.unique():
+            sample_df = subj_df.query('class_idx == @i')
+            sample_phases = random.choices(phase_list, k=8)
+            sample_tasks = random.choices(task_list, k=8)
+            for p, t in zip(sample_phases,sample_tasks):
+                tmp = sample_df.query('phase == @p & task == @t')
+                bootstrap_df = pd.concat([bootstrap_df, tmp])
+        bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
+        bootstrap_df['bootstrap'] = int(wildcards.bts)
+        bootstrap_df.to_csv(output[0], index=False)
+
+
+rule nsdsyn_data_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        subj=make_subj_list('nsdsyn'), roi=['V1'], vs='pRFsize', bts=np.arange(0,100))
+
 
 rule prep_broderick_data:
     input:
