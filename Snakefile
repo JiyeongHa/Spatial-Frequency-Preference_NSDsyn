@@ -155,7 +155,7 @@ rule nsdsyn_data_for_bootstraps:
 rule nsdsyn_data_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        subj=make_subj_list('nsdsyn'), roi=['V1'], vs='pRFsize', bts=np.arange(0,100))
+        subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs='pRFsize', bts=np.arange(0,100))
 
 
 rule prep_broderick_data:
@@ -635,6 +635,33 @@ rule plot_curves_all:
          c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
          dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg')
 
+rule run_model_for_bootstraps:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    run:
+        subj_df = pd.read_csv(input.subj_df)
+        precision_df = pd.read_csv(input.precision)
+        df = subj_df.merge(precision_df,on=['sub', 'vroinames', 'voxel'])
+        df = df.groupby(['sub', 'voxel', 'class_idx', 'names','vroinames']).mean().reset_index()
+        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_dataset = model.SpatialFrequencyDataset(df,beta_col='betas')
+        loss_history, model_history, _ = model.fit_model(subj_model,subj_dataset,
+            learning_rate=float(wildcards.lr),
+            max_epoch=int(wildcards.max_epoch),
+            save_path=output.model,
+            print_every=10000,
+            loss_all_voxels=False,
+            anomaly_detection=False,
+            amsgrad=False,
+            eps=1e-8)
+
+rule  fit_to_bootstraps:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps','bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+               bts=0, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=ROIS[0], vs='pRFsize')
 
 rule run_model:
     input:

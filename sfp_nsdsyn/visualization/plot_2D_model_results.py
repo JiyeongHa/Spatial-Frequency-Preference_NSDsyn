@@ -116,6 +116,50 @@ def plot_param_and_prediction(params_df, params,
     return fig, axes
 
 
+def plot_param_hierarchy_and_prediction(params_df, params,
+                                  prediction_df,
+                                  pal, hue, hue_order,
+                                  prediction_y=None,
+                                  params_ylim=None, params_yticks=None,
+                                  prediction_ylim=None, prediction_yticks=None,
+                                  hierarchy_ylim=None, hierarchy_yticks=None,
+                                  xlim=(0,10), xticks=[0,5,10],
+                                  prediction_ylabel='Preferred period (deg)', title=None,
+                                  figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None):
+
+    sns.set_theme("paper", style='ticks', rc=rc)
+    fig, axes = plt.subplots(1, 3, figsize=figsize,
+                             gridspec_kw={'width_ratios': [width_ratios[0], width_ratios[1], width_ratios[2]]},
+                             sharey=False, sharex=False)
+
+    g = plot_precision_weighted_avg_parameter(params_df, params,
+                                              hue, hue_order,
+                                              ax=axes[0], pal=pal,
+                                              ylim=params_ylim, yticks=params_yticks)
+    g.legend_.remove()
+    if len(params) > 1:
+        g.margins(x=0.1)
+    if 'sigma' in params:
+        g = plot_bandwidth_prediction(prediction_df, hue=hue, hue_order=hue_order,
+                                      ax=axes[-1], pal=pal)
+    else:
+        g = plot_preferred_period_in_axes(prediction_df, x='eccentricity', y=prediction_y, precision='precision',
+                                          hline=True, ylim=prediction_ylim, yticks=prediction_yticks,
+                                          ylabel=prediction_ylabel, xlim=xlim, xticks=xticks, hue=hue, hue_order=hue_order,
+                                          pal=pal, ax=axes[-1])
+    g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
+    plot_within_subject_error_for_V123(params_df, to_plot=params[0], precision='precision',
+                                       ax=axes[1], ylim=hierarchy_ylim, yticks=hierarchy_yticks)
+    axes[1].set_xticklabels(axes[1].get_xticklabels(), fontsize=rc['xtick.labelsize']-1)
+    axes[1].margins(x=0.1)
+
+    if title is not None:
+        fig.suptitle(title, fontweight="bold")
+        fig.subplots_adjust(top=0.7)
+    fig.subplots_adjust(wspace=1.2)
+    utils.save_fig(save_path)
+    return fig, axes
+
 def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, errwidth=2, dot_scale=1, ylim=None, yticks=None, pal=None, **kwargs):
     sns.set_theme("paper", style='ticks', rc=rc)
 
@@ -937,7 +981,7 @@ def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_pa
     ax.set_yticks([0, 0.5, 1])
     ax.tick_params(axis='x', which='major', labelsize=7, pad=3)
     ax.set_xlabel('Spatial frequency (cpd)')
-    ax.set_ylabel('Predicted\nBOLD Response')
+    ax.set_ylabel(' ' '\nPredicted\nBOLD Response')
     return ax
 
 
@@ -985,19 +1029,29 @@ def calculate_within_subject_error_for_V123(df, value, subject='sub', roi='vroin
 
     return new_df
 
-def plot_within_subject_error_for_V123(df, to_plot, precision, ax=None, title=None, save_path=None):
+def plot_within_subject_error_for_V123(df, to_plot, precision, ylim=None, yticks=None,
+                                       ax=None, title=None, save_path=None):
     sns.set_theme("paper", style='ticks', rc=rc, font_scale=1)
-    df['value_and_weights'] = df.apply(lambda row: row[to_plot] + row[precision] * 1j, axis=1)
-    #new_names = ['V2\n''$\it{minus}$' '\nV1','V3\n''$\it{minus}$' '\nV2']
-    new_names = ['V2—V1','V3—V2']
-    df = df.replace({'variable': {'V2_minus_V1': new_names[0],
+    new_df = calculate_within_subject_error_for_V123(df, to_plot, subject='sub', roi='vroinames')
+    new_df = pd.merge(new_df, df[['sub', precision]], on='sub')
+
+    new_df['value_and_weights'] = new_df.apply(lambda row: row[to_plot] + row[precision] * 1j, axis=1)
+    new_names = ['V2\n''$\it{minus}$' '\nV1','V3\n''$\it{minus}$' '\nV2']
+    #new_names = ['V2—V1','V3—V2']
+    new_df = new_df.replace({'variable': {'V2_minus_V1': new_names[0],
                                   'V3_minus_V2': new_names[1]}})
 
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(1.5, 1.8))
-    ax = sns.barplot(data=df, x='variable', y='value_and_weights', order=new_names,
+    ax = sns.barplot(data=new_df, x='variable', y='value_and_weights', order=new_names,
+                     width=0.5,
                      estimator=weighted_mean, color='gray', ax=ax)
-    ax.set(xlabel='', ylabel='Parameter difference', ylim=(-1, 1), yticks=[-1,0,1])
+    ax.set(xlabel='', ylabel='Parameter difference')
+
+    if ylim is not None:
+        ax.set(ylim=ylim)
+    if yticks is not None:
+        ax.set(yticks=yticks)
     ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=1)
     ax.set_title(title)
     utils.save_fig(save_path)
