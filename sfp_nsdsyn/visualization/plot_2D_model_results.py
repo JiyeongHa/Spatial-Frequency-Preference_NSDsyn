@@ -1044,7 +1044,7 @@ def plot_within_subject_error_for_V123(df, to_plot, precision, ylim=None, yticks
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(1.5, 1.8))
     ax = sns.barplot(data=new_df, x='variable', y='value_and_weights', order=new_names,
-                     width=0.5,
+                     width=0.5, errorbar=('ci', 68),
                      estimator=weighted_mean, color='gray', ax=ax)
     ax.set(xlabel='', ylabel='Parameter difference')
 
