@@ -20,6 +20,5 @@ dependencies:
   - scikit-learn
   - snakemake>=5.32,<5.33
   - tqdm
-  - pytables
   - pip:
       - neuropythy
