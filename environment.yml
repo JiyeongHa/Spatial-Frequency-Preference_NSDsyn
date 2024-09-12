@@ -1,10 +1,10 @@
 name: sfp
 channels:
-  - pytorch
-  - nvidia
   - conda-forge
-  - defaults
+  - nvidia
+  - pytorch
   - bioconda
+  - defaults
 dependencies:
   - python=3.7
   - pytorch
