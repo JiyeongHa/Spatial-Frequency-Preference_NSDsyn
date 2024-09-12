@@ -1,7 +1,6 @@
 name: sfp
 channels:
   - conda-forge
-  - pip
   - nvidia
   - pytorch
   - bioconda
