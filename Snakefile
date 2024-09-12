@@ -641,6 +641,9 @@ rule run_model_for_bootstraps:
         precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
         model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 2000
     run:
         subj_df = pd.read_csv(input.subj_df)
         precision_df = pd.read_csv(input.precision)
