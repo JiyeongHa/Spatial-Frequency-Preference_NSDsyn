@@ -1,6 +1,7 @@
 name: sfp
 channels:
   - conda-forge
+  - pip
   - nvidia
   - pytorch
   - bioconda
@@ -20,6 +21,6 @@ dependencies:
   - scikit-learn
   - snakemake>=5.32,<5.33
   - tqdm
-  - tables=3.7.0
+  - pytables
   - pip:
       - neuropythy
