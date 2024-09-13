@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import pandas as pd
-sys.path.append('../pysurfer')
+sys.path.append('../PySurfer')
 from pysurfer import mgz_helper as fs
 from scipy.stats import f_oneway
 from itertools import product
