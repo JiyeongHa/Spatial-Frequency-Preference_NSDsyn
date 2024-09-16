@@ -214,23 +214,23 @@ def merge_all(stim_df,
     betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
     return betas_prf_stim_df
 
-def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, reference_frame='relative'):
+def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, stimulus='logpolar'):
     # calculate distance
     frequency_ratio = np.arctan2(w_a, w_r)
     if angle_in_radians is False:
         if (np.max(retinotopic_angle) - 2*np.pi) < 1:
             raise Exception('It seems like the angle is already in radians!')
         retinotopic_angle = np.deg2rad(retinotopic_angle)
-    if reference_frame == 'relative':
+    if stimulus == 'logpolar':
         local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
     else:
         local_ori = frequency_ratio
     return np.remainder(local_ori, np.pi)
 
-def calculate_local_sf(w_a, w_r, eccentricity, reference_frame='relative'):
+def calculate_local_sf(w_a, w_r, eccentricity, stimulus='logpolar'):
     # calculate local frequency
     l2_norm = np.sqrt((w_r ** 2 + w_a ** 2))
-    if reference_frame == 'relative':
+    if stimulus == 'logpolar':
         local_sf = l2_norm / eccentricity
         local_sf = np.divide(local_sf, 2*np.pi)
     else:
@@ -241,7 +241,7 @@ def calculate_local_sf(w_a, w_r, eccentricity, reference_frame='relative'):
     return local_sf
 
 def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False, reference_frame='relative'):
-    local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity, reference_frame=reference_frame)
+    local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity, stimulus=reference_frame)
     local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle, angle_in_radians=angle_in_radians, reference_frame=reference_frame)
     return local_sf, local_ori
 

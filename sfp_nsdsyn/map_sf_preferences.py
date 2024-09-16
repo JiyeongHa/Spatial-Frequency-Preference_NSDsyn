@@ -22,10 +22,8 @@ def get_whole_brain_betas(betas_path, design_mat_path,
     if eccentricity_path is not None:
         prf_dict = prep.load_prf_properties_as_dict([eccentricity_path], mask=None, angle_to_radians=False)
         betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, on='voxel')
-        betas_df['local_sf'] = prep.calculate_local_sf(w_a=betas_df['w_a'],
-                                                       w_r=betas_df['w_r'],
-                                                       eccentricity=betas_df['eccentricity'],
-                                                       reference_frame=reference_frame)
+        betas_df['local_sf'] = prep.calculate_local_sf(w_a=betas_df['w_a'], w_r=betas_df['w_r'],
+                                                       eccentricity=betas_df['eccentricity'], stimulus=reference_frame)
     return betas_df
 
 def divide_df_into_n_bins(df, to_bin, n_bins, return_step=False):
