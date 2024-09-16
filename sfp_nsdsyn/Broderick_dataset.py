@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import h5py
 import itertools
-from . import preprocessing as prep
+from . import make_dataframes as prep
 from . import utils as utils
 from . import voxel_selection as vs
 from . import two_dimensional_model as model

@@ -4,7 +4,7 @@ from . import binning as binning
 from . import voxel_selection as vs
 from . import Broderick_dataset as brod
 from . import bootstrapping as bts
-from . import preprocessing as prep
+from . import make_dataframes as prep
 from . import save_stimuli_description
 from . import simulation as sim
 from . import two_dimensional_model as model

@@ -13,7 +13,7 @@ def label_eccband(row):
 def _load_and_copy_df(df_path, create_vroinames_col, selected_cols, remove_cols=False):
     """load a dataframe of one subject and return a copy of part of the dataframe with selected columns.
      the selected_cols has to include frequency level, beta, local orientation, and local frequency."""
-    # import dataframe from preprocessing.py
+    # import dataframe from make_dataframes.py
     df = pd.read_csv(df_path)
     if create_vroinames_col:
         # label visual areas regardless of dorsal and ventral streams.

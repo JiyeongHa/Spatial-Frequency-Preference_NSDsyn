@@ -6,7 +6,7 @@ sys.path.append('../PySurfer')
 from pysurfer import mgz_helper as fs
 from scipy.stats import f_oneway
 from itertools import product
-from sfp_nsdsyn import preprocessing as prep
+from sfp_nsdsyn import make_dataframes as prep
 
 def get_whole_brain_betas(betas_path, design_mat_path,
                           stim_info_path,

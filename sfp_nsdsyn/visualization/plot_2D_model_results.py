@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from sfp_nsdsyn.two_dimensional_model import group_params
-from sfp_nsdsyn.preprocessing import calculate_local_orientation
+from sfp_nsdsyn.make_dataframes import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
 from sfp_nsdsyn.visualization.plot_1D_model_results import _get_x_and_y_prediction
 

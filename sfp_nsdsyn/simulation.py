@@ -8,7 +8,7 @@ from . import two_dimensional_model as model
 from . import bootstrapping as bts
 from . import binning as binning
 from . import one_dimensional_model as fitting
-from . import preprocessing as prep
+from . import make_dataframes as prep
 import re
 
 class SynthesizeData():
