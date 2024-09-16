@@ -240,9 +240,9 @@ def calculate_local_sf(w_a, w_r, eccentricity, stimulus='logpolar'):
     # we multiply by a conversion factor c = 1/2pi
     return local_sf
 
-def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False, reference_frame='relative'):
-    local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity, stimulus=reference_frame)
-    local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle, angle_in_radians=angle_in_radians, reference_frame=reference_frame)
+def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False, stimulus='logpolar'):
+    local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity, stimulus=stimulus)
+    local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle, angle_in_radians=angle_in_radians, stimulus=stimulus)
     return local_sf, local_ori
 
 
