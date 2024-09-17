@@ -10,7 +10,6 @@ mpl.use('Agg')
 import pickle
 pickle.HIGHEST_PROTOCOL = 4
 from sfp_nsdsyn import *
-from sfp_nsdsyn.preprocessing import convert_between_roi_num_and_vareas
 from pysurfer.freeview_helper import retinotopy_colors
 
 
@@ -86,10 +85,17 @@ def _get_boolean_for_vs(vs):
                 'pRFsize': True}
     return switcher.get(vs, True)
 
+rule prep_nsdsyn_description_file:
+    output:
+        os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv')
+    run:
+        from sfp_nsdsyn import prep
+        prep.load_stim_info_as_df(output[0], drop_phase=False)
+
 rule prep_nsdsyn_data:
     input:
         design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
-        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
+        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
         lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
         lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
         lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
@@ -99,7 +105,7 @@ rule prep_nsdsyn_data:
     output:
         spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
     params:
-        rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
+        rois_vals = lambda wildcards: [prep.convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation_task', 'memory_task'],
         stim_size= get_stim_size_in_degree('nsdsyn')
     run:
@@ -127,6 +133,11 @@ rule prep_nsdsyn_data:
                                      to_group=['voxel'], return_voxel_list=False)
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
+
+rule make_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
+            subj=make_subj_list('nsdsyn')[0], roi=['V1'], vs=['pRFsize'], tavg=['False'])
 
 rule nsdsyn_data_for_bootstraps:
     input:
@@ -217,7 +228,7 @@ rule prep_baseline:
     output:
         os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','baseline', 'baseline_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     params:
-        rois_vals = lambda wildcards: [convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
+        rois_vals = lambda wildcards: [prep.convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation_task', 'memory_task'],
         stim_size= get_stim_size_in_degree('nsdsyn'),
         white_noise_indices = [1,2,3,4]

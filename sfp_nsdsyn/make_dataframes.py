@@ -28,7 +28,6 @@ def download_stim_info_csv(save_path):
 
     # Send a GET request to the URL
     response = requests.get(url)
-
     # Check if the request was successful
     if response.status_code == 200:
         # Write the content to a file
@@ -60,14 +59,14 @@ def _label_stim_names(row):
 
 def _label_freq_lvl_new(row):
     """" In the NSD synthetic stim description, class_idx is defined based on w_r and w_a.
-    And the order is based on the frequncy level & categories (classes).
+    And the order is based on the frequency level & categories (classes).
     """
     if row.class_idx < 24: # pinwheel, forward, annulus, reverse in order
         return row.class_idx % 6
     elif 24 <= row.class_idx < 28: #four intermediate classes - they all have one freq lvl
         return 3
 
-def load_stim_info_as_df(stim_description_path, drop_phase=False):
+def load_stim_info_as_df(stim_description_path, drop_phase=False, force_download=False):
     """
     stimulus description file will be loaded as a dataframe, and be modified.
     If there is no file, it will be downloaded from the OSF.
@@ -75,23 +74,25 @@ def load_stim_info_as_df(stim_description_path, drop_phase=False):
     There is an error in the stimulus parameters. The w_a and w_r are not correctly assigned.
     So we will correct them by flipping the sign of w_a when w_r is equal to w_a. (so only for forward & reverse spirals)
     """
-    if os.path.exists(stim_description_path) is False:
+    if os.path.exists(stim_description_path) is False or force_download is True:
         download_stim_info_csv(stim_description_path)
         # stimuli information
         stim_df = pd.read_csv(stim_description_path)
+        stim_df = stim_df.drop(columns='res')
         phase_list = stim_df.phi.unique()[::2]
         stim_df = stim_df.query('phi in @phase_list').reset_index(drop=True)
+        stim_df = stim_df.reset_index().rename(columns={'index': 'stim_idx'})
         stim_df = _tmp_correct_w_a(stim_df)
         stim_df = stim_df.astype({'class_idx': int})
-        stim_df = stim_df.drop(columns='res')
-        stim_df = stim_df.reset_index()
-        stim_df = stim_df.rename(columns={'phi': 'phase', 'index': 'image_idx'})
+        stim_df = stim_df.reset_index().rename(columns={'index': 'image_idx'})
         stim_df['image_idx'] = stim_df['image_idx'] + 104
+        stim_df = stim_df.rename(columns={'phi': 'phase'})
         stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
         stim_df['freq_lvl'] = stim_df.apply(_label_freq_lvl_new, axis=1)
         if drop_phase:
             stim_df = stim_df.drop_duplicates(subset=['class_idx'])
             stim_df = stim_df.drop(columns='phase')
+        stim_df.to_csv(stim_description_path, index=False)
     else:
         stim_df = pd.read_csv(stim_description_path)
     return stim_df
@@ -334,6 +335,7 @@ def make_sf_dataframe(stim_info,
                       betas, task_keys=['fixation_task','memory_task'], task_average=True,
                       angle_to_radians=True):
     stim_df = load_stim_info_as_df(stim_info, drop_phase=False)
+    print(stim_df)
     mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
     prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
     betas_dict = load_betas_as_dict(betas, design_mat,
