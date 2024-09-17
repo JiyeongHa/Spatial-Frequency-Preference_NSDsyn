@@ -58,14 +58,6 @@ def _label_stim_names(row):
     else:
         return 'mixtures'
 
-
-def _label_freq_lvl(df, class_idx='class_idx'):
-    df = df.sort_values(by=class_idx)
-    freq_lvl_main_classes = np.tile(np.repeat(np.arange(0, freq_lvl), phi_repeat), main_classes)
-    freq_lvl_mixtures = np.repeat(mixture_freq_lvl, phi_repeat * n_mixtures)
-    freq_lvl = np.concatenate((freq_lvl_main_classes, freq_lvl_mixtures))
-    return l2_norm
-
 def _label_freq_lvl_new(row):
     """" In the NSD synthetic stim description, class_idx is defined based on w_r and w_a.
     And the order is based on the frequncy level & categories (classes).
