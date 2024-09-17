@@ -58,29 +58,50 @@ def _label_stim_names(row):
     else:
         return 'mixtures'
 
+
+def _label_freq_lvl(df, class_idx='class_idx'):
+    df = df.sort_values(by=class_idx)
+    freq_lvl_main_classes = np.tile(np.repeat(np.arange(0, freq_lvl), phi_repeat), main_classes)
+    freq_lvl_mixtures = np.repeat(mixture_freq_lvl, phi_repeat * n_mixtures)
+    freq_lvl = np.concatenate((freq_lvl_main_classes, freq_lvl_mixtures))
+    return l2_norm
+
+def _label_freq_lvl_new(row):
+    """" In the NSD synthetic stim description, class_idx is defined based on w_r and w_a.
+    And the order is based on the frequncy level & categories (classes).
+    """
+    if row.class_idx < 24: # pinwheel, forward, annulus, reverse in order
+        return row.class_idx % 6
+    elif 24 <= row.class_idx < 28: #four intermediate classes - they all have one freq lvl
+        return 3
+
 def load_stim_info(stim_description_path, drop_phase=False):
-    """stimulus description file will be loaded as a dataframe.
-       drop_phase arg will remove phase information in the output.
-       For example, each unique combination of stim classes and frequency levels
-       (total of 28) will have one row."""
+    """
+    stimulus description file will be loaded as a dataframe, and be modified.
+    If there is no file, it will be downloaded from the OSF.
+    NSD synthetic only used every 2 phase starting from 0. So we will drop the rest of the phases.
+    There is an error in the stimulus parameters. The w_a and w_r are not correctly assigned.
+    So we will correct them by flipping the sign of w_a when w_r is equal to w_a. (so only for forward & reverse spirals)
+    """
     if os.path.exists(stim_description_path) is False:
         download_stim_info_csv(stim_description_path)
-
-    # stimuli information
-    stim_df = pd.read_csv(stim_description_path)
-    stim_df = _tmp_correct_w_a(stim_df)
-    phase_list = stim_df.phi.unique()[::2]
-    stim_df = stim_df.query('phi in @phase_list')
-    stim_df = stim_df.astype({'class_idx': int})
-    stim_df = stim_df.drop(columns='res')
-    stim_df = stim_df.reset_index()
-    stim_df = stim_df.rename(columns={'phi': 'phase', 'index': 'image_idx'})
-    stim_df['image_idx'] = stim_df['image_idx'] + 104
-    stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
-    #stim_df['freq_lvl'] = _label_freq_lvl()
-    if drop_phase:
-        stim_df = stim_df.drop_duplicates(subset=['class_idx'])
-        stim_df = stim_df.drop(columns='phase')
+        # stimuli information
+        stim_df = pd.read_csv(stim_description_path)
+        phase_list = stim_df.phi.unique()[::2]
+        stim_df = stim_df.query('phi in @phase_list').reset_index(drop=True)
+        stim_df = _tmp_correct_w_a(stim_df)
+        stim_df = stim_df.astype({'class_idx': int})
+        stim_df = stim_df.drop(columns='res')
+        stim_df = stim_df.reset_index()
+        stim_df = stim_df.rename(columns={'phi': 'phase', 'index': 'image_idx'})
+        stim_df['image_idx'] = stim_df['image_idx'] + 104
+        stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
+        stim_df['freq_lvl'] = stim_df.apply(_label_freq_lvl_new, axis=1)
+        if drop_phase:
+            stim_df = stim_df.drop_duplicates(subset=['class_idx'])
+            stim_df = stim_df.drop(columns='phase')
+    else:
+        stim_df = pd.read_csv(stim_description_path)
     return stim_df
 
 #
