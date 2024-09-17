@@ -335,7 +335,6 @@ def make_sf_dataframe(stim_info,
                       betas, task_keys=['fixation_task','memory_task'], task_average=True,
                       angle_to_radians=True):
     stim_df = load_stim_info_as_df(stim_info, drop_phase=False)
-    print(stim_df)
     mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
     prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
     betas_dict = load_betas_as_dict(betas, design_mat,
