@@ -18,20 +18,88 @@ def _load_exp_design_mat(design_mat_path):
 
     return trial_orders
 
-def load_stim_info_as_df(stim_description_path, drop_phase=False):
+def download_stim_info_csv(save_path):
+    import requests
+    # URL of the file
+    url = 'https://osf.io/hcu78/download'
+
+    # Path where the file will be saved
+    output_path = save_path  # Update this to your desired file name and extension
+
+    # Send a GET request to the URL
+    response = requests.get(url)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Write the content to a file
+        with open(output_path, 'wb') as file:
+            file.write(response.content)
+        print(f"File successfully downloaded and saved as {output_path}")
+    else:
+        print(f"Failed to download file. Status code: {response.status_code}")
+
+def _tmp_correct_w_a(df):
+    tmp = df[df.w_r == np.abs(df.w_a)]
+    tmp['w_a'] = -tmp['w_a']
+    df = pd.concat([df[~df.index.isin(tmp.index)], tmp], ignore_index=False)
+    df = df.sort_index()
+    return df
+
+
+def _label_stim_names(row):
+    if row.w_r == 0 and row.w_a != 0:
+        return 'pinwheel'
+    elif row.w_r != 0 and row.w_a == 0:
+        return 'annulus'
+    elif row.w_r == row.w_a:
+        return 'reverse spiral'
+    elif row.w_r == -1*row.w_a:
+        return 'forward spiral'
+    else:
+        return 'mixtures'
+
+def load_stim_info(stim_description_path, drop_phase=False):
     """stimulus description file will be loaded as a dataframe.
        drop_phase arg will remove phase information in the output.
        For example, each unique combination of stim classes and frequency levels
        (total of 28) will have one row."""
+    if os.path.exists(stim_description_path) is False:
+        download_stim_info_csv(stim_description_path)
 
     # stimuli information
     stim_df = pd.read_csv(stim_description_path)
-    stim_df = stim_df.drop(columns=['phase_idx', 'names_idx'])
-    if 'stim_idx' not in stim_df.columns.to_list():
-        stim_df = stim_df.reset_index().rename(columns={'index':'stim_idx'})
-    if drop_phase is True:
-        stim_df = stim_df.query('phase == 0')
+    stim_df = _tmp_correct_w_a(stim_df)
+    phase_list = stim_df.phi.unique()[::2]
+    stim_df = stim_df.query('phi in @phase_list')
+    stim_df = stim_df.astype({'class_idx': int})
+    stim_df = stim_df.drop(columns='res')
+    stim_df = stim_df.reset_index()
+    stim_df = stim_df.rename(columns={'phi': 'phase', 'index': 'image_idx'})
+    stim_df['image_idx'] = stim_df['image_idx'] + 104
+    stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
+    #stim_df['freq_lvl'] = _label_freq_lvl()
+    if drop_phase:
+        stim_df = stim_df.drop_duplicates(subset=['class_idx'])
+        stim_df = stim_df.drop(columns='phase')
     return stim_df
+
+#
+# def load_stim_info_as_df(stim_description_path, drop_phase=False):
+#     """stimulus description file will be loaded as a dataframe.
+#        drop_phase arg will remove phase information in the output.
+#        For example, each unique combination of stim classes and frequency levels
+#        (total of 28) will have one row."""
+#     if os.path.exists(stim_description_path) is False:
+#         download_stim_info_csv(stim_description_path)
+#
+#     # stimuli information
+#     stim_df = pd.read_csv(stim_description_path)
+#     stim_df = stim_df.drop(columns=['phase_idx', 'names_idx'])
+#     if 'stim_idx' not in stim_df.columns.to_list():
+#         stim_df = stim_df.reset_index().rename(columns={'index':'stim_idx'})
+#     if drop_phase is True:
+#         stim_df = stim_df.query('phase == 0')
+#     return stim_df
 
 def load_mask_and_roi(roi_path, roi_vals):
     mask = {}
