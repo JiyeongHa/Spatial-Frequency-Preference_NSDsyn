@@ -219,9 +219,9 @@ rule fit_tuning_curves:
 rule fit_tuning_curves_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
-            stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=range(3), enum=['log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
-        b = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
-            stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=range(7), enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'])
+            stim_class=['avg'], e1=0.5, e2=4, curbin=np.arange(0,1), enum=['log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[0], roi=['V1'])
+        #b = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
+        #    stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=np.arange(0,7), enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'])
 
 rule nsdsyn_data_for_bootstraps:
     input:
