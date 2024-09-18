@@ -139,7 +139,7 @@ rule prep_nsdsyn_data:
 rule make_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-            subj=make_subj_list('nsdsyn')[0], roi=['V1'], vs=['pRFsize'], tavg=['False'])
+            subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize','pRFcenter'], tavg=['False'])
 
 rule nsdsyn_data_for_bootstraps:
     input:
