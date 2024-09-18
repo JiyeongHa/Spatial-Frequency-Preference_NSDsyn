@@ -63,14 +63,6 @@ def make_subj_list(dset):
     elif dset == "nsdsyn":
         return [utils.sub_number_to_string(sn, dataset="nsdsyn") for sn in get_sn_list(dset)]
 
-def interpret_bin_nums(wildcards):
-    bin_list, bin_labels = get_ecc_bin_list(wildcards)
-    if wildcards.ebin == "all":
-        new_bin_labels = bin_labels
-    else:
-        new_bin_labels = [bin_labels[int(k)] for k in wildcards.ebin]
-    return new_bin_labels
-
 def get_stim_size_in_degree(dset):
     if dset == 'nsdsyn':
         fixation_radius = vs.pix_to_deg(42.878)
@@ -79,11 +71,6 @@ def get_stim_size_in_degree(dset):
         fixation_radius = 1
         stim_radius = 12
     return fixation_radius, stim_radius
-
-def _get_boolean_for_vs(vs):
-    switcher = {'pRFcenter': False,
-                'pRFsize': True}
-    return switcher.get(vs, True)
 
 rule prep_nsdsyn_description_file:
     output:
@@ -216,12 +203,49 @@ rule fit_tuning_curves:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+
+rule make_precision_v_df:
+    input:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-pRFsize_tavg-False.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv')
+    params:
+        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
+    run:
+        subj_vs_df = pd.read_csv(input[0])
+        power_val = [1,2]
+        power_var = [col for p, col in params.p_dict.items() if p in power_val]
+        sigma_v_df = bts.get_multiple_sigma_vs(subj_vs_df,
+                                               power=power_val,
+                                               columns=power_var,
+                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
+        sigma_v_df.to_csv(output[0], index=False)
+
+def define_rois_for_precision_s_df(dset):
+    if dset == "nsdsyn":
+        return ROIS
+    else:
+        return ['V1']
+
+rule make_precision_s_df:
+    input:
+        precision_v = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{{dset}}','precision','precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'), subj=make_subj_list(wildcards.dset), roi=define_rois_for_precision_s_df(wildcards.dset)),
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-pRFsize.csv')
+    run:
+        print(input)
+        precision_v = utils.load_dataframes(input.precision_v)
+        precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
+        precision_s['precision'] = 1 / precision_s['sigma_v_squared']
+        precision_s.to_csv(output[0], index=False)
+
 rule fit_tuning_curves_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
             stim_class=['avg'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
         b = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
             stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=np.arange(0,7), enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'])
+
 
 rule nsdsyn_data_for_bootstraps:
     input:
@@ -475,46 +499,6 @@ rule plot_tuning_curves_broderick:
                              col_title=wildcards.roi, lgd_title='Eccentricity band',
                              palette=params.roi_pal[0],
                              save_path=output[0])
-
-rule test_test:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
-            tfunc=['corrected'], dset='broderick', stim_class=STIM_LIST, lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=1,e2=12,enum=11,bins_to_plot=['1-8','1-9','2-9'], subj=make_subj_list('broderick')[:1], roi='V1', vs='pRFcenter', fig_format=['png'])
-
-rule make_precision_v_df:
-    input:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-pRFsize.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-pRFsize.csv')
-    params:
-        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
-    run:
-        subj_vs_df = pd.read_csv(input[0])
-        power_val = [1,2]
-        power_var = [col for p, col in params.p_dict.items() if p in power_val]
-        sigma_v_df = bts.get_multiple_sigma_vs(subj_vs_df,
-                                               power=power_val,
-                                               columns=power_var,
-                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
-        sigma_v_df.to_csv(output[0], index=False)
-
-def define_rois_for_precision_s_df(dset):
-    if dset == "nsdsyn":
-        return ROIS
-    else:
-        return ['V1']
-
-rule make_precision_s_df:
-    input:
-        precision_v = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{{dset}}','precision','precision-v_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-pRFsize.csv'), subj=make_subj_list(wildcards.dset), roi=define_rois_for_precision_s_df(wildcards.dset)),
-    output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-pRFsize.csv')
-    run:
-        print(input)
-        precision_v = utils.load_dataframes(input.precision_v)
-        precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
-        precision_s['precision'] = 1 / precision_s['sigma_v_squared']
-        precision_s.to_csv(output[0], index=False)
 
 rule plot_preferred_period_1D:
     input:
