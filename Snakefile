@@ -16,8 +16,8 @@ from pysurfer.freeview_helper import retinotopy_colors
 STIM_LIST=['annulus', 'pinwheel', 'forward-spiral', 'reverse-spiral'] #'avg'
 ARGS_1D = ['sub', 'class', 'dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
 ARGS_2D = ['lr','eph','sub','roi','dset']
-LR = [0.005]
-MAX_EPOCH = [8000]
+LR_1D = [0.005]
+MA X_EPOCH_1D = [8000]
 LR_2D = [0.0005]
 MAX_EPOCH_2D = [30000]
 measured_noise_sd =0.03995  # unnormalized 1.502063
@@ -166,13 +166,62 @@ rule binning_nsdsyn:
                                                central_tendency='mean')
         c_df.to_csv(output[0], index=False)
 
-rule binning_all:
+def get_trained_model_for_all_bins(wildcards):
+    only_num = int(wildcards.enum.replace('log', ''))
+    BINS = [f'model-history_class-{wildcards.stim_class}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_e1-{wildcards.e1}_e2-{wildcards.e2}_nbin-{wildcards.enum}_dset-{wildcards.dset}_sub-{wildcards.subj}_roi-{wildcards.roi}_vs-{wildcards.vs}.pt' for bin in np.arange(1,only_num+1)]
+    return [os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D", f'{wildcards.dset}', bin_path) for bin_path in BINS]
+
+def normalize(group):
+    min_val = group.min()
+    max_val = group.max()
+    return (group - min_val) / (max_val - min_val)
+
+rule fit_tuning_curves:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-pRFcenter.csv'),
-            e1=0.5, e2=4, enum=['log3','7'], dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs='pRFcenter')
+        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "{dset}", 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 2000
+    params:
+        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
+    run:
+        subj_df = pd.read_csv(input.input_path)
+        if wildcards.stim_class == "avg":
+            subj_df = subj_df.groupby(['sub','ecc_bin','vroinames','freq_lvl']).mean().reset_index()
+            #if wildcards.normalize == "True":
+            #    # Group by the specified columns and apply the normalization to 'betas'
+            #    subj_df['betas'] = subj_df.groupby(['sub', 'ecc_bin', 'vroinames'])[
+            #        'betas'].transform(normalize)
+        else:
+            save_stim_type_name = wildcards.stim_class.replace('-',' ')
+            subj_df = subj_df.query('names == @save_stim_type_name')
 
+        save_ecc_bin_name = params.bin_info[1][int(wildcards.curbin)]
+        subj_df = subj_df.query('ecc_bin == @save_ecc_bin_name')
+        model_path_list = get_trained_model_for_all_bins(wildcards)
+        my_model = tuning.LogGaussianTuningModel()
+        my_dataset = tuning.LogGaussianTuningDataset(subj_df['local_sf'], subj_df['betas'])
+        loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset,
+                                                               learning_rate=float(wildcards.lr),
+                                                               max_epoch=int(wildcards.max_epoch),
+                                                               print_every=1000, save_path=output.model)
+        model_history['ecc_bin'] = save_ecc_bin_name
+        loss_history['ecc_bin'] = save_ecc_bin_name
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-
+rule fit_tuning_curves_all:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
+            stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=range(3), enum=['log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
+        b = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
+            stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=range(7), enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'])
 
 rule nsdsyn_data_for_bootstraps:
     input:
@@ -316,61 +365,6 @@ rule binning_broderick:
                                                central_tendency='mean')
         c_df.to_csv(output[0], index=False)
 
-def _get_bin_number(enum):
-    only_num = int(enum.replace('log', ''))
-    return [k for k in np.arange(1,only_num+1)]
-
-def get_trained_model_for_all_bins(wildcards):
-    only_num = int(wildcards.enum.replace('log', ''))
-    BINS = [f'model-history_class-{wildcards.stim_class}_lr-{wildcards.lr}_eph-{wildcards.max_epoch}_e1-{wildcards.e1}_e2-{wildcards.e2}_nbin-{wildcards.enum}_dset-{wildcards.dset}_sub-{wildcards.subj}_roi-{wildcards.roi}_vs-{wildcards.vs}.pt' for bin in np.arange(1,only_num+1)]
-    return [os.path.join(config['OUTPUT_DIR'], "sfp_model","results_1D", f'{wildcards.dset}', bin_path) for bin_path in BINS]
-
-def normalize(group):
-    min_val = group.min()
-    max_val = group.max()
-    return (group - min_val) / (max_val - min_val)
-
-rule fit_tuning_curves:
-    input:
-        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
-    output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'normalize-{normalize}_model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'normalize-{normalize}_loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'normalize-{normalize}_model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "{dset}", 'normalize-{normalize}_loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_set-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log')
-    resources:
-        cpus_per_task = 1,
-        mem_mb = 2000
-    params:
-        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
-    run:
-        subj_df = pd.read_csv(input.input_path)
-        if wildcards.stim_class == "avg":
-            subj_df = subj_df.groupby(['sub','ecc_bin','vroinames','freq_lvl']).mean().reset_index()
-            if wildcards.normalize == "True":
-                # Group by the specified columns and apply the normalization to 'betas'
-                subj_df['betas'] = subj_df.groupby(['sub', 'ecc_bin', 'vroinames'])[
-                    'betas'].transform(normalize)
-        else:
-            save_stim_type_name = wildcards.stim_class.replace('-',' ')
-            subj_df = subj_df.query('names == @save_stim_type_name')
-
-        save_ecc_bin_name = params.bin_info[1][int(wildcards.curbin)]
-        subj_df = subj_df.query('ecc_bin == @save_ecc_bin_name')
-        model_path_list = get_trained_model_for_all_bins(wildcards)
-        my_model = tuning.LogGaussianTuningModel()
-        my_dataset = tuning.LogGaussianTuningDataset(subj_df['local_sf'], subj_df['betas'])
-        loss_history, model_history = tuning.fit_tuning_curves(my_model, my_dataset,
-                                                               learning_rate=float(wildcards.lr),
-                                                               max_epoch=int(wildcards.max_epoch),
-                                                               print_every=2000, save_path=output.model)
-        model_history['ecc_bin'] = save_ecc_bin_name
-        loss_history['ecc_bin'] = save_ecc_bin_name
-        model_history.to_hdf(output.model_history, key='stage', mode='w')
-        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
-
-# Define the normalization function
 
 
 rule fit_tuning_curves_broderick:
@@ -415,13 +409,6 @@ rule fit_tuning_curves_broderick:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-
-rule fit_tuning_curves_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_1D","{dset}",'normalize-{normalize}_tfunc-{tfunc}_model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-            normalize='True', tfunc=['corrected'], stim_class='avg', lr=LR,max_epoch=MAX_EPOCH,e1=1,e2=12,enum=11,curbin=np.arange(0,11), dset='broderick',subj=make_subj_list('broderick')[0], roi='V1', vs='pRFcenter'),
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'normalize-{normalize}_model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-            normalize='True', stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], curbin=np.arange(0,7), dset='nsdsyn', subj=['subj06'], roi=['V1','V2','V3'], vs=['pRFcenter'])
 
 def _get_curbin(enum):
     return np.arange(0, int(enum.replace('log', '')))
@@ -492,7 +479,7 @@ rule plot_tuning_curves_broderick:
 rule test_test:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
-            tfunc=['corrected'], dset='broderick', stim_class=STIM_LIST, lr=LR,max_epoch=MAX_EPOCH,e1=1,e2=12,enum=11,bins_to_plot=['1-8','1-9','2-9'], subj=make_subj_list('broderick')[:1], roi='V1', vs='pRFcenter', fig_format=['png'])
+            tfunc=['corrected'], dset='broderick', stim_class=STIM_LIST, lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=1,e2=12,enum=11,bins_to_plot=['1-8','1-9','2-9'], subj=make_subj_list('broderick')[:1], roi='V1', vs='pRFcenter', fig_format=['png'])
 
 rule make_precision_v_df:
     input:
@@ -641,15 +628,15 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
 
 rule plot_curves_all:
     input:
-        #a = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'), stim_class='avg', lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
+        #a = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'), stim_class='avg', lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
          #a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
-         #    stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
+         #    stim_class=['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
          #b= expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D","{dset}",'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
-         #    tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
+         #    tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
          b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
-         dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg'),
+         dset='nsdsyn', stim_class=['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg'),
          c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
-         dset='nsdsyn', stim_class=['avg'], lr=LR, max_epoch=MAX_EPOCH, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg')
+         dset='nsdsyn', stim_class=['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg')
 
 rule run_model_for_bootstraps:
     input:
