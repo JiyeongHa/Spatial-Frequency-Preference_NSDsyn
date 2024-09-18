@@ -141,6 +141,39 @@ rule make_all:
         expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
             subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize','pRFcenter'], tavg=['False'])
 
+
+def get_ecc_bin_list(wildcards):
+    bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
+    return bin_list, bin_labels
+
+rule binning_nsdsyn:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    log:
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', '{dset}', 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+    params:
+        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
+    run:
+        from sfp_nsdsyn import tuning
+        df = pd.read_csv(input.subj_df)
+        df = df.query('~names.str.contains("mixtures").values')
+        df['ecc_bin'] = tuning.bin_ecc(df['eccentricity'], bin_list=params.bin_info[0], bin_labels=params.bin_info[1])
+        c_df = tuning.summary_stat_for_ecc_bin(df,
+                                               to_group= ['sub', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
+                                               to_bin=['betas', 'local_sf'],
+                                               central_tendency='mean')
+        c_df.to_csv(output[0], index=False)
+
+rule binning_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-pRFcenter.csv'),
+            e1=0.5, e2=4, enum=['log3','7'], dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs='pRFcenter')
+
+
+
+
 rule nsdsyn_data_for_bootstraps:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
@@ -263,31 +296,6 @@ rule prep_baseline:
         baseline_df['sub'] = wildcards.subj
         baseline_df.to_csv(output[0], index=False)
 
-def get_ecc_bin_list(wildcards):
-    bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
-    return bin_list, bin_labels
-
-rule binning_nsdsyn:
-    input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
-    log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', '{dset}', 'binned', 'binned_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log')
-    params:
-        bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
-    run:
-        from sfp_nsdsyn import tuning
-        df = pd.read_csv(input.subj_df)
-        df = df.query('~names.str.contains("intermediate").values')
-        df['ecc_bin'] = tuning.bin_ecc(df['eccentricity'], bin_list=params.bin_info[0], bin_labels=params.bin_info[1])
-        c_df = tuning.summary_stat_for_ecc_bin(df,
-                                               to_group= ['sub', 'ecc_bin', 'freq_lvl', 'names', 'vroinames'],
-                                               to_bin=['betas', 'local_sf'],
-                                               central_tendency='mean')
-        c_df.to_csv(output[0], index=False)
-
-
 rule binning_broderick:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tfunc-{tfunc}.csv')
@@ -307,11 +315,6 @@ rule binning_broderick:
                                                to_bin=['betas', 'local_sf'],
                                                central_tendency='mean')
         c_df.to_csv(output[0], index=False)
-
-rule binning_broderick_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned', 'tfunc-{tfunc}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
-            e1=1, e2=12, enum=11, dset='broderick', subj=make_subj_list('broderick'), roi='V1', vs='pRFcenter', tfunc=['corrected', 'uncorrected'])
 
 def _get_bin_number(enum):
     only_num = int(enum.replace('log', ''))
