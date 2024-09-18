@@ -12,12 +12,6 @@ from . import utils as utils
 from . import bootstrapping as bts
 from . import two_dimensional_model as model
 
-def _load_exp_design_mat(design_mat_path):
-    mat_file = loadmat(design_mat_path)
-    trial_orders = mat_file['masterordering'].reshape(-1)
-
-    return trial_orders
-
 def download_stim_info_csv(save_path):
     import requests
     # URL of the file
@@ -25,7 +19,6 @@ def download_stim_info_csv(save_path):
 
     # Path where the file will be saved
     output_path = save_path  # Update this to your desired file name and extension
-
     # Send a GET request to the URL
     response = requests.get(url)
     # Check if the request was successful
@@ -85,7 +78,7 @@ def load_stim_info_as_df(stim_description_path, drop_phase=False, force_download
         stim_df = _tmp_correct_w_a(stim_df)
         stim_df = stim_df.astype({'class_idx': int})
         stim_df = stim_df.reset_index().rename(columns={'index': 'image_idx'})
-        stim_df['image_idx'] = stim_df['image_idx'] + 104
+        stim_df['image_idx'] = stim_df['image_idx'] + 104 + 1 #because it's MATLAB (1-based)
         stim_df = stim_df.rename(columns={'phi': 'phase'})
         stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
         stim_df['freq_lvl'] = stim_df.apply(_label_freq_lvl_new, axis=1)
@@ -187,6 +180,11 @@ def _get_beta_folder_name(beta_version):
         3: 'nsdsyntheticbetas_fithrf_GLMdenoise_RR',
     }
     return switcher.get(beta_version, "Not available beta type")
+
+def _load_exp_design_mat(design_mat_path):
+    mat_file = loadmat(design_mat_path)
+    trial_orders = mat_file['masterordering'].reshape(-1)
+    return trial_orders
 
 def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
     trial_orders = _load_exp_design_mat(design_mat_path)
@@ -332,9 +330,11 @@ def make_sf_dataframe(stim_info,
                       design_mat,
                       rois, rois_vals,
                       prfs,
-                      betas, task_keys=['fixation_task','memory_task'], task_average=True,
+                      betas,
+                      drop_phase=False, force_download=False,
+                      task_keys=['fixation_task','memory_task'], task_average=True,
                       angle_to_radians=True):
-    stim_df = load_stim_info_as_df(stim_info, drop_phase=False)
+    stim_df = load_stim_info_as_df(stim_info, drop_phase=drop_phase, force_download=force_download)
     mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
     prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
     betas_dict = load_betas_as_dict(betas, design_mat,

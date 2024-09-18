@@ -87,15 +87,15 @@ def _get_boolean_for_vs(vs):
 
 rule prep_nsdsyn_description_file:
     output:
-        os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv')
+        os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv')
     run:
         from sfp_nsdsyn import prep
-        prep.load_stim_info_as_df(output[0], drop_phase=False)
+        prep.load_stim_info_as_df(output[0], drop_phase=False, force_download=True)
 
 rule prep_nsdsyn_data:
     input:
         design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
-        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
+        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
         lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
         lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
         lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
@@ -116,6 +116,7 @@ rule prep_nsdsyn_data:
                                        rois=input.lh_rois, rois_vals=params.rois_vals,
                                        prfs=input.lh_prfs,
                                        betas=input.lh_betas,
+                                       drop_phase=False, force_download=False,
                                        task_keys=params.task_keys, task_average=(wildcards.tavg=="True"),
                                        angle_to_radians=True)
         rh_df = prep.make_sf_dataframe(stim_info=input.stim_info,
@@ -123,6 +124,7 @@ rule prep_nsdsyn_data:
                                        rois=input.rh_rois, rois_vals=params.rois_vals,
                                        prfs=input.rh_prfs,
                                        betas=input.rh_betas,
+                                       drop_phase=False, force_download=False,
                                        task_keys=params.task_keys, task_average=(wildcards.tavg=="True"),
                                        angle_to_radians=True)
         sf_df = prep.concat_lh_rh_df(lh_df, rh_df)
@@ -137,7 +139,7 @@ rule prep_nsdsyn_data:
 rule make_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-            subj=make_subj_list('nsdsyn'), roi=['V1','V2', 'V3'], vs=['pRFsize','pRFcenter'], tavg=['False'])
+            subj=make_subj_list('nsdsyn')[0], roi=['V1'], vs=['pRFsize'], tavg=['False'])
 
 rule nsdsyn_data_for_bootstraps:
     input:
