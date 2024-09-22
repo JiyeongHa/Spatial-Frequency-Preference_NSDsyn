@@ -14,7 +14,7 @@ from pysurfer.freeview_helper import retinotopy_colors
 
 
 STIM_LIST=['annulus', 'pinwheel', 'forward-spiral', 'reverse-spiral'] #'avg'
-ARGS_1D = ['sub', 'class', 'dset', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
+ARGS_1D = ['sub', 'class', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
 ARGS_2D = ['lr','eph','sub','roi','dset']
 LR_1D = [0.005]
 MAX_EPOCH_1D = [8000]
@@ -210,6 +210,42 @@ def _get_curbin(enum):
 def bin_to_plot(bins_to_plot):
    return [int(k) for k in bins_to_plot.split('-')]
 
+rule plot_tuning_curves_NSD:
+    input:
+        model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
+        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
+    output:
+        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn", 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+    log:
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn", 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
+    params:
+        roi_list=ROIS,
+        roi_pal=ROI_PAL
+    run:
+        bin_list, bin_labels = tuning.get_bin_labels(float(wildcards.e1), float(wildcards.e2), enum=wildcards.enum)
+        final_params = tuning.load_all_models(input.model_df, *ARGS_1D)
+        bin_df = utils.load_dataframes(input.binned_df, *['sub','roi'])
+        if wildcards.stim_class == "avg":
+            bin_df = bin_df.groupby(['sub', 'ecc_bin', 'vroinames', 'freq_lvl']).mean().reset_index()
+        else:
+            save_stim_type_name = wildcards.stim_class.replace('-',' ')
+            bin_df = bin_df.query('names == @save_stim_type_name')
+        bins_to_plot = [bin_labels[k] for k in bin_to_plot(wildcards.bins_to_plot)]
+        vis1D.plot_tuning_curves_NSD(data_df=bin_df,
+                                     params_df=final_params,
+                                     subj=wildcards.subj,
+                                     bins_to_plot= bins_to_plot,
+                                     x='local_sf', y='betas',
+                                     pal=params.roi_pal,
+                                     save_path=output[0])
+
+rule plot_NSD_tuning_all:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn", 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.png'),
+        stim_class=['avg'], e1=0.5, e2=4, enum=['log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, subj=make_subj_list('nsdsyn'),  vs=['pRFcenter'], bins_to_plot=['0-2']),
+        b = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn", 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.png'),
+        stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, subj=make_subj_list('nsdsyn'),  vs=['pRFcenter'], bins_to_plot=['0-6'])
+
 rule plot_tuning_curves:
     input:
         model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{{dset}}", 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_dset-{{dset}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
@@ -222,7 +258,7 @@ rule plot_tuning_curves:
         roi_list=ROIS,
         roi_pal=ROI_PAL
     run:
-        bin_list, bin_labels = tuning.get_bin_labels(float(wildcards.e1), float(wildcards.e2), enum=int(wildcards.enum))
+        bin_list, bin_labels = tuning.get_bin_labels(float(wildcards.e1), float(wildcards.e2), enum=wildcards.enum)
         # ecc_colors = utils.get_continuous_colors(len(bin_labels) + 1,'#3f0377')
         # ecc_colors = ecc_colors[1:][::-1]
         # ecc_colors = dict(zip(bin_labels, ecc_colors))

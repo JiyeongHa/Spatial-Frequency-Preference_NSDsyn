@@ -161,6 +161,71 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
     return fig, axes
 
 
+def plot_tuning_curves_NSD(data_df, params_df,
+                           subj, bins_to_plot, pal,
+                           x='local_sf', y='betas',
+                           markersize=20,
+                           width=7, height=2.5, save_path=None):
+
+    rc.update({'xtick.major.pad': 3,
+               'xtick.labelsize': 9,
+               'axes.titlepad': 10,
+               'legend.title_fontsize': 10,
+               'legend.fontsize': 10,
+               })
+    sns.set_theme("paper", style='ticks', rc=rc)
+    fig, axes = plt.subplots(1, 3, figsize=(width, height),
+                             sharex=True, sharey=True)
+    for i, nsd_roi in enumerate(['V1', 'V2', 'V3']):
+        for cur_bin, ls, fc in zip(bins_to_plot, ['--', '-'], ['w', pal[i]]):
+            min_val = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == "V2"')['local_sf'].min()
+            max_val = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == "V2"')['local_sf'].max()
+            tmp_subj_df = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
+            tmp_tuning_df = params_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
+            tmp_subj_df[y] = tmp_subj_df[y] / tmp_subj_df[y].max()
+            pred_x, pred_y = _get_x_and_y_prediction(min_val * 0.7,
+                                                     max_val * 1.2,
+                                                     tmp_tuning_df['slope'].item(),
+                                                     tmp_tuning_df['mode'].item(),
+                                                     tmp_tuning_df['sigma'].item())
+            pred_y = pred_y / np.max(pred_y)
+            axes[i].plot(pred_x, pred_y,
+                         color=pal[i],
+                         linestyle=ls,
+                         linewidth=2,
+                         path_effects=[pe.Stroke(linewidth=1, foreground='black'),
+                                       pe.Normal()],
+                         zorder=0, clip_on=False)
+            axes[i].scatter(tmp_subj_df[x], tmp_subj_df[y],
+                            s=markersize,
+                            facecolor=fc,
+                            alpha=0.95,
+                            label=cur_bin,
+                            edgecolor=pal[i], linewidth=1.3,
+                            zorder=10, clip_on=False)
+            axes[i].set_title(f'NSD {nsd_roi}')
+
+    for g in range(len(axes)):
+        axes[g].set_xscale('log')
+        axes[g].set(xlim=[0.1, 40])
+        axes[g].set(ylim=[0, 1.05], yticks=[0, 0.5, 1])
+        axes[g].spines['top'].set_visible(False)
+        axes[g].spines['right'].set_visible(False)
+        axes[g].tick_params(axis='both')
+        axes[g].legend(title=None, loc=(-0.1, 0.00), frameon=False,handletextpad=0.08)
+
+
+    #axes[-1].legend(title='Eccentricity band', bbox_to_anchor=(1, 0.85), frameon=False)
+    #leg = axes[-1].get_legend()
+    #leg.legendHandles[0].set_edgecolor('black')
+    #leg.legendHandles[1].set_color('black')
+
+    fig.supxlabel('Local spatial frequency (cpd)')
+    fig.supylabel('BOLD response\n(Normalized amplitude)', ha='center')
+    fig.subplots_adjust(wspace=0.3, left=0.1, bottom=0.2)
+    utils.save_fig(save_path)
+    return fig, axes
+
 def plot_sf_curves_with_broderick(nsd_subj, nsd_subj_df, nsd_tuning_df, nsd_bins_to_plot,
                                   broderick_subj, broderick_subj_df, broderick_tuning_df, broderick_bins_to_plot,
                                   pal, markersize=20,
