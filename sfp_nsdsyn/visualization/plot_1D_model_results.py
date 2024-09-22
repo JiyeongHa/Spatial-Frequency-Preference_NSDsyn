@@ -466,7 +466,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
 
 
 
-    grid.axes[0,0].set(xlim=(0,12), xticks=[0,2,4,6,8,10,12], ylim=(0,2), yticks=[0, 1, 2])
+    grid.axes[0,0].set(xlim=(0,11), xticks=[0,2,4,6,8,10], ylim=(0,2), yticks=[0, 1, 2])
     grid.axes[-1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,1), yticks=[0, 0.5, 1])
     grid.set_axis_labels('Eccentricity (deg)', 'Deg per cycle')
     grid.fig.text(0.55, 0.95, suptitle, fontweight='bold', ha='center', fontsize=rc['figure.titlesize'])
@@ -531,8 +531,8 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=10-i)
 
     grid.set_axis_labels('Eccentricity (deg)', 'FWHM (in octaves)')
-    grid.axes[0,0].set(xlim=(0,12), xticks=[0,2,4,6,8,10,12],ylim=(4,8), yticks=[4,6,8])
-    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,10), yticks=[4,6,8,10])
+    grid.axes[0,0].set(xlim=(0,11), xticks=[0,2,4,6,8,10],ylim=(3,7), yticks=[3,4,5,6])
+    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,12.5), yticks=[4,6,8,10,12])
     grid.fig.text(0.55, 0.95, suptitle, weight='bold', ha='center', fontsize=rc['figure.titlesize'])
     grid.fig.subplots_adjust(hspace=0.5)
     utils.save_fig(save_path)
