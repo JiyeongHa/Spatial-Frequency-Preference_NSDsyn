@@ -396,10 +396,70 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
                                         errorbar=("ci", 68), save_path=output[0])
 
 
-rule pp_all:
+rule results_1D_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'), stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
         b = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'), stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
+
+rule run_model:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+    benchmark:
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
+    run:
+        subj_df = pd.read_csv(input.subj_df)
+        precision_df = pd.read_csv(input.precision)
+        df = subj_df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
+        df = df.groupby(['sub','voxel','class_idx','vroinames']).mean().reset_index()
+        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
+        loss_history, model_history, _ = model.fit_model(subj_model, subj_dataset,
+                                                         learning_rate=float(wildcards.lr),
+                                                         max_epoch=int(wildcards.max_epoch),
+                                                         save_path=output.model,
+                                                         print_every=10000,
+                                                         loss_all_voxels=False,
+                                                         anomaly_detection=False,
+                                                         amsgrad=False,
+                                                         eps=1e-8)
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+rule run_model_nsd_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
+        subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
+
+
+rule plot_avg_model_parameters:
+    input:
+        model_params = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{{dset}}", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), subj=make_subj_list(wildcards.dset), roi=ROIS),
+        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-V1V2V3_vs-{vs}.{fig_format}')
+    params:
+        params_list = PARAMS_2D,
+        groups = PARAMS_GROUP_2D
+    run:
+        df = model.load_all_models(input.model_params, *ARGS_2D)
+        precision_s = pd.read_csv(input.precision_s)
+        final_params = df.merge(precision_s, on=['sub'])
+        vis2D.plot_precision_weighted_avg_parameters(final_params,
+                                                     params.params_list, params.groups,
+                                                     weight='precision',
+                                                     hue = 'vroinames', hue_order=ROIS,
+                                                     lgd_title='Visual areas',
+                                                     save_path=output[0])
 
 rule nsdsyn_data_for_bootstraps:
     input:
@@ -689,44 +749,7 @@ rule  fit_to_bootstraps:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps','bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
                bts=np.arange(0,100), lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[2:3], roi=ROIS[0], vs='pRFsize')
 
-rule run_model:
-    input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
-    output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
-    benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
-    resources:
-        cpus_per_task = 1,
-        mem_mb = 4000
-    run:
-        subj_df = pd.read_csv(input.subj_df)
-        precision_df = pd.read_csv(input.precision)
-        df = subj_df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
-        df = df.groupby(['sub','voxel','class_idx','vroinames']).mean().reset_index()
-        subj_model = model.SpatialFrequencyModel(full_ver=True)
-        subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
-        loss_history, model_history, _ = model.fit_model(subj_model, subj_dataset,
-                                                         learning_rate=float(wildcards.lr),
-                                                         max_epoch=int(wildcards.max_epoch),
-                                                         save_path=output.model,
-                                                         print_every=100,
-                                                         loss_all_voxels=False,
-                                                         anomaly_detection=False,
-                                                         amsgrad=False,
-                                                         eps=1e-8)
-        model_history.to_hdf(output.model_history, key='stage', mode='w')
-        loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
-rule run_model_nsd_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
-        subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
 
 rule run_model_broderick_et_al:
     input:
@@ -850,8 +873,6 @@ rule plot_precision_weighted_avg_2D_model_parameters:
                                                             ytick_list=params.ytick_list,
                                                             save_path=output[0])
 
-
-
 rule predict_Pv_based_on_model:
     input:
         stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
@@ -955,26 +976,6 @@ rule plot_pp:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_2D","dset_comparison",'fig-pperiod-prediction_frame-{frame}_col-{col}_xaxis-{xaxis}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-all_sub-avg_roi-{roi}_vs-{vs}.{fig_format}'),
         frame=['relative', 'absolute'], col=['None', 'names'], xaxis='eccentricity', ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', dset='nsdsyn', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi='V1', fig_format='svg')
-
-rule plot_avg_model_parameters:
-    input:
-        model_params = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{{dset}}", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), subj=make_subj_list(wildcards.dset), roi=ROIS),
-        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-V1V2V3_vs-{vs}.{fig_format}')
-    params:
-        params_list = PARAMS_2D,
-        groups = PARAMS_GROUP_2D
-    run:
-        df = model.load_all_models(input.model_params, *ARGS_2D)
-        precision_s = pd.read_csv(input.precision_s)
-        final_params = df.merge(precision_s, on=['sub'])
-        vis2D.plot_precision_weighted_avg_parameters(final_params,
-                                                     params.params_list, params.groups,
-                                                     weight='precision',
-                                                     hue = 'vroinames', hue_order=ROIS,
-                                                     lgd_title='Visual areas',
-                                                     save_path=output[0])
 
 rule plot_individual_model_parameters:
     input:
