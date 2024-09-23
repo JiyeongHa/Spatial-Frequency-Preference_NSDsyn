@@ -531,8 +531,8 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=10-i)
 
     grid.set_axis_labels('Eccentricity (deg)', 'FWHM (in octaves)')
-    grid.axes[0,0].set(xlim=(0,11), xticks=[0,2,4,6,8,10],ylim=(3,7), yticks=[3,4,5,6])
-    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,12.5), yticks=[4,6,8,10,12])
+    grid.axes[0,0].set(xlim=(0,11), xticks=[0,2,4,6,8,10],ylim=(3,7), yticks=[3,5,7])
+    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,12.2), yticks=[4,8,12])
     grid.fig.text(0.55, 0.95, suptitle, weight='bold', ha='center', fontsize=rc['figure.titlesize'])
     grid.fig.subplots_adjust(hspace=0.5)
     utils.save_fig(save_path)
@@ -744,3 +744,33 @@ def plot_datapoints(df, x, y, hue, hue_order=None, lgd_title=None,
     utils.save_fig(save_path)
 
     return g
+def assign_goal(dset_type):
+    if dset_type == 'Broderick et al. V1':
+        return 'Replication'
+    elif 'NSD' in dset_type:
+        return 'Extension'
+    else:
+        return None
+
+def create_goal_columns(tuning_df, fit_df):
+
+    tmp_tuning_df = tuning_df.query('dset_type == "NSD V1"')
+    tmp_fit_df = fit_df.query('dset_type == "NSD V1"')
+    tmp_tuning_df['goal'] = 'Replication'
+    tmp_fit_df['goal'] = 'Replication'
+
+    tuning_df['goal'] = tuning_df['dset_type'].apply(assign_goal)
+    fit_df['goal'] = fit_df['dset_type'].apply(assign_goal)
+
+    tuning_df = pd.concat((tuning_df, tmp_tuning_df), axis=0)
+    fit_df = pd.concat((fit_df, tmp_fit_df), axis=0)
+    return tuning_df, fit_df
+
+def extend_NSD_line(fit_df):
+    ecc_max = fit_df.query('dset_type == "Broderick et al. V1"').ecc.max()
+    tmp_fit_df = fit_df.query('dset_type == "NSD V1" & goal == "Replication" & ecc == 0')
+    coeff = tmp_fit_df['coefficient'].iloc[0].tolist()
+    tmp_fit_df['ecc'] = ecc_max
+    tmp_fit_df['fitted'] = coeff[0] * ecc_max + coeff[1]
+    fit_df = pd.concat((fit_df, tmp_fit_df), axis=0)
+    return fit_df
