@@ -725,8 +725,8 @@ rule run_model:
 
 rule run_model_nsd_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-        subj=make_subj_list('nsdsyn')[0], roi=ROIS, vs='pRFsize',lr=LR_2D, max_epoch=300, dset='nsdsyn')
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
+        subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
 
 rule run_model_broderick_et_al:
     input:
