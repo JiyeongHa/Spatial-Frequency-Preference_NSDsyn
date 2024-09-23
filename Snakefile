@@ -658,18 +658,6 @@ rule plot_full_width_half_maximum_1D:
         vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,bandwidth='fwhm',precision='precision',hue='vroinames',hue_order=params.roi_list,fit_df=fit_bandwidth_df,pal=params.roi_pal,lgd_title='ROIs',row=None,row_order=None,suptitle=None,height=4,width=3,errorbar=(
             "ci", 68),save_path=output[0])
 
-rule plot_curves_all:
-    input:
-        #a = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}'), stim_class='avg', lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7], vs=['pRFcenter'], fig_format='pdf')
-         #a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "{dset}", 'tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-all_vs-{vs}.{fig_format}'),
-         #    stim_class=['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7], bins_to_plot=['0-6'], subj=make_subj_list('nsdsyn'), dset='nsdsyn', vs=['pRFcenter'], fig_format='svg'),
-         #b= expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_model","results_1D","{dset}",'tfunc-{tfunc}_tuning_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.{fig_format}'),
-         #    tfunc=['corrected'], roi='V1', stim_class=STIM_LIST+['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=1, e2=12, enum=11, bins_to_plot=['1-9'],subj=make_subj_list('broderick'), dset='broderick',vs=['pRFcenter'],fig_format='pdf'),
-         b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
-         dset='nsdsyn', stim_class=['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg'),
-         c = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "{dset}",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_dset-{dset}_vs-{vs}.{fig_format}'),
-         dset='nsdsyn', stim_class=['avg'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, e1=0.5, e2=4, enum=[7],  vs=['pRFcenter'], fig_format='svg')
-
 rule run_model_for_bootstraps:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
@@ -703,16 +691,16 @@ rule  fit_to_bootstraps:
 
 rule run_model:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
     benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
@@ -727,13 +715,18 @@ rule run_model:
                                                          learning_rate=float(wildcards.lr),
                                                          max_epoch=int(wildcards.max_epoch),
                                                          save_path=output.model,
-                                                         print_every=10000,
+                                                         print_every=100,
                                                          loss_all_voxels=False,
                                                          anomaly_detection=False,
                                                          amsgrad=False,
                                                          eps=1e-8)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+rule run_model_nsd_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        subj=make_subj_list('nsdsyn')[0], roi=ROIS, vs='pRFsize',lr=LR_2D, max_epoch=300, dset='nsdsyn')
 
 rule run_model_broderick_et_al:
     input:
@@ -899,21 +892,6 @@ rule predict_Pv_based_on_model_broderick_et_al:
                                                                    reference_frame=wildcards.frame)
 
         syn_df.to_hdf(output[0], key='stage', mode='w')
-
-rule test:
-    input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'tfunc-corrected_prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.h5'),
-            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize', ecc1='0', ecc2='12', n_ecc='121', ang1='0', ang2='360', n_ang='361', frame=['relative','absolute'], subj=make_subj_list('broderick')),
-        b= expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-            lr=LR_2D,max_epoch=MAX_EPOCH_2D,vs='pRFsize',ecc1='0',ecc2='12',n_ecc='121',ang1='0',ang2='360',n_ang='361',frame=['relative', 'absolute'],subj=make_subj_list('nsdsyn'), roi=ROIS)
-
-
-rule calculate_all:
-    input:
-        # expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        #        subj=make_subj_list('nsdsyn'), frame=['relative', 'absolute'], xaxis='eccentricity', ecc1='0', ecc2='4', n_ecc='4', ang1='0', ang2='360', n_ang='360', dset='nsdsyn', vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D, roi=ROIS),
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-0.0005_eph-30000_dset-broderick_sub-{subj}_roi-V1_vs-pRFsize.h5'),
-               subj=make_subj_list('broderick'), frame=['relative', 'absolute'], ecc1='0', ecc2='10', n_ecc='3', ang1='0', ang2='360', n_ang='360', roi='V1', vs='pRFsize')
 
 def Pv_projection(xaxis):
     if xaxis == "angle":
