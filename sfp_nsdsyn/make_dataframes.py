@@ -31,6 +31,7 @@ def download_stim_info_csv(save_path):
         print(f"Failed to download file. Status code: {response.status_code}")
 
 def _tmp_correct_w_a(df):
+    # As of 2024-09-24 the stim-description.csv has been corrected. So don't use this function.
     tmp = df[df.w_r == np.abs(df.w_a)]
     tmp['w_a'] = -tmp['w_a']
     df = pd.concat([df[~df.index.isin(tmp.index)], tmp], ignore_index=False)
@@ -75,10 +76,9 @@ def load_stim_info_as_df(stim_description_path, drop_phase=False, force_download
         phase_list = stim_df.phi.unique()[::2]
         stim_df = stim_df.query('phi in @phase_list').reset_index(drop=True)
         stim_df = stim_df.reset_index().rename(columns={'index': 'stim_idx'})
-        stim_df = _tmp_correct_w_a(stim_df)
         stim_df = stim_df.astype({'class_idx': int})
         stim_df = stim_df.reset_index().rename(columns={'index': 'image_idx'})
-        stim_df['image_idx'] = stim_df['image_idx'] + 104 + 1 #because it's MATLAB (1-based)
+        stim_df['image_idx'] = stim_df['stim_idx'] + 104 + 1 #because it's MATLAB (1-based)
         stim_df = stim_df.rename(columns={'phi': 'phase'})
         stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
         stim_df['freq_lvl'] = stim_df.apply(_label_freq_lvl_new, axis=1)
@@ -142,6 +142,9 @@ def vrois_num_to_names(vrois):
     return [convert_between_roi_num_and_vareas(i) for i in vrois]
 
 def load_common_mask_and_rois(rois_path, rois_vals):
+    """rois_path is a list, and rois_vals should be a list of lists.
+    For example, if you want to load visual rois and eccen rois together,
+    [visual_rois_path, eccen_rois_path], [[visual_rois_vals], [eccen_rois_vals]]"""
     tmp_roi_dict, all_masks = {}, []
     roi_names = [k.split('/')[-1].replace('prf-', '').replace('.mgz','') for k in rois_path]
     roi_names = [k.split('.')[-1] for k in roi_names]
