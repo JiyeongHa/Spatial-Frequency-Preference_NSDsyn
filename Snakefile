@@ -357,13 +357,6 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
                                         errorbar=("ci", 68), save_path=output[0])
 
 
-rule fit_tuning_curves_all:
-    input:
-        a = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
-            stim_class=['avg'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
-        b = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}", 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-pRFcenter.pt'),
-            stim_class=['avg'] + STIM_LIST, e1=0.5, e2=4, curbin=np.arange(0,7), enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'])
-
 rule results_1D_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'), stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
