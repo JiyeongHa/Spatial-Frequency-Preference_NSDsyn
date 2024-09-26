@@ -188,8 +188,9 @@ def plot_tuning_curves_NSD(data_df, params_df,
                                                      tmp_tuning_df['mode'].item(),
                                                      tmp_tuning_df['sigma'].item())
             if normalize:
-                tmp_subj_df[y] = tmp_subj_df[y] / tmp_subj_df[y].max()
-                pred_y = pred_y / tmp_subj_df[y].max()
+                scaling_factor = tmp_subj_df[y].max()
+                tmp_subj_df[y] = tmp_subj_df[y] / scaling_factor
+                pred_y = pred_y / scaling_factor
             axes[i].plot(pred_x, pred_y,
                          color=pal[i],
                          linestyle=ls,
