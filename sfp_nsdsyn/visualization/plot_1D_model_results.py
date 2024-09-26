@@ -164,7 +164,7 @@ def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
 def plot_tuning_curves_NSD(data_df, params_df,
                            subj, bins_to_plot, pal,
                            x='local_sf', y='betas',
-                           markersize=20,
+                           markersize=20, normalize=True,
                            width=7, height=2.5, save_path=None):
 
     rc.update({'xtick.major.pad': 3,
@@ -182,13 +182,14 @@ def plot_tuning_curves_NSD(data_df, params_df,
             max_val = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == "V2"')['local_sf'].max()
             tmp_subj_df = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
             tmp_tuning_df = params_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
-            tmp_subj_df[y] = tmp_subj_df[y] / tmp_subj_df[y].max()
             pred_x, pred_y = _get_x_and_y_prediction(min_val * 0.7,
                                                      max_val * 1.2,
                                                      tmp_tuning_df['slope'].item(),
                                                      tmp_tuning_df['mode'].item(),
                                                      tmp_tuning_df['sigma'].item())
-            pred_y = pred_y / np.max(pred_y)
+            if normalize:
+                tmp_subj_df[y] = tmp_subj_df[y] / tmp_subj_df[y].max()
+                pred_y = pred_y / tmp_subj_df[y].max()
             axes[i].plot(pred_x, pred_y,
                          color=pal[i],
                          linestyle=ls,
