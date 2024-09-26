@@ -210,9 +210,9 @@ rule plot_tuning_curves_NSD:
         model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",  '{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
         binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned',  '{{stimtest}}', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
     params:
         roi_list=ROIS,
         roi_pal=ROI_PAL
@@ -232,6 +232,7 @@ rule plot_tuning_curves_NSD:
                                      bins_to_plot= bins_to_plot,
                                      x='local_sf', y='betas',
                                      pal=params.roi_pal,
+                                     normalize=(wildcards.normalize=="True"),
                                      save_path=output[0])
 
 rule make_precision_v_df:
@@ -272,10 +273,10 @@ rule make_precision_s_df:
 
 rule plot_tuning_curves_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
-            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
-        b = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision',  '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'),
-            stimtest=['corrected', 'uncorrected'], dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
+            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], normalize=['True','False'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
+        # b = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision',  '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'),
+        #     stimtest=['corrected', 'uncorrected'], dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
 
 
 rule plot_preferred_period_1D_with_broderick_et_al:
