@@ -363,9 +363,9 @@ rule results_1D_all:
         a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
                    stimtest=['corrected', 'uncorrected'], stim_class=['avg'], normalize=['True','False'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
         b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
-                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
+                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
         c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
-                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
+                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
 
 rule run_model:
     input:
