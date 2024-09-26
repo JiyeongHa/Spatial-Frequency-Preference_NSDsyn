@@ -123,12 +123,6 @@ rule prep_nsdsyn_data:
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
-rule make_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', '{stimtest}', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-            stimtest=['corrected', 'uncorrected'], subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs=['pRFsize','pRFcenter'], tavg=['False'])
-
-
 def get_ecc_bin_list(wildcards):
     bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
     return bin_list, bin_labels
@@ -137,14 +131,16 @@ rule binning_nsdsyn:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model',  '{stimtest}', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned',  '{stimtest}', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'binned',  '{stimtest}', 'phase-{phase}','e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', '{dset}', 'binned',  '{stimtest}', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+        os.path.join(config['OUTPUT_DIR'], 'logs', 'dataframes', '{dset}', 'binned',  '{stimtest}', 'phase-{phase}', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.log')
     params:
         bin_info = lambda wildcards: get_ecc_bin_list(wildcards)
     run:
         from sfp_nsdsyn import tuning
         df = pd.read_csv(input.subj_df)
+        my_phase = int(wildcards.phase)
+        df = df.query('phase_idx == @my_phase')
         df = df.query('~names.str.contains("mixtures").values')
         df['ecc_bin'] = tuning.bin_ecc(df['eccentricity'], bin_list=params.bin_info[0], bin_labels=params.bin_info[1])
         c_df = tuning.summary_stat_for_ecc_bin(df,
@@ -165,13 +161,13 @@ def normalize(group):
 
 rule fit_tuning_curves:
     input:
-        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned',  '{stimtest}', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        input_path = os.path.join(config['OUTPUT_DIR'], 'dataframes', "{dset}", 'binned',  '{stimtest}', 'phase-{phase}', 'e1-{e1}_e2-{e2}_nbin-{enum}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'phase-{phase}', 'model-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'phase-{phase}', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'phase-{phase}', 'model-params_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "results_1D", "{dset}",  '{stimtest}', 'phase-{phase}', 'loss-history_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{vs}.log')
     resources:
         cpus_per_task = 1,
         mem_mb = 2000
@@ -207,12 +203,12 @@ def bin_to_plot(bins_to_plot):
 
 rule plot_tuning_curves_NSD:
     input:
-        model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",  '{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
-        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned',  '{{stimtest}}', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
+        model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",  '{{stimtest}}', 'phase-{phase}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
+        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned',  '{{stimtest}}', 'phase-{phase}', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
     params:
         roi_list=ROIS,
         roi_pal=ROI_PAL
@@ -264,20 +260,10 @@ rule make_precision_s_df:
     output:
         os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', '{stimtest}', 'precision-s_dset-{dset}_vs-pRFsize.csv')
     run:
-        print(input)
         precision_v = utils.load_dataframes(input.precision_v)
         precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
         precision_s['precision'] = 1 / precision_s['sigma_v_squared']
         precision_s.to_csv(output[0], index=False)
-
-
-rule plot_tuning_curves_all:
-    input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
-            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], normalize=['True','False'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
-        # b = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision',  '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'),
-        #     stimtest=['corrected', 'uncorrected'], dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3']),
-
 
 rule plot_preferred_period_1D_with_broderick_et_al:
     input:
@@ -357,28 +343,27 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
                                         pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',width=3.4,
                                         errorbar=("ci", 68), save_path=output[0])
 
-
 rule results_1D_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
-                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], normalize=['True','False'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
-        b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
-                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
-        c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
-                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
+                   phase=[0,2,4,6], stimtest=['corrected', 'uncorrected'], stim_class=['annulus','avg'], normalize=['True','False'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
+        # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
+        #            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
+        # c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
+        #            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
 
 rule run_model:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', '{stimtest}', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", '{stimtest}', 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'{stimtest}', 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", '{stimtest}', 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'{stimtest}', 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
     benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'{stimtest}', 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
@@ -403,8 +388,8 @@ rule run_model:
 
 rule run_model_nsd_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
-        subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", '{stimtest}', 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
+                stimtest=['corrected', 'uncorrected'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
 
 
 rule plot_avg_model_parameters:
@@ -1298,7 +1283,6 @@ rule save_precision_s:
     output:
         os.path.join(config['OUTPUT_DIR'],"dataframes","{dset}","precision_s_{dset}_{roi}.csv")
     run:
-        print(input.subj_df)
         from sfp_nsdsyn import bts
         precision_df = pd.DataFrame({})
         for df in input.subj_df:
