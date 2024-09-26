@@ -210,7 +210,8 @@ def plot_tuning_curves_NSD(data_df, params_df,
     for g in range(len(axes)):
         axes[g].set_xscale('log')
         axes[g].set(xlim=[0.1, 40])
-        axes[g].set(ylim=[0, 1.05], yticks=[0, 0.5, 1])
+        if normalize:
+            axes[g].set(ylim=[0, 1.05], yticks=[0, 0.5, 1])
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
         axes[g].tick_params(axis='both')
