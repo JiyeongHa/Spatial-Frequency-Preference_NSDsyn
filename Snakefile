@@ -281,12 +281,12 @@ rule plot_tuning_curves_all:
 
 rule plot_preferred_period_1D_with_broderick_et_al:
     input:
-        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
-        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", '{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
+        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
         broderick_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], 'before_w_a_correction', "sfp_model", "results_1D", "broderick", 'tfunc-uncorrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_curbin=np.arange(0,10), broderick_subj=make_subj_list('broderick')),
         broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'before_w_a_correction', 'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all", '{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
     params:
         roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
         roi_pal=ROI_PAL
@@ -320,12 +320,12 @@ rule plot_preferred_period_1D_with_broderick_et_al:
 
 rule plot_full_width_half_maximum_1D_with_broderick_et_al:
     input:
-        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
-        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",'{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
+        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
         broderick_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], 'before_w_a_correction', "sfp_model", "results_1D", "broderick", 'tfunc-uncorrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_curbin=np.arange(0,10), broderick_subj=make_subj_list('broderick')),
         broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'before_w_a_correction', 'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all", '{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
     params:
         roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
         roi_pal=ROI_PAL
@@ -360,8 +360,12 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
 
 rule results_1D_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'), stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
-        b = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'), stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
+                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], normalize=['True','False'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
+        b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
+                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
+        c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
+                   stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
 
 rule run_model:
     input:
