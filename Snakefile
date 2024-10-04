@@ -346,7 +346,7 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
 rule results_1D_all:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
-                   phase=[0,2,4,6], stimtest=['corrected', 'uncorrected'], stim_class=['annulus','avg'], normalize=['True'], e1=0.5, e2=4, curbin=np.arange(0,3), enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
+                   phase=[0,2,4,6], stimtest=['corrected', 'uncorrected'], stim_class=['annulus','avg'], normalize=['True'], e1=0.5, e2=4, enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=['subj06','subj01']),
         # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
         #            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
         # c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
@@ -389,13 +389,13 @@ rule run_model:
 rule run_model_nsd_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", '{stimtest}', 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
-                stimtest=['corrected', 'uncorrected'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
+                stimtest=['corrected'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
 
 
 rule plot_avg_model_parameters:
     input:
-        model_params = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{{dset}}", 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), subj=make_subj_list(wildcards.dset), roi=ROIS),
-        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-s_dset-{dset}_vs-{vs}.csv')
+        model_params = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{{dset}}",'{stimtest}', 'model-params_lr-{{lr}}_eph-{{max_epoch}}_dset-{{dset}}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), subj=make_subj_list(wildcards.dset), roi=ROIS),
+        precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','{stimtest}','precision-s_dset-{dset}_vs-{vs}.csv')
     output:
         os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D","{dset}",'fig-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-avg_roi-V1V2V3_vs-{vs}.{fig_format}')
     params:
