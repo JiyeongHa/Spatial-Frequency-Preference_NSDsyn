@@ -386,11 +386,30 @@ rule run_model:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+rule predict_Pv_based_on_model:
+    input:
+        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
+        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'corrected','model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    output:
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'corrected', 'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
+    run:
+        stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
+        final_params = model.model_to_df(input.model, *ARGS_2D)
+        syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info, final_params,
+                                                                   ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
+                                                                   n_ecc=int(wildcards.n_ecc),
+                                                                   angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
+                                                                   n_angle=int(wildcards.n_ang),
+                                                                   ecc_col='eccentricity',
+                                                                   angle_col='angle',
+                                                                   angle_in_radians=True,
+                                                                   reference_frame=wildcards.frame)
+        syn_df.to_hdf(output[0], key='stage', mode='w')
+
 rule run_model_nsd_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", '{stimtest}', 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
-                stimtest=['corrected'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
-
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'corrected', 'prediction_frame-{frame}_eccentricity-0-4.2-36_angle-0-360-36_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+                frame=['absolute','relative'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn')
 
 rule plot_avg_model_parameters:
     input:
@@ -823,26 +842,6 @@ rule plot_precision_weighted_avg_2D_model_parameters:
                                                             ylim_list=params.ylim_list,
                                                             ytick_list=params.ytick_list,
                                                             save_path=output[0])
-
-rule predict_Pv_based_on_model:
-    input:
-        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
-        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'corrected','model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-    output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'corrected', 'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
-    run:
-        stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
-        final_params = model.model_to_df(input.model, *ARGS_2D)
-        syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info, final_params,
-                                                                   ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
-                                                                   n_ecc=int(wildcards.n_ecc),
-                                                                   angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
-                                                                   n_angle=int(wildcards.n_ang),
-                                                                   ecc_col='eccentricity',
-                                                                   angle_col='angle',
-                                                                   angle_in_radians=True,
-                                                                   reference_frame=wildcards.frame)
-        syn_df.to_hdf(output[0], key='stage', mode='w')
 
 rule predict_Pv_based_on_model_broderick_et_al:
     input:
