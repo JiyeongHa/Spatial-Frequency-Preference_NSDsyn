@@ -15,7 +15,7 @@ from pysurfer.freeview_helper import retinotopy_colors
 
 STIM_LIST=['annulus', 'pinwheel', 'forward-spiral', 'reverse-spiral'] #'avg'
 ARGS_1D = ['sub', 'class', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
-ARGS_2D = ['lr','eph','sub','roi','dset']
+ARGS_2D = ['lr','eph','sub','roi']
 LR_1D = [0.005]
 MAX_EPOCH_1D = [8000]
 LR_2D = [0.0005]
@@ -826,10 +826,10 @@ rule plot_precision_weighted_avg_2D_model_parameters:
 
 rule predict_Pv_based_on_model:
     input:
-        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
-        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'model-params_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
+        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'corrected','model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.h5')
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'corrected', 'prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
         final_params = model.model_to_df(input.model, *ARGS_2D)
@@ -846,10 +846,10 @@ rule predict_Pv_based_on_model:
 
 rule predict_Pv_based_on_model_broderick_et_al:
     input:
-        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'), #doesn't matter which file we use
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "broderick", 'tfunc-corrected_model_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.pt'),
+        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'), #doesn't matter which file we use
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "broderick", 'tfunc-uncorrected_model_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.pt'),
     output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'tfunc-corrected_prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.h5')
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'tfunc-uncorrected_prediction_frame-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_dset-broderick_sub-{subj}_roi-V1_vs-{vs}.h5')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
         final_params = model.model_to_df(input.model, *ARGS_2D)
