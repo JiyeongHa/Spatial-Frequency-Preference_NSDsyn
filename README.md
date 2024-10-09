@@ -1,4 +1,4 @@
-# Spatial Frequency Maps in Human Visual Cortex:A Replication and Extension
+# Spatial Frequency Maps in Human Visual Cortex: </br>A Replication and Extension
 
 
 This repository includes codes for spatial frequency preferences in human  visual cortex (*manuscript in prep*).  
