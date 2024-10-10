@@ -908,24 +908,25 @@ def calculate_preferred_period_for_synthetic_df(stim_info, final_params,
                                                 angle_range, n_angle,
                                                 ecc_col='eccentricity', angle_col='angle',
                                                 angle_in_radians=True,
-                                                reference_frame='relative'):
+                                                sfstimuli='scaled'):
+    if sfstimuli not in ['scaled', 'constant']:
+        raise ValueError('reference_frame should be either scaled or constant')
     merged_df = make_synthetic_dataframe_for_2D(stim_info,
                                                 ecc_range, n_ecc,
                                                 angle_range, n_angle,
                                                 ecc_col, angle_col)
-    merged_df['local_ori'] = calculate_local_orientation(merged_df['w_a'],
-                                                         merged_df['w_r'],
+    merged_df['sfstimuli'] = sfstimuli
+    merged_df['local_ori'] = calculate_local_orientation(merged_df['w_a'], merged_df['w_r'],
                                                          retinotopic_angle=merged_df[angle_col],
                                                          angle_in_radians=angle_in_radians,
-                                                         reference_frame=reference_frame)
+                                                         sfstimuli=sfstimuli)
     merged_df['Pv'] = merged_df.apply(get_Pv_row, params=final_params, axis=1)
-    if reference_frame == 'absolute':
+    if sfstimuli == 'constant':
         rename_cols = {'forward spiral': 'right oblique',
                        'reverse spiral': 'left oblique',
                        'annulus': 'vertical',
                        'pinwheel': 'horizontal'}
         merged_df = merged_df.replace({'names': rename_cols})
-    merged_df['frame'] = reference_frame
     return merged_df
 
 def calculate_preferred_period_for_all_subjects(subj_list, synthetic_df, final_params):
