@@ -62,13 +62,12 @@ def _change_params_to_math_symbols(params_col):
 def filter_for_goal(params_df, goal):
     roi_pal = [sns.color_palette('dark', 10)[:][k] for k in [3, 2, 0]]
     roi_pal.insert(0, (0.3, 0.3, 0.3))
-
-    if goal == 'replication':
-        df = params_df.query('vroinames == "V1"')
+    goals = [goal.lower(), goal.lower().title()]
+    df = params_df.query('goal in @goals')
+    if goal.lower() == 'replication':
         hue_order = ['Broderick et al. V1', 'NSD V1']
         pal = roi_pal[:2]
-    elif goal == 'extension':
-        df = params_df.query('dset == "nsdsyn"')
+    elif goal.lower() == 'extension':
         hue_order = ['NSD V1','NSD V2','NSD V3']
         pal = roi_pal[1:]
     else:
@@ -258,7 +257,6 @@ def make_param_summary_fig(params_df, hue, hue_order, pal,
         'legend.fontsize': 9.5,
           })
     sns.set_theme("paper", style='ticks', rc=rc)
-
     fig, axes = plt.subplots(1, len(params_list), figsize=fig_size,
                              gridspec_kw={'width_ratios': width_ratios},
                              sharey=False, sharex=False)
