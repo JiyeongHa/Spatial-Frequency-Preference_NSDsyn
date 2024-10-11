@@ -377,8 +377,8 @@ rule predict_Pv_based_on_model:
 
 rule run_model_nsd_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'corrected', 'prediction_sfstimuli-{sfstimuli}_eccentricity-0-4.2-36_angle-0-360-36_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                sfstimuli=['scaled','constant'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D)
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+                ecc1=0, ecc2=12, n_ecc=121, angle1=0, angle2=360, angle3=361, sfstimuli=['scaled','constant'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D)
 
 rule nsdsyn_data_for_bootstraps:
     input:
