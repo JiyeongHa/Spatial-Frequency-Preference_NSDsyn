@@ -363,6 +363,8 @@ rule predict_Pv_based_on_model:
         model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'{stimtest}','model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
     output:
         os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs', "sfp_model","prediction_2D","nsdsyn",'{stimtest}','sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.log')
     run:
         stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
         final_params = model.model_to_df(input.model, *ARGS_2D)
