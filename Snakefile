@@ -136,11 +136,11 @@ rule prep_broderick_data:
         rh_rois=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_varea.mgz'),
         betas= os.path.join(config['BRODERICK_DIR'], 'derivatives', 'GLMdenoise', 'sub-{subj}_ses-04_task-sfprescaled_results.mat')
     output:
-        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'corrected', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'model', 'corrected', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
     params:
         stim_size= get_stim_size_in_degree('broderick')
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs','dataframes','broderick','corrected','dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.log')
+        os.path.join(config['OUTPUT_DIR'],'logs','dataframes','broderick','model', 'corrected','dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.log')
     run:
         from sfp_nsdsyn.Broderick_dataset import _transform_angle_corrected
         if wildcards.tavg == 'True':
@@ -169,7 +169,7 @@ rule prep_broderick_data:
 
 rule est:
     input:
-       a =  expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
+       a =  expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick','model', 'dset-broderick_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
         subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['False']),
        b = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'),
                    dset='broderick', stimtest='corrected', subj=make_subj_list('broderick'), roi=['V1'])
