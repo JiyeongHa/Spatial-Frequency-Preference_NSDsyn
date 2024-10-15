@@ -446,6 +446,8 @@ rule prep_broderick_data:
         spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
     params:
         stim_size= get_stim_size_in_degree('broderick')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs','dataframes','broderick','dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.log')
     run:
         from sfp_nsdsyn.Broderick_dataset import _transform_angle_corrected
         if wildcards.tavg == 'True':
