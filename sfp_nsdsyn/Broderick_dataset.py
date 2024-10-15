@@ -18,9 +18,9 @@ def _label_stim_names(row):
     elif row.w_r != 0 and row.w_a == 0:
         return 'annulus'
     elif row.w_r == row.w_a:
-        return 'forward spiral'
-    elif row.w_r == -1*row.w_a:
         return 'reverse spiral'
+    elif row.w_r == -1*row.w_a:
+        return 'forward spiral'
     else:
         return 'mixtures'
 
@@ -245,20 +245,6 @@ def merge_stim_df_and_betas_df(prf_betas_df, stim_df, on='class_idx'):
         raise Exception('The stimulus info df should not contain phase column.')
     return prf_betas_df.merge(stim_df, on=on)
 
-
-
-def calculate_local_orientation(df):
-    ang = np.arctan2(df['w_a'], df['w_r'])
-    df['local_ori'] = np.deg2rad(df['angle']) + ang
-    df['local_ori'] = np.mod(df['local_ori'], np.pi)
-    return df
-
-def calculate_local_sf(df):
-    df['local_sf'] = np.sqrt((df.w_r ** 2 + df.w_a ** 2))
-    df['local_sf'] = df['local_sf'] / df['eccentricity']
-    df['local_sf'] = np.divide(df['local_sf'], 2 * np.pi)
-    return df
-
 def make_broderick_sf_dataframe(stim_info_path,
                                 lh_varea_path, rh_varea_path,
                                 lh_eccentricity_path, rh_eccentricity_path,
@@ -266,18 +252,20 @@ def make_broderick_sf_dataframe(stim_info_path,
                                 betas_path,
                                 transform_func=_transform_angle_corrected,
                                 eccen_range=[1,12], roi="V1",
-                                angle_to_radians=True, reference_frame='relative',
+                                angle_to_radians=True,
                                 results_names=['modelmd']):
     stim_info = load_broderick_stim_info(stim_info_path)
     mask = make_lh_rh_masks(lh_varea_path, rh_varea_path, lh_eccentricity_path, rh_eccentricity_path, roi, eccen_range)
-    prf_df = load_lh_rh_prf_proporties_as_df(lh_prf_path_list, rh_prf_path_list, mask['lh'], mask['rh'], angle_to_radians, transform_func=transform_func)
+    prf_df = load_lh_rh_prf_proporties_as_df(lh_prf_path_list, rh_prf_path_list,
+                                             mask['lh'], mask['rh'],
+                                             angle_to_radians, transform_func=transform_func)
     betas_df = load_betas_as_df(betas_path, mask, results_names)
     prf_betas_df = merge_prf_and_betas(prf_df, betas_df)
     prf_betas_df = concat_lh_and_rh_df(prf_betas_df)
     sf_df = merge_stim_df_and_betas_df(prf_betas_df, stim_info, on='class_idx')
     sf_df['local_sf'], sf_df['local_ori'] = prep.calculate_local_stim_properties(w_a=sf_df['w_a'], w_r=sf_df['w_r'],
                                                                                  eccentricity=sf_df['eccentricity'], angle=sf_df['angle'],
-                                                                                 angle_in_radians=angle_to_radians, reference_frame=reference_frame)
+                                                                                 angle_in_radians=angle_to_radians)
     return sf_df
 
 def run_all_subj_main(sn_list=[1, 6, 7, 45, 46, 62, 64, 81, 95, 114, 115, 121],

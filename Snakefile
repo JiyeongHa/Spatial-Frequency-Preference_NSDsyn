@@ -380,7 +380,7 @@ rule run_model_nsd_all:
 rule results_2D:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
-               goal=['replication','extension'], lr=LR_2D, max_epoch=MAX_EPOCH_2D, fig_format=['png'])
+               goal=['replication','extension'], lr=LR_2D, max_epoch=MAX_EPOCH_2D, fig_format=['svg'])
 #
 # rule plot_model_prediction_for_replication:
 #     input:
@@ -443,15 +443,16 @@ rule prep_broderick_data:
         rh_rois=os.path.join(config['BRODERICK_DIR'],'derivatives','prf_solutions','sub-{subj}','bayesian_posterior','rh.inferred_varea.mgz'),
         betas= os.path.join(config['BRODERICK_DIR'], 'derivatives', 'GLMdenoise', 'sub-{subj}_ses-04_task-sfprescaled_results.mat')
     output:
-        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
     params:
         stim_size= get_stim_size_in_degree('broderick')
     run:
-        from sfp_nsdsyn import brod
-#        if wildcards.tfunc == "corrected":
-        transform_func = brod._transform_angle_corrected
-        # elif wildcards.tfunc == "uncorrected":
-        #     transform_func = brod._transform_angle
+        from sfp_nsdsyn.Broderick_dataset import _transform_angle_corrected
+        if wildcards.tavg == 'True':
+            results_names = ['modelmd']
+        elif wildcards.tavg == 'False':
+            results_names = ['models']
+
         lh_prf_path_list = [input.lh_eccentricity, input.lh_angle, input.lh_size]
         rh_prf_path_list = [input.rh_eccentricity, input.rh_angle, input.rh_size]
         bd_df = brod.make_broderick_sf_dataframe(input.stim_info,
@@ -459,11 +460,10 @@ rule prep_broderick_data:
                                                  input.lh_eccentricity, input.rh_eccentricity,
                                                  lh_prf_path_list, rh_prf_path_list,
                                                  input.betas,
-                                                 transform_func=transform_func,
+                                                 transform_func=_transform_angle_corrected,
                                                  eccen_range=params.stim_size, roi=wildcards.roi,
                                                  angle_to_radians=True,
-                                                 reference_frame='relative',
-                                                 results_names=['models'])
+                                                 results_names=results_names)
         bd_df = vs.select_voxels(bd_df, drop_by=wildcards.vs,
                                  inner_border=params.stim_size[0],
                                  outer_border=params.stim_size[1],
@@ -471,6 +471,11 @@ rule prep_broderick_data:
         bd_df['sub'] = wildcards.subj
         bd_df['vroinames'] = wildcards.roi
         bd_df.to_csv(output[0], index=False)
+
+rule est:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
+        subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['True'])
 
 rule plot_preferred_period_1D_with_broderick_et_al:
     input:
