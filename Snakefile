@@ -169,8 +169,8 @@ rule prep_broderick_data:
 
 rule est:
     input:
-       a =  expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick','model', 'dset-broderick_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
-        subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['False']),
+       a =  expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','model','{stimtest}', 'dset-{dset}_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
+        dset='broderick', stimtest='corrected', subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['False']),
        b = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'),
                    dset='broderick', stimtest='corrected', subj=make_subj_list('broderick'), roi=['V1'])
 
