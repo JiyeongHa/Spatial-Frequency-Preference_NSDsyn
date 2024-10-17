@@ -413,7 +413,7 @@ rule plot_avg_model_parameters:
     output:
         os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", '{stimtest}', "{goal}", 'fig2-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs',"sfp_model","results_2D", '{stimtest}', "{goal}", 'fig2-params_lr-{lr}_eph-{max_epoch}_sub-avg.log')
+        os.path.join(config['OUTPUT_DIR'],'logs',"sfp_model","results_2D", '{stimtest}', "{goal}", 'fig2-params_lr-{lr}_eph-{max_epoch}_sub-avg_{fig_format}.log')
     run:
 
         final_df = pd.DataFrame({})
