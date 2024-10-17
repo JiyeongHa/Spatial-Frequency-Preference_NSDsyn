@@ -429,12 +429,14 @@ rule predict_Pv_based_on_model:
 
 rule run_model_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                dset=['nsdsyn'], ecc1=0, ecc2=12, n_ecc=121, ang1=0, ang2=360, n_angle=361, sfstimuli=['scaled','constant'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D),
-        b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                dset=['broderick'], ecc1=0, ecc2=12, n_ecc=121, ang1=0, ang2=360, n_angle=361, sfstimuli=['scaled','constant'], subj=make_subj_list('broderick'), roi=['V1'], lr=LR_2D, max_epoch=MAX_EPOCH_2D),
-        c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
-                       goal=['replication'], lr=LR_2D, max_epoch=MAX_EPOCH_2D, fig_format=['svg'])
+        # a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+        #         dset=['nsdsyn'], ecc1=0, ecc2=12, n_ecc=121, ang1=0, ang2=360, n_angle=361, sfstimuli=['scaled','constant'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D),
+        # b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+        #         dset=['broderick'], ecc1=0, ecc2=12, n_ecc=121, ang1=0, ang2=360, n_angle=361, sfstimuli=['scaled','constant'], subj=make_subj_list('broderick'), roi=['V1'], lr=LR_2D, max_epoch=MAX_EPOCH_2D),
+        # c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
+        #                goal=['replication'], lr=LR_2D, max_epoch=MAX_EPOCH_2D, fig_format=['svg'])
+        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'model', 'corrected', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
+               subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['False']),
 rule results_2D:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
@@ -462,12 +464,6 @@ rule nsdsyn_data_for_bootstraps:
         bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
         bootstrap_df['bootstrap'] = int(wildcards.bts)
         bootstrap_df.to_csv(output[0], index=False)
-
-
-rule nsdsyn_data_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        subj=make_subj_list('nsdsyn'), roi=['V1','V2','V3'], vs='pRFsize', bts=np.arange(0,100))
 
 
 rule plot_preferred_period_1D_with_broderick_et_al:
@@ -547,10 +543,6 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
                                         hue='dset_type', hue_order=params.roi_list,
                                         pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',width=3.4,
                                         errorbar=("ci", 68), save_path=output[0])
-
-rule broderick_data_all:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}.csv'), subj=make_subj_list('broderick'), roi='V1', vs=['pRFsize'])
 
 rule prep_baseline:
     input:
@@ -661,8 +653,6 @@ rule fit_tuning_curves_broderick:
         loss_history['ecc_bin'] = save_ecc_bin_name
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
-
-
 
 
 rule plot_tuning_curves_broderick:
