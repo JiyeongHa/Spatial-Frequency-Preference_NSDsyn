@@ -297,17 +297,19 @@ def merge_all(stim_df,
     betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
     return betas_prf_stim_df
 
-def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, sfstimuli='logpolar'):
+def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, sfstimuli='scaled'):
     # calculate distance
     frequency_ratio = np.arctan2(w_a, w_r)
     if angle_in_radians is False:
         if (np.max(retinotopic_angle) - 2*np.pi) < 1:
             raise Exception('It seems like the angle is already in radians!')
         retinotopic_angle = np.deg2rad(retinotopic_angle)
-    if sfstimuli == 'logpolar':
+    if sfstimuli == 'scaled':
         local_ori = retinotopic_angle + frequency_ratio  # prf angle is the same as orientation
-    else:
+    elif sfstimuli == 'constant':
         local_ori = frequency_ratio
+    else:
+        raise ValueError('sfstimuli should be either scaled or constant!')
     return np.remainder(local_ori, np.pi)
 
 def calculate_local_sf(w_a, w_r, eccentricity, stimulus='logpolar'):
