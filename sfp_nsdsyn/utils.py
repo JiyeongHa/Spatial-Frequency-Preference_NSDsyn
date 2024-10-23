@@ -335,6 +335,7 @@ def load_dataframes(file_list, *args):
         elif f_type == 'csv':
             tmp = pd.read_csv(f)
         for arg in args:
+            f = f.split('/')[-1]
             ff = f.split(f'.{f_type}')[0]
             tmp[match_wildcards_with_col(arg)] = [k for k in ff.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
         history_df = history_df.append(tmp)

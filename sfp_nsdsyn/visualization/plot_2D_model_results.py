@@ -38,6 +38,17 @@ rc = {'text.color': 'black',
       }
 mpl.rcParams.update(rc)
 
+def merge_model_and_precision(pt_path, precision_path, *ARGS_2D):
+    from sfp_nsdsyn.two_dimensional_model import load_all_models
+    if type(pt_path) is not list:
+        pt_path = [pt_path]
+
+    pt = load_all_models(pt_path, *ARGS_2D)
+    precision_s = pd.read_csv(precision_path)
+    df = pd.merge(pt, precision_s[['sub', 'vroinames', 'precision']], on=['sub', 'vroinames'])
+    return df
+
+
 def weighted_mean(x, **kws):
     """store weights as imaginery number"""
     numerator = np.sum(np.real(x) * np.imag(x))
@@ -63,7 +74,7 @@ def filter_for_goal(params_df, goal):
     roi_pal = [sns.color_palette('dark', 10)[:][k] for k in [3, 2, 0]]
     roi_pal.insert(0, (0.3, 0.3, 0.3))
     goals = [goal.lower(), goal.lower().title()]
-    df = params_df.query('goal in @goals')
+    #df = params_df.query('goal in @goals')
     if goal.lower() == 'replication':
         hue_order = ['Broderick et al. V1', 'NSD V1']
         pal = roi_pal[:2]
@@ -74,6 +85,8 @@ def filter_for_goal(params_df, goal):
         df = params_df
         hue_order = ['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3']
         pal = roi_pal
+    df = params_df.query('dset_type in @hue_order')
+
     return df, hue_order, pal
 
 def plot_param_and_prediction(params_df, params,
@@ -84,7 +97,7 @@ def plot_param_and_prediction(params_df, params,
                               prediction_ylim=None, prediction_yticks=None,
                               xlim=(0,10), xticks=[0,5,10],
                               prediction_ylabel='Preferred period (deg)', title=None,
-                              figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None):
+                              figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None, **kwargs):
 
     sns.set_theme("paper", style='ticks', rc=rc)
     fig, axes = plt.subplots(1, 2, figsize=figsize,
@@ -94,7 +107,7 @@ def plot_param_and_prediction(params_df, params,
     g = plot_precision_weighted_avg_parameter(params_df, params,
                                               hue, hue_order,
                                               ax=axes[0], pal=pal,
-                                              ylim=params_ylim, yticks=params_yticks)
+                                              ylim=params_ylim, yticks=params_yticks, **kwargs)
     g.legend_.remove()
     if len(params) > 1:
         g.margins(x=0.1)
@@ -124,7 +137,7 @@ def plot_param_hierarchy_and_prediction(params_df, params,
                                   hierarchy_ylim=None, hierarchy_yticks=None,
                                   xlim=(0,10), xticks=[0,5,10],
                                   prediction_ylabel='Preferred period (deg)', title=None,
-                                  figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None):
+                                  figsize=(3.5, 1.5), width_ratios=[1.5, 4], save_path=None, **kwargs):
 
     sns.set_theme("paper", style='ticks', rc=rc)
     fig, axes = plt.subplots(1, 3, figsize=figsize,
@@ -134,7 +147,7 @@ def plot_param_hierarchy_and_prediction(params_df, params,
     g = plot_precision_weighted_avg_parameter(params_df, params,
                                               hue, hue_order,
                                               ax=axes[0], pal=pal,
-                                              ylim=params_ylim, yticks=params_yticks)
+                                              ylim=params_ylim, yticks=params_yticks, **kwargs)
     g.legend_.remove()
     if len(params) > 1:
         g.margins(x=0.1)
@@ -159,7 +172,7 @@ def plot_param_hierarchy_and_prediction(params_df, params,
     utils.save_fig(save_path)
     return fig, axes
 
-def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, errwidth=2, dot_scale=1, ylim=None, yticks=None, pal=None, **kwargs):
+def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
     sns.set_theme("paper", style='ticks', rc=rc)
 
     tmp = group_params(df, params, [1]*len(params))
@@ -189,65 +202,11 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, errwid
 
     return g
 
-
-def plot_precision_weighted_avg_parameters(df, params, subplot_group,
-                                           hue, hue_order=None, lgd_title=None,
-                                           weight='precision', dodge=0.14, height=5,
-                                           save_path=None, pal=None, dot_scale=1,
-                                           width=7, suptitle=None, ylim_list=None, ytick_list=None, **kwargs):
-
-    rc.update({'xtick.labelsize': 11})
-    sns.set_theme("paper", style='ticks', rc=rc)
-
-    df = group_params(df, params, subplot_group)
-    df['params'] = _change_params_to_math_symbols(df['params'])
-    df['value_and_weights'] = [v + w*1j for v, w in zip(df.value, df[weight])]
-
-    if pal is None:
-        pal = sns.cubehelix_palette(n_colors=df[hue].nunique()+1, as_cmap=False, reverse=True)
-    grid = sns.FacetGrid(df,
-                         col="group",
-                         height=height,
-                         legend_out=True,
-                         sharex=False, sharey=False,
-                         aspect=width/height,
-                         gridspec_kws={'width_ratios': counts}, **kwargs)
-
-    g = grid.map(sns.pointplot, "params", "value_and_weights", hue, hue_order=hue_order,
-                 dodge=dodge, palette=pal, estimator=weighted_mean, linestyles='', errwidth=1.2, scale=dot_scale,
-                 orient="v", errorbar=("ci", 68))
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
-    for ax in grid.axes.flatten():
-        ticks = [t.get_text() for t in ax.get_xticklabels()]
-        if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
-            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
-        if len(ticks) == 2:
-            ax.margins(x=0.2)
-    grid.axes[0,1].margins(x=0.1)
-    if ylim_list is not None:
-        for ax in range(len(groups)):
-            grid.axes[0, ax].set_ylim(ylim_list[ax])
-    if ytick_list is not None:
-        for ax in range(len(groups)):
-            grid.axes[0, ax].set_yticks(ytick_list[ax])
-    g.set(ylabel='Parameter estimates', xlabel=None)
-    g.tick_params(axis='x', labelsize=rc['axes.labelsize'], pad=5)
-    for i in np.arange(1, 5):
-        grid.axes[0, i].set_ylabel('')
-    if lgd_title is not None:
-        g.add_legend(title=lgd_title, bbox_to_anchor=(1,0.6), fontsize=rc['legend.title_fontsize'])
-    if suptitle is not None:
-        g.fig.suptitle(suptitle, fontweight="bold")
-    #grid.fig.subplots_adjust(wspace=0.7)
-    utils.save_fig(save_path)
-    return grid
-
 def make_param_summary_fig(params_df, hue, hue_order, pal,
                            params_list, ylim_list, yticks_list,
-                           errwidth=1.2, dot_scale=1, title_list=None,
+                           errwidth=1.2, title_list=None,
                            width_ratios=(0.8,1.8,1.3,1.3,1.3), fig_size=(7, 1.5),
-                           save_path=None):
+                           save_path=None, **kwargs):
     rc.update({
           'axes.titlesize': 11,
           'axes.titlepad': 20,
@@ -265,9 +224,9 @@ def make_param_summary_fig(params_df, hue, hue_order, pal,
         g = plot_precision_weighted_avg_parameter(params_df, params_list[i],
                                                   hue, hue_order,
                                                   ylim=ylim_list[i],
-                                                  yticks=yticks_list[i], errwidth=errwidth,
-                                                  ax=ax, dot_scale=dot_scale,
-                                                  pal=pal)
+                                                  yticks=yticks_list[i],
+                                                  ax=ax,
+                                                  pal=pal, **kwargs)
         plt.setp(g.collections, clip_on=False)
         g.legend_.remove()
         if title_list is not None:

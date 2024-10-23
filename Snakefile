@@ -377,9 +377,9 @@ rule plot_avg_model_parameters:
         broderick_model_params= expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "broderick",'{{stimtest}}', 'model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.pt'),  subj=make_subj_list('broderick')),
         broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','{stimtest}','precision-s_dset-broderick_vs-pRFsize.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", '{stimtest}', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", '{stimtest}', "{goal}", 'fig-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs',"sfp_model","results_2D", '{stimtest}', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg_format-{fig_format}.log')
+        os.path.join(config['OUTPUT_DIR'],'logs',"figures", "sfp_model","results_2D", '{stimtest}', "{goal}", 'fig-params_lr-{lr}_eph-{max_epoch}_sub-avg_format-{fig_format}.log')
     run:
 
         final_df = pd.DataFrame({})
@@ -427,16 +427,50 @@ rule predict_Pv_based_on_model:
                                                                    angle_in_radians=True, sfstimuli=wildcards.frame)
         syn_df.to_hdf(output[0], key='stage', mode='w')
 
-rule run_model_all:
+rule plot_replication_prediction_figures:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                dset=['nsdsyn'], ecc1=0, ecc2=12, n_ecc=121, ang1=0, ang2=360, n_angle=361, sfstimuli=['scaled','constant'], subj=make_subj_list('nsdsyn'), roi=ROIS, lr=LR_2D, max_epoch=MAX_EPOCH_2D),
-        b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'corrected', 'sfstimuli-{sfstimuli}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_angle}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                dset=['broderick'], ecc1=0, ecc2=12, n_ecc=121, ang1=0, ang2=360, n_angle=361, sfstimuli=['scaled','constant'], subj=make_subj_list('broderick'), roi=['V1'], lr=LR_2D, max_epoch=MAX_EPOCH_2D),
-        c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
-                       goal=['replication'], lr=LR_2D, max_epoch=MAX_EPOCH_2D, fig_format=['svg']),
-        # expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'broderick', 'model', 'corrected', 'dset-broderick_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-        #       subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['False']),
+        nsd_model_params=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'{{stimtest}}','model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.pt'), subj=make_subj_list('nsdsyn')),
+        nsd_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        nsd_prediction=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","nsdsyn",'{{stimtest}}', 'sfstimuli-{{frame}}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.h5'), subj=make_subj_list('nsdsyn')),
+        broderick_model_params=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","broderick",'{{stimtest}}','model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.pt'),subj=make_subj_list('broderick')),
+        broderick_precision_s=os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','{stimtest}','precision-s_dset-broderick_vs-pRFsize.csv'),
+        broderick_prediction=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'{{stimtest}}', 'sfstimuli-{{frame}}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.h5'), subj=make_subj_list('broderick'))
+    output:
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","prediction_2D","all", 'replication', '{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')  run:
+    params:
+        local_ori=np.deg2rad(90),
+        ecc=5,
+        angle=np.deg2rad(180)
+    run:
+
+        nsd_df = vis2D.merge_model_and_precision(input.nsd_model_params,input.nsd_precision_s, *ARGS_2D)
+        broderick_df = vis2D.merge_model_and_precision(input.broderick_model_params,input.broderick_precision_s,*ARGS_2D)
+        nsd_df['dset_type'] = 'NSD V1'
+        broderick_df['dset_type'] = 'Broderick et al. V1'
+        final_params = pd.concat((nsd_df, broderick_df), axis=0)
+        final_params['goal'] = 'replication'
+
+        tmp, hue_order, pal = vis2D.filter_for_goal(final_params, 'replication')
+        weighted_mean_df = vis2D.get_weighted_average_of_params(tmp, ['dset_type'], params.ecc, params.angle, params.local_ori)
+
+        vis2D.plot_param_and_prediction(params_df=tmp,
+                                        params=['sigma'],
+                                        hue='dset_type',
+                                        hue_order=hue_order,
+                                        prediction_df=weighted_mean_df,
+                                        prediction_y=None,
+                                        pal=pal,
+                                        params_ylim=(1.6, 4.75),
+                                        params_yticks=[2, 3, 4],
+                                        prediction_ylim=None,
+                                        prediction_yticks=None,
+                                        title='Bandwidth of V1 spatial frequency tuning curves',
+                                        prediction_ylabel='Preferred period (deg)',
+                                        figsize=(3.5, 1.8),
+                                        width_ratios=[1.5, 4],
+                                        save_path=output[0])
 
 rule results_2D:
     input:
@@ -1755,11 +1789,6 @@ rule freeview_val_mgz:
                  labels=labels, label_dir=label_dir, label_colors=label_colors,
                  colorscale=True, view=wildcards.view,
                  surf='inflated', save_path=output[0], **kwargs)
-
-rule freeview_www:
-    input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss","{val}","roi-wang_view-{view}_thres-{thres}_sub-{sn}_value-{val}_frame-{ref_frame}.png"), view=['inferior'], thres=[0.3], val=['r2'], ref_frame=['absolute'], sn=['subj01','subj03','subj07']),
-        b = expand(os.path.join(config['OUTPUT_DIR'],"figures","sfp_maps","mgzs","nsdsyn","ss", "precision", "roi-wang_view-{view}_thres-2_sub-{sn}_value-precision.png"), view=['inferior'], ref_frame=['absolute'], sn=['subj01', 'subj03', 'subj07']),
 
 rule visualize_all:
     input:
