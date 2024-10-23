@@ -312,20 +312,22 @@ def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=Tr
         raise ValueError('sfstimuli should be either scaled or constant!')
     return np.remainder(local_ori, np.pi)
 
-def calculate_local_sf(w_a, w_r, eccentricity, stimulus='logpolar'):
+def calculate_local_sf(w_a, w_r, eccentricity, stimulus='scaled'):
     # calculate local frequency
     l2_norm = np.sqrt((w_r ** 2 + w_a ** 2))
-    if stimulus == 'logpolar':
+    if stimulus == 'scaled':
         local_sf = l2_norm / eccentricity
         local_sf = np.divide(local_sf, 2*np.pi)
-    else:
+    elif stimulus == 'constant':
         local_sf = l2_norm
+    else:
+        raise ValueError('stimulus should be either scaled or constant!')
     #TODO: ask about this
     # to convert this from radians per pixel to cycles per degrees,
     # we multiply by a conversion factor c = 1/2pi
     return local_sf
 
-def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False, stimulus='logpolar'):
+def calculate_local_stim_properties(w_a, w_r, eccentricity, angle, angle_in_radians=False, stimulus='scaled'):
     local_sf = calculate_local_sf(w_a=w_a, w_r=w_r, eccentricity=eccentricity, stimulus=stimulus)
     local_ori = calculate_local_orientation(w_a=w_a, w_r=w_r, retinotopic_angle=angle,
                                             angle_in_radians=angle_in_radians, sfstimuli=stimulus)
