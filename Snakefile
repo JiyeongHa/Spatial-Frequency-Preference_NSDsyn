@@ -472,6 +472,13 @@ rule plot_replication_prediction_figures:
                                         width_ratios=[1.5, 4],
                                         save_path=output[0])
 
+rule pv_again:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+                    dset=['nsdsyn'], stimtest='corrected',frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi=ROIS),
+        b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+                    dset=['broderick'], stimtest='corrected',frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('broderick'), roi=['V1'])
+
 rule results_2D:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
@@ -579,51 +586,6 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
                                         pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',width=3.4,
                                         errorbar=("ci", 68), save_path=output[0])
 
-rule prep_baseline:
-    input:
-        design_mat = os.path.join(config['NSD_DIR'], 'nsddata', 'experiments', 'nsdsynthetic', 'nsdsynthetic_expdesign.mat'),
-        stim_info = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
-        lh_prfs = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf{prf_param}.mgz'), prf_param= ["eccentricity", "angle", "size"]),
-        lh_rois = expand(os.path.join(config['NSD_DIR'], 'nsddata', 'freesurfer','{{subj}}', 'label', 'lh.prf-{roi_file}.mgz'), roi_file= ["visualrois", "eccrois"]),
-        lh_betas = os.path.join(config['NSD_DIR'], 'nsddata_betas', 'ppdata', '{subj}', 'nativesurface', 'nsdsyntheticbetas_fithrf_GLMdenoise_RR', 'lh.betas_nsdsynthetic.hdf5'),
-        rh_prfs= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf{prf_param}.mgz'), prf_param=["eccentricity", "angle", "size"]),
-        rh_rois= expand(os.path.join(config['NSD_DIR'],'nsddata','freesurfer','{{subj}}','label','rh.prf-{roi_file}.mgz'), roi_file=["visualrois", "eccrois"]),
-        rh_betas= os.path.join(config['NSD_DIR'],'nsddata_betas','ppdata','{subj}','nativesurface','nsdsyntheticbetas_fithrf_GLMdenoise_RR','rh.betas_nsdsynthetic.hdf5')
-    output:
-        os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn','baseline', 'baseline_sub-{subj}_roi-{roi}_vs-{vs}.csv')
-    params:
-        rois_vals = lambda wildcards: [prep.convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
-        task_keys = ['fixation_task', 'memory_task'],
-        stim_size= get_stim_size_in_degree('nsdsyn'),
-        white_noise_indices = [1,2,3,4]
-    run:
-        from sfp_nsdsyn import prep
-        from sfp_nsdsyn import vs
-        #lh
-        mask, rois_dict = prep.load_common_mask_and_rois(input.lh_rois, params.rois_vals)
-        prf_dict = prep.load_prf_properties_as_dict(input.lh_prfs, mask, angle_to_radians=True)
-        betas_dict = prep.load_betas_as_dict(input.lh_betas, input.design_mat,
-                                             params.white_noise_indices, mask,
-                                             task_keys=params.task_keys, average=True)
-        betas_df = prep.melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True)
-        lh_prf_betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, rois_dict, on='voxel')
-        #rh
-        mask, rois_dict = prep.load_common_mask_and_rois(input.rh_rois, params.rois_vals)
-        prf_dict = prep.load_prf_properties_as_dict(input.rh_prfs, mask, angle_to_radians=True)
-        betas_dict = prep.load_betas_as_dict(input.rh_betas, input.design_mat,
-                                             params.white_noise_indices, mask,
-                                             task_keys=params.task_keys, average=True)
-        betas_df = prep.melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True)
-        rh_prf_betas_df = prep.add_1D_prf_dict_to_df(prf_dict, betas_df, rois_dict, on='voxel')
-
-        baseline_df = prep.concat_lh_rh_df(lh_prf_betas_df, rh_prf_betas_df)
-        if wildcards.vs != 'None':
-            baseline_df = vs.select_voxels(baseline_df, drop_by=wildcards.vs,
-                                           inner_border=params.stim_size[0],
-                                           outer_border=params.stim_size[1],
-                                           to_group=['voxel'], return_voxel_list=False)
-        baseline_df['sub'] = wildcards.subj
-        baseline_df.to_csv(output[0], index=False)
 
 rule binning_broderick:
     input:
