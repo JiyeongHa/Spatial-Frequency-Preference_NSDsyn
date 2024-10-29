@@ -24,14 +24,14 @@ rc = {'text.color': 'black',
       'xtick.major.width': 1,
       'ytick.major.width': 1,
       'lines.linewidth': 1,
-      'font.size': 12,
-      'axes.titlesize': 12,
-      'axes.labelsize': 12,
-      'xtick.labelsize': 12,
-      'ytick.labelsize': 12,
+      'font.size': 11,
+      'axes.titlesize': 11,
+      'axes.labelsize': 11,
+      'xtick.labelsize': 11,
+      'ytick.labelsize': 11,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
-      'figure.titlesize': 15,
+      'figure.titlesize': 14,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -43,28 +43,6 @@ def _get_y_pdf(row):
 
 
 
-def beta_vs_sf_scatterplot(df, pdf=None, hue="ecc_bin", hue_order=None, lgd_title='Eccentricity',
-                           col='names', suptitle=None, height=5,
-                           save_path=None, **kwargs):
-    col_order = utils.sort_a_df_column(df[col])
-    grid = sns.FacetGrid(df,
-                         col=col,
-                         col_order=col_order,
-                         hue=hue,
-                         height=height,
-                         hue_order=hue_order,
-                         sharex=True, sharey=True, **kwargs)
-    g = grid.map(sns.scatterplot, 'local_sf', 'betas')
-    if pdf is not None:
-        grid.map(sns.lineplot, 'local_sf', pdf)
-    grid.set_axis_labels('Spatial Frequency', 'Betas')
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f"{subplot_title.title()}")
-    grid.fig.suptitle(suptitle, fontweight="bold")
-    grid.set(xscale='log')
-    utils.save_fig(save_path)
-
-    return grid
 
 
 def merge_pdf_values(bin_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
@@ -72,107 +50,21 @@ def merge_pdf_values(bin_df, model_df, on=["sub", "vroinames", "ecc_bin"]):
     merge_df['pdf'] = merge_df.apply(_get_y_pdf, axis=1)
     return merge_df
 
-def plot_sf_curves(df, params_df, x, y, hue, col, baseline=None,
-                   hue_order=None, col_order=None, suptitle=None,
-                   lgd_title=None, save_path=None, palette=None):
-    rc.update({'axes.linewidth': 1.2,
-          'xtick.major.width':1.2,
-          'ytick.major.width':1.2,
-          'xtick.minor.width':1,
-          'xtick.major.size': 5,
-          'ytick.major.size': 5,
-          'xtick.minor.size': 3.5,
-          'axes.labelpad': 8,
-          'axes.titlepad': 15,
-          'axes.titleweight': 'bold',
-          'font.family': 'Helvetica',
-          'axes.edgecolor': 'black',
-          'figure.dpi': 72*2,
-          'savefig.dpi': 72*4})
-    utils.set_rcParams(rc)
-    utils.set_fontsize(11, 11, 15)
-    sns.set_theme("notebook", style='ticks', rc=rc)
-
-    if hue_order is None:
-        hue_order = df[hue].unique()
-    if col_order is None:
-        col_order = df[col].unique()
-    fig, axes = plt.subplots(1, len(col_order),
-                             figsize=(7, 7/1.9),
-                             sharex=True, sharey=False)
-    if palette is None:
-        colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
-        colors = colors[1:][::-1]
-    else:
-        colors = palette
-    for i, g in enumerate(range(len(col_order))):
-        subplot_tmp = df[df[col] == col_order[g]]
-        cur_color = colors[i]
-        for c, ls, fc, in zip(range(len(hue_order)), ['--','-'], ['w', cur_color]):
-            tmp = subplot_tmp[subplot_tmp[hue] == hue_order[c]]
-            xx = tmp[x]
-            yy = tmp[y]
-            tmp_history = params_df[params_df[col] == col_order[g]]
-            tmp_history = tmp_history[tmp_history[hue] == hue_order[c]]
-            pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(),
-                                                     tmp_history['slope'].item(),
-                                                     tmp_history['mode'].item(),
-                                                     tmp_history['sigma'].item(), n_points=1000)
-            #np.min(pred_y)
-
-            axes[g].set_title(col_order[g], fontsize=15)
-            axes[g].plot(pred_x, pred_y,
-                         color=cur_color,
-                         linestyle=ls,
-                         linewidth=2,
-                         path_effects=[pe.Stroke(linewidth=1, foreground='black'),
-                                       pe.Normal()],
-                         zorder=0)
-            axes[g].scatter(xx, yy,
-                            s=34,
-                            facecolor=fc, #colors[c],
-                            alpha=0.95,
-                            label=hue_order[c],
-                            edgecolor=cur_color, linewidth=1.5,
-                            zorder=10)
-
-        if baseline is not None:
-            baseline_example_df = baseline[baseline[col] == col_order[g]]
-            yy = np.mean(baseline_example_df[y])
-            axes[g].axhline([yy], color='grey', linestyle='--', linewidth=1, zorder=20)
-        plt.xscale('log')
-        axes[g].spines['top'].set_visible(False)
-        axes[g].spines['right'].set_visible(False)
-        if len(axes[g].get_yticks()) > 4:
-            axes[g].set_yticks(axes[g].get_yticks()[::2])
-        axes[g].tick_params(axis='both')
-    axes[len(col_order)-1].legend(title=lgd_title, loc='center left', bbox_to_anchor=(0.9, 0.9), frameon=False, fontsize=13)
-    leg = axes[len(col_order)-1].get_legend()
-    leg.legendHandles[0].set_edgecolor('black')
-    leg.legendHandles[1].set_color('black')
-    if suptitle is not None:
-        fig.suptitle(suptitle, fontweight="bold")
-    fig.supxlabel('Local spatial frequency (cpd)')
-    fig.supylabel('Response\n(% BOLD signal change)', ha='center')
-    fig.subplots_adjust(wspace=0.5, left=0.1, bottom=0.17)
-
-
-    utils.save_fig(save_path)
-    return fig, axes
-
-
 def plot_tuning_curves_NSD(data_df, params_df,
                            subj, bins_to_plot, pal,
                            x='local_sf', y='betas',
                            markersize=20, normalize=True,
-                           width=7, height=2.5, save_path=None):
+                           width=6, height=2.7, save_path=None):
 
     rc.update({'xtick.major.pad': 3,
                'xtick.labelsize': 9,
                'axes.titlepad': 10,
+               'axes.titlesize': 14,
+               'axes.titleweight': 'bold',
                'legend.title_fontsize': 10,
                'legend.fontsize': 10,
                })
+    utils.set_rcParams(rc)
     sns.set_theme("paper", style='ticks', rc=rc)
     fig, axes = plt.subplots(1, 3, figsize=(width, height),
                              sharex=True, sharey=True)
@@ -205,7 +97,7 @@ def plot_tuning_curves_NSD(data_df, params_df,
                             label=cur_bin,
                             edgecolor=pal[i], linewidth=1.3,
                             zorder=10, clip_on=False)
-            axes[i].set_title(f'NSD {nsd_roi}')
+            axes[i].set_title(f'{nsd_roi}')
 
     for g in range(len(axes)):
         axes[g].set_xscale('log')
@@ -318,83 +210,6 @@ def plot_sf_curves_with_broderick(nsd_subj, nsd_subj_df, nsd_tuning_df, nsd_bins
     fig.subplots_adjust(wspace=0.3, left=0.1, bottom=0.2)
     utils.save_fig(save_path)
     return fig, axes
-
-def plot_sf_curves_only_for_V1(df, params_df, x, y, hue,
-                               hue_order=None, col_title=None, suptitle=None,
-                               lgd_title=None, save_path=None, palette=None):
-    rc.update({'axes.linewidth': 1.2,
-          'xtick.major.width':1.2,
-          'ytick.major.width':1.2,
-          'xtick.minor.width':1,
-          'xtick.major.size': 5,
-          'ytick.major.size': 5,
-          'xtick.minor.size': 3.5,
-          'axes.labelpad': 8,
-          'axes.titlepad': 15,
-          'axes.titleweight': 'bold',
-          'font.family': 'Helvetica',
-          'axes.edgecolor': 'black',
-          'figure.dpi': 72*2,
-          'savefig.dpi': 72*4})
-    utils.set_rcParams(rc)
-    utils.set_fontsize(11, 11, 15)
-    sns.set_theme("notebook", style='ticks', rc=rc)
-
-    if hue_order is None:
-        hue_order = df[hue].unique()
-    fig, ax = plt.subplots(1, 1,
-                             figsize=(2.5, 7/1.9),
-                             sharex=True, sharey=False)
-    if palette is None:
-        colors = utils.get_continuous_colors(len(hue_order)+1, '#3f0377')
-        colors = colors[1:][::-1]
-    else:
-        cur_color = palette
-        subplot_tmp = df
-        for c, ls, fc, in zip(range(len(hue_order)), ['--','-'], ['w', cur_color]):
-            tmp = subplot_tmp[subplot_tmp[hue] == hue_order[c]]
-            xx = tmp[x]
-            yy = tmp[y]
-            tmp_history = params_df
-            tmp_history = tmp_history[tmp_history[hue] == hue_order[c]]
-            pred_x, pred_y = _get_x_and_y_prediction(xx.min(), xx.max(),
-                                                     tmp_history['slope'].item(),
-                                                     tmp_history['mode'].item(),
-                                                     tmp_history['sigma'].item(), n_points=1000)
-            ax.plot(pred_x, pred_y,
-                         color=cur_color,
-                         linestyle=ls,
-                         linewidth=2,
-                         path_effects=[pe.Stroke(linewidth=1, foreground='black'),
-                                       pe.Normal()],
-                         zorder=0)
-            ax.scatter(xx, yy,
-                            s=34,
-                            facecolor=fc, #colors[c],
-                            alpha=0.95,
-                            label=hue_order[c],
-                            edgecolor=cur_color, linewidth=1.5,
-                            zorder=10)
-        plt.xscale('log')
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        if len(ax.get_yticks()) > 4:
-            ax.set_yticks(ax.get_yticks()[::2])
-        ax.tick_params(axis='both')
-    ax.set_title(col_title, fontsize=15)
-    ax.legend(title=lgd_title, loc='center left', bbox_to_anchor=(0.9, 0.9), frameon=False, fontsize=13)
-    leg = ax.get_legend()
-    leg.legendHandles[0].set_edgecolor('black')
-    leg.legendHandles[1].set_color('black')
-    if suptitle is not None:
-        fig.suptitle(suptitle, fontweight="bold")
-    fig.supxlabel('Local spatial frequency (cpd)')
-    fig.supylabel('Response\n(% BOLD signal change)', ha='center')
-    fig.subplots_adjust(left=0.3, bottom=0.17)
-
-
-    utils.save_fig(save_path)
-    return fig, ax
 
 
 def _get_middle_ecc(row):
