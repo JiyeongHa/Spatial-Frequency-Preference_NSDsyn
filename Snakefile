@@ -254,12 +254,12 @@ def bin_to_plot(bins_to_plot):
 
 rule plot_tuning_curves_NSD:
     input:
-        model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",  '{{stimtest}}', 'phase-{{phase}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
-        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned',  '{{stimtest}}', 'phase-{{phase}}', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
+        model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",  '{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
+        binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned',  '{{stimtest}}', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
     output:
-        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
+        os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
     params:
         roi_list=ROIS,
         roi_pal=ROI_PAL
@@ -320,8 +320,8 @@ rule make_precision_s_df:
 
 rule results_1D_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'phase-{phase}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
-                   phase=[0,2,4,6], stimtest=['corrected', 'uncorrected'], stim_class=['annulus','avg'], normalize=['True'], e1=0.5, e2=4, enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=['subj06','subj01']),
+        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.png'),
+                    stimtest=['corrected'], stim_class=['avg'], normalize=['True'], e1=0.5, e2=4, enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=['subj06','subj01']),
         # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
         #            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
         # c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
