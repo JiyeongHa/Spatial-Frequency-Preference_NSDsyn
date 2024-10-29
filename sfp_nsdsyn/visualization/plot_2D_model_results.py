@@ -162,7 +162,7 @@ def plot_param_hierarchy_and_prediction(params_df, params,
     g.legend(bbox_to_anchor=(1.05, 1), loc='best', frameon=False)
     plot_within_subject_error_for_V123(params_df, to_plot=params[0], precision='precision',
                                        ax=axes[1], ylim=hierarchy_ylim, yticks=hierarchy_yticks)
-    axes[1].set_xticklabels(axes[1].get_xticklabels(), fontsize=rc['xtick.labelsize']-1)
+    axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=45, ha='right', fontsize=rc['xtick.labelsize']-1)
     axes[1].margins(x=0.1)
 
     if title is not None:
@@ -184,7 +184,7 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
                       hue=hue, hue_order=hue_order,
                       palette=pal, linestyles='',
                       estimator=weighted_mean, errorbar=("ci", 68),
-                      dodge=0.2,
+                      dodge=0.23,
                       ax=ax, **kwargs)
     g.set(ylabel='Parameter estimates', xlabel=None)
     if 'p_' in params[0] or 'A_' in params[0] or 'sigma' in params[0]:
@@ -994,7 +994,7 @@ def plot_within_subject_error_for_V123(df, to_plot, precision, ylim=None, yticks
     new_df = pd.merge(new_df, df[['sub', precision]], on='sub')
 
     new_df['value_and_weights'] = new_df.apply(lambda row: row[to_plot] + row[precision] * 1j, axis=1)
-    new_names = ['V2\n''$\it{minus}$' '\nV1','V3\n''$\it{minus}$' '\nV2']
+    new_names = ['V2-V1','V3-V2']
     #new_names = ['V2—V1','V3—V2']
     new_df = new_df.replace({'variable': {'V2_minus_V1': new_names[0],
                                   'V3_minus_V2': new_names[1]}})
