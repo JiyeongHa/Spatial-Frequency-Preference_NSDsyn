@@ -167,6 +167,42 @@ rule prep_broderick_data:
         bd_df['vroinames'] = wildcards.roi
         bd_df.to_csv(output[0], index=False)
 
+rule make_precision_v_df:
+    input:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model',  '{stimtest}', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-pRFsize_tavg-False.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision',  '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv')
+    params:
+        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
+    run:
+        subj_vs_df = pd.read_csv(input[0])
+        power_val = [1,2]
+        power_var = [col for p, col in params.p_dict.items() if p in power_val]
+        sigma_v_df = bts.get_multiple_sigma_vs(subj_vs_df,
+                                               power=power_val,
+                                               columns=power_var,
+                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
+        sigma_v_df.to_csv(output[0], index=False)
+
+def define_rois_for_precision_s_df(dset):
+    if dset == "nsdsyn":
+        return ROIS
+    else:
+        return ['V1']
+
+rule make_precision_s_df:
+    input:
+        precision_v = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{{dset}}','precision', '{{stimtest}}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'), subj=make_subj_list(wildcards.dset), roi=define_rois_for_precision_s_df(wildcards.dset)),
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', '{stimtest}', 'precision-s_dset-{dset}_vs-pRFsize.csv')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs','dataframes','{dset}','precision', '{stimtest}', 'precision-s_dset-{dset}_vs-pRFsize.log')
+    run:
+        precision_v = utils.load_dataframes(input.precision_v)
+        precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
+        precision_s['precision'] = 1 / precision_s['sigma_v_squared']
+        precision_s.to_csv(output[0], index=False)
+
 rule est:
     input:
        a =  expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','model','{stimtest}', 'dset-{dset}_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
@@ -273,50 +309,92 @@ rule plot_tuning_curves_NSD:
             save_stim_type_name = wildcards.stim_class.replace('-',' ')
             bin_df = bin_df.query('names == @save_stim_type_name')
         bins_to_plot = [bin_labels[k] for k in bin_to_plot(wildcards.bins_to_plot)]
-        vis1D.plot_tuning_curves_NSD(data_df=bin_df,
+        vis1D.plot_tuning_curves_NSD(data_df=bin_df, subj=wildcards.subj,
                                      params_df=final_params,
-                                     subj=wildcards.subj,
                                      bins_to_plot= bins_to_plot,
                                      x='local_sf', y='betas',
                                      pal=params.roi_pal,
                                      normalize=(wildcards.normalize=="True"),
                                      save_path=output[0])
 
-rule make_precision_v_df:
+rule plot_preferred_period_1D_with_broderick_et_al:
     input:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model',  '{stimtest}', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-pRFsize_tavg-False.csv')
+        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", '{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
+        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        broderick_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], 'before_w_a_correction', "sfp_model", "results_1D", "broderick", 'tfunc-uncorrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_curbin=np.arange(0,10), broderick_subj=make_subj_list('broderick')),
+        broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'before_w_a_correction', 'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision',  '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv')
+        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all", '{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
     params:
-        p_dict = {1: 'noise_SD', 2: 'sigma_v_squared'}
+        roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
+        roi_pal=ROI_PAL
     run:
-        subj_vs_df = pd.read_csv(input[0])
-        power_val = [1,2]
-        power_var = [col for p, col in params.p_dict.items() if p in power_val]
-        sigma_v_df = bts.get_multiple_sigma_vs(subj_vs_df,
-                                               power=power_val,
-                                               columns=power_var,
-                                               to_sd='betas', to_group=['sub','voxel', 'vroinames'])
-        sigma_v_df.to_csv(output[0], index=False)
+        args = ['sub', 'class','lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
+        tuning_with_precision_df = pd.DataFrame({})
+        fit_df = pd.DataFrame({})
+        for precision_input, model_input in zip([input.nsd_precision_s, input.broderick_precision_s],
+                                                [input.nsd_models, input.broderick_models]):
+            precision_s = pd.read_csv(precision_input)
+            params_df = tuning.load_all_models(model_input,*args)
+            tmp_tuning_df = params_df.merge(precision_s[['sub', 'vroinames', 'precision']],on=['sub', 'vroinames'])
+            tmp_tuning_df['pp'] = 1 / tmp_tuning_df['mode']
+            if precision_input == input.nsd_precision_s:
+                tmp_tuning_df['dset_type'] = tmp_tuning_df['vroinames'].apply(lambda x: f'NSD {x}')
+            else:
+                tmp_tuning_df['dset_type'] = 'Broderick et al. V1'
+            tmp_fit_df = vis1D.fit_line_to_weighted_mean(tmp_tuning_df,'pp','precision',groupby=['vroinames', 'dset_type'])
+            tuning_with_precision_df = pd.concat((tuning_with_precision_df, tmp_tuning_df), axis=0)
+            fit_df = pd.concat((fit_df, tmp_fit_df), axis=0)
+        tuning_with_precision_df, fit_df = vis1D.create_goal_columns(tuning_with_precision_df, fit_df)
+        fit_df = vis1D.extend_NSD_line(fit_df)
+        params.roi_pal.insert(0, (0.5,0.5,0.5))
+        g = vis1D.plot_preferred_period(tuning_with_precision_df,
+                                        preferred_period='pp',
+                                        precision='precision', suptitle='Preferred period',
+                                        row='goal', row_order=['Replication','Extension'],
+                                        hue='dset_type',hue_order=params.roi_list,
+                                        fit_df=fit_df,pal=params.roi_pal,
+                                        lgd_title='Dataset & ROI',width=3.4, height=2.5, save_path=output[0])
 
-def define_rois_for_precision_s_df(dset):
-    if dset == "nsdsyn":
-        return ROIS
-    else:
-        return ['V1']
-
-rule make_precision_s_df:
+rule plot_full_width_half_maximum_1D_with_broderick_et_al:
     input:
-        precision_v = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{{dset}}','precision', '{{stimtest}}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'), subj=make_subj_list(wildcards.dset), roi=define_rois_for_precision_s_df(wildcards.dset)),
+        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",'{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
+        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        broderick_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], 'before_w_a_correction', "sfp_model", "results_1D", "broderick", 'tfunc-uncorrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_curbin=np.arange(0,10), broderick_subj=make_subj_list('broderick')),
+        broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'before_w_a_correction', 'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', '{stimtest}', 'precision-s_dset-{dset}_vs-pRFsize.csv')
-    log:
-        os.path.join(config['OUTPUT_DIR'],'logs','dataframes','{dset}','precision', '{stimtest}', 'precision-s_dset-{dset}_vs-pRFsize.log')
+        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all", '{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
+    params:
+        roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
+        roi_pal=ROI_PAL
     run:
-        precision_v = utils.load_dataframes(input.precision_v)
-        precision_s = precision_v.groupby(['sub','vroinames']).mean().reset_index()
-        precision_s['precision'] = 1 / precision_s['sigma_v_squared']
-        precision_s.to_csv(output[0], index=False)
+        args = ['sub', 'class', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
+        tuning_with_precision_df = pd.DataFrame({})
+        fit_bandwidth_df = pd.DataFrame({})
+        for precision_input, model_input in zip([input.nsd_precision_s, input.broderick_precision_s],
+                                                [input.nsd_models, input.broderick_models]):
+            precision_s = pd.read_csv(precision_input)
+            params_df = tuning.load_all_models(model_input,*args)
+            tmp_tuning_df = params_df.merge(precision_s[['sub', 'vroinames', 'precision']],on=['sub', 'vroinames'])
+            if precision_input == input.nsd_precision_s:
+                tmp_tuning_df['dset_type'] = tmp_tuning_df['vroinames'].apply(lambda x: f'NSD {x}')
+            else:
+                tmp_tuning_df['dset_type'] = 'Broderick et al. V1'
+            tmp_tuning_df['fwhm'] = tmp_tuning_df['sigma'] * 2.335  #fwhm
+            tmp_fit_bandwidth_df = vis1D.fit_line_to_weighted_mean(tmp_tuning_df,'fwhm','precision',groupby=['vroinames','dset_type'])
+            tuning_with_precision_df = pd.concat((tuning_with_precision_df, tmp_tuning_df), axis=0)
+            fit_bandwidth_df = pd.concat((fit_bandwidth_df, tmp_fit_bandwidth_df), axis=0)
+
+        tuning_with_precision_df, fit_bandwidth_df = vis1D.create_goal_columns(tuning_with_precision_df, fit_bandwidth_df)
+        #fit_bandwidth_df = vis1D.extend_NSD_line(fit_bandwidth_df)
+        params.roi_pal.insert(0, (0.5,0.5,0.5))
+        vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,
+                                        fit_df=fit_bandwidth_df, bandwidth='fwhm',precision='precision',
+                                        row='goal', row_order=['replication','extension'],
+                                        hue='dset_type', hue_order=params.roi_list,
+                                        pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',width=3.4,
+                                        errorbar=("ci", 68), save_path=output[0])
+
 
 rule results_1D_all:
     input:
@@ -505,85 +583,6 @@ rule nsdsyn_data_for_bootstraps:
         bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
         bootstrap_df['bootstrap'] = int(wildcards.bts)
         bootstrap_df.to_csv(output[0], index=False)
-
-
-rule plot_preferred_period_1D_with_broderick_et_al:
-    input:
-        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn", '{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
-        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
-        broderick_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], 'before_w_a_correction', "sfp_model", "results_1D", "broderick", 'tfunc-uncorrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_curbin=np.arange(0,10), broderick_subj=make_subj_list('broderick')),
-        broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'before_w_a_correction', 'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all", '{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
-    params:
-        roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
-        roi_pal=ROI_PAL
-    run:
-        args = ['sub', 'class','lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
-        tuning_with_precision_df = pd.DataFrame({})
-        fit_df = pd.DataFrame({})
-        for precision_input, model_input in zip([input.nsd_precision_s, input.broderick_precision_s],
-                                                [input.nsd_models, input.broderick_models]):
-            precision_s = pd.read_csv(precision_input)
-            params_df = tuning.load_all_models(model_input,*args)
-            tmp_tuning_df = params_df.merge(precision_s[['sub', 'vroinames', 'precision']],on=['sub', 'vroinames'])
-            tmp_tuning_df['pp'] = 1 / tmp_tuning_df['mode']
-            if precision_input == input.nsd_precision_s:
-                tmp_tuning_df['dset_type'] = tmp_tuning_df['vroinames'].apply(lambda x: f'NSD {x}')
-            else:
-                tmp_tuning_df['dset_type'] = 'Broderick et al. V1'
-            tmp_fit_df = vis1D.fit_line_to_weighted_mean(tmp_tuning_df,'pp','precision',groupby=['vroinames', 'dset_type'])
-            tuning_with_precision_df = pd.concat((tuning_with_precision_df, tmp_tuning_df), axis=0)
-            fit_df = pd.concat((fit_df, tmp_fit_df), axis=0)
-        tuning_with_precision_df, fit_df = vis1D.create_goal_columns(tuning_with_precision_df, fit_df)
-        fit_df = vis1D.extend_NSD_line(fit_df)
-        params.roi_pal.insert(0, (0.5,0.5,0.5))
-        g = vis1D.plot_preferred_period(tuning_with_precision_df,
-                                        preferred_period='pp',
-                                        precision='precision', suptitle='Preferred period',
-                                        row='goal', row_order=['Replication','Extension'],
-                                        hue='dset_type',hue_order=params.roi_list,
-                                        fit_df=fit_df,pal=params.roi_pal,
-                                        lgd_title='Dataset & ROI',width=3.4, height=2.5, save_path=output[0])
-
-rule plot_full_width_half_maximum_1D_with_broderick_et_al:
-    input:
-        nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",'{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
-        nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
-        broderick_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], 'before_w_a_correction', "sfp_model", "results_1D", "broderick", 'tfunc-uncorrected_model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-1_e2-12_nbin-11_curbin-{broderick_curbin}_dset-broderick_sub-{broderick_subj}_roi-V1_vs-{{vs}}.pt'), broderick_curbin=np.arange(0,10), broderick_subj=make_subj_list('broderick')),
-        broderick_precision_s = os.path.join(config['OUTPUT_DIR'],'before_w_a_correction', 'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all", '{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-{vs}.{fig_format}')
-    params:
-        roi_list=['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3'],
-        roi_pal=ROI_PAL
-    run:
-        args = ['sub', 'class', 'lr', 'eph', 'roi', 'e1', 'e2', 'nbin', 'curbin']
-        tuning_with_precision_df = pd.DataFrame({})
-        fit_bandwidth_df = pd.DataFrame({})
-        for precision_input, model_input in zip([input.nsd_precision_s, input.broderick_precision_s],
-                                                [input.nsd_models, input.broderick_models]):
-            precision_s = pd.read_csv(precision_input)
-            params_df = tuning.load_all_models(model_input,*args)
-            tmp_tuning_df = params_df.merge(precision_s[['sub', 'vroinames', 'precision']],on=['sub', 'vroinames'])
-            if precision_input == input.nsd_precision_s:
-                tmp_tuning_df['dset_type'] = tmp_tuning_df['vroinames'].apply(lambda x: f'NSD {x}')
-            else:
-                tmp_tuning_df['dset_type'] = 'Broderick et al. V1'
-            tmp_tuning_df['fwhm'] = tmp_tuning_df['sigma'] * 2.335  #fwhm
-            tmp_fit_bandwidth_df = vis1D.fit_line_to_weighted_mean(tmp_tuning_df,'fwhm','precision',groupby=['vroinames','dset_type'])
-            tuning_with_precision_df = pd.concat((tuning_with_precision_df, tmp_tuning_df), axis=0)
-            fit_bandwidth_df = pd.concat((fit_bandwidth_df, tmp_fit_bandwidth_df), axis=0)
-
-        tuning_with_precision_df, fit_bandwidth_df = vis1D.create_goal_columns(tuning_with_precision_df, fit_bandwidth_df)
-        fit_bandwidth_df = vis1D.extend_NSD_line(fit_bandwidth_df)
-        params.roi_pal.insert(0, (0.5,0.5,0.5))
-        vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,
-                                        fit_df=fit_bandwidth_df, bandwidth='fwhm',precision='precision',
-                                        row='goal', row_order=['Replication','Extension'],
-                                        hue='dset_type', hue_order=params.roi_list,
-                                        pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',width=3.4,
-                                        errorbar=("ci", 68), save_path=output[0])
 
 
 rule binning_broderick:

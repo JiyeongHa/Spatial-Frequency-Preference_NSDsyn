@@ -22,10 +22,11 @@ rc = {'text.color': 'black',
       'axes.labelpad': 6,
       'xtick.major.pad': 10,
       'xtick.major.width': 1,
+      'xtick.minor.width': 0.9,
       'ytick.major.width': 1,
       'lines.linewidth': 1,
       'font.size': 11,
-      'axes.titlesize': 11,
+      'axes.titlesize': 14,
       'axes.labelsize': 11,
       'xtick.labelsize': 11,
       'ytick.labelsize': 11,
@@ -54,13 +55,11 @@ def plot_tuning_curves_NSD(data_df, params_df,
                            subj, bins_to_plot, pal,
                            x='local_sf', y='betas',
                            markersize=20, normalize=True,
-                           width=6, height=2.7, save_path=None):
+                           width=6.5, height=2.6, save_path=None):
 
     rc.update({'xtick.major.pad': 3,
                'xtick.labelsize': 9,
                'axes.titlepad': 10,
-               'axes.titlesize': 14,
-               'axes.titleweight': 'bold',
                'legend.title_fontsize': 10,
                'legend.fontsize': 10,
                })
@@ -107,7 +106,7 @@ def plot_tuning_curves_NSD(data_df, params_df,
         axes[g].spines['top'].set_visible(False)
         axes[g].spines['right'].set_visible(False)
         axes[g].tick_params(axis='both')
-        axes[g].legend(title=None, loc=(-0.1, 0.00), frameon=False,handletextpad=0.08)
+        axes[g].legend(title=None, loc=(-0.1, 0.00), frameon=False, handletextpad=0.08)
 
 
     #axes[-1].legend(title='Eccentricity band', bbox_to_anchor=(1, 0.85), frameon=False)
@@ -117,7 +116,7 @@ def plot_tuning_curves_NSD(data_df, params_df,
 
     fig.supxlabel('Local spatial frequency (cpd)')
     fig.supylabel('BOLD response\n(Normalized amplitude)', ha='center')
-    fig.subplots_adjust(wspace=0.3, left=0.1, bottom=0.2)
+    fig.subplots_adjust(wspace=0.32, left=0.12, bottom=0.2)
     utils.save_fig(save_path)
     return fig, axes
 
@@ -293,7 +292,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
 
     return g
 
-def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
+def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df=None,
                               pal=sns.color_palette("tab10"),
                               lgd_title=None,
                               row=None, row_order=None,
@@ -349,8 +348,8 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df,
                         color=pal[i], linestyle='-', linewidth=1.5, zorder=10-i)
 
     grid.set_axis_labels('Eccentricity (deg)', 'FWHM (in octaves)')
-    grid.axes[0,0].set(xlim=(0,11), xticks=[0,2,4,6,8,10],ylim=(3,7), yticks=[3,5,7])
-    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(4,12.2), yticks=[4,8,12])
+    grid.axes[0,0].set(xlim=(0,11), xticks=[0,2,4,6,8,10],ylim=(0,8), yticks=[0,4,8])
+    grid.axes[1,0].set(xlim=(0,4), xticks=[0,1,2,3,4], ylim=(0,12.2), yticks=[0,4,8,12])
     grid.fig.text(0.55, 0.95, suptitle, weight='bold', ha='center', fontsize=rc['figure.titlesize'])
     grid.fig.subplots_adjust(hspace=0.5)
     utils.save_fig(save_path)
@@ -564,9 +563,9 @@ def plot_datapoints(df, x, y, hue, hue_order=None, lgd_title=None,
     return g
 def assign_goal(dset_type):
     if dset_type == 'Broderick et al. V1':
-        return 'Replication'
+        return 'replication'
     elif 'NSD' in dset_type:
-        return 'Extension'
+        return 'extension'
     else:
         return None
 
@@ -574,8 +573,8 @@ def create_goal_columns(tuning_df, fit_df):
 
     tmp_tuning_df = tuning_df.query('dset_type == "NSD V1"')
     tmp_fit_df = fit_df.query('dset_type == "NSD V1"')
-    tmp_tuning_df['goal'] = 'Replication'
-    tmp_fit_df['goal'] = 'Replication'
+    tmp_tuning_df['goal'] = 'replication'
+    tmp_fit_df['goal'] = 'replication'
 
     tuning_df['goal'] = tuning_df['dset_type'].apply(assign_goal)
     fit_df['goal'] = fit_df['dset_type'].apply(assign_goal)
