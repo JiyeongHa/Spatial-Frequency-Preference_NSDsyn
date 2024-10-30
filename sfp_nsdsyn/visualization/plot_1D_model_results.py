@@ -228,7 +228,7 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
                           pal=sns.color_palette("tab10"),
                           lgd_title=None,
                           row=None, row_order=None,
-                          suptitle=None, width=3.4,height=2.5, errorbar=("ci", 68),
+                          suptitle=None, height=2.5, width=3.4, errorbar=("ci", 68),
                           save_path=None):
     rc.update({'axes.titlepad': 10})
     sns.set_theme("notebook", style='ticks', rc=rc)
@@ -260,9 +260,9 @@ def plot_preferred_period(df, preferred_period, precision, hue, hue_order, fit_d
 
         # Modifying the properties of the handles, e.g., increasing the line width
         for handle in handles:
-            if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
-                handle.set_linewidth(4)  # Set line width to 3
-                handle.set_alpha(1)
+            handle.set_marker('o')
+            handle.set_alpha(0.9)
+            handle.set_linewidth(2)
         if row is not None:
             grid.axes[0,0].legend(handles=handles, labels=labels, loc=(1.1, 0.3), title=lgd_title, frameon=False)
         else:
@@ -318,7 +318,6 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df=N
                  linestyle='', markersize=5, mew=0.1, mec='white',
                  estimator=utils.weighted_mean, errorbar=errorbar,
                  err_style='bars', err_kws={'elinewidth': 1.5}, alpha=0.85, zorder=20)
-
     if lgd_title is not None:
         if row is not None:
             handles, labels = g.axes[-1,0].get_legend_handles_labels()
@@ -327,9 +326,9 @@ def plot_bandwidth_in_octaves(df, bandwidth, precision, hue, hue_order, fit_df=N
 
         # Modifying the properties of the handles, e.g., increasing the line width
         for handle in handles:
-            if hasattr(handle, 'set_linewidth'):  # Checking if the handle is a line
-                handle.set_linewidth(4)  # Set line width to 3
-                handle.set_alpha(1)
+            handle.set_marker('o')
+            handle.set_alpha(0.9)
+            handle.set_linewidth(0)
         if row is not None:
             grid.axes[0,0].legend(handles=handles, labels=labels, loc=(1.1, 0.3), title=lgd_title, frameon=False)
         else:
@@ -585,7 +584,7 @@ def create_goal_columns(tuning_df, fit_df):
 
 def extend_NSD_line(fit_df):
     ecc_max = fit_df.query('dset_type == "Broderick et al. V1"').ecc.max()
-    tmp_fit_df = fit_df.query('dset_type == "NSD V1" & goal == "Replication" & ecc == 0')
+    tmp_fit_df = fit_df.query('dset_type == "NSD V1" & goal == "replication" & ecc == 0')
     coeff = tmp_fit_df['coefficient'].iloc[0].tolist()
     tmp_fit_df['ecc'] = ecc_max
     tmp_fit_df['fitted'] = coeff[0] * ecc_max + coeff[1]

@@ -348,15 +348,15 @@ rule plot_preferred_period_1D_with_broderick_et_al:
         tuning_with_precision_df, fit_df = vis1D.create_goal_columns(tuning_with_precision_df, fit_df)
         fit_df = vis1D.extend_NSD_line(fit_df)
         params.roi_pal.insert(0, (0.5,0.5,0.5))
-        g = vis1D.plot_preferred_period(tuning_with_precision_df,
-                                        preferred_period='pp',
-                                        precision='precision', suptitle='Preferred period',
-                                        row='goal', row_order=['Replication','Extension'],
-                                        hue='dset_type',hue_order=params.roi_list,
-                                        fit_df=fit_df,pal=params.roi_pal,
-                                        lgd_title='Dataset & ROI',width=3.4, height=2.5, save_path=output[0])
+        g = vis1D.plot_preferred_period(tuning_with_precision_df,fit_df=fit_df,
+                                        row='goal',row_order=['replication', 'extension'],
+                                        preferred_period='pp',precision='precision',hue='dset_type',
+                                        hue_order=params.roi_list,lgd_title='Dataset & ROI',
+                                        pal=params.roi_pal, height=2.5, width=3.4,
+                                        suptitle='Preferred period',
+                                        save_path=output[0])
 
-rule plot_full_width_half_maximum_1D_with_broderick_et_al:
+rule plot_fwhm_1D_with_broderick_et_al:
     input:
         nsd_models = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",'{{stimtest}}', 'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{subj}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), subj=make_subj_list('nsdsyn'), roi=ROIS),
         nsd_precision_s = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','{stimtest}', 'precision-s_dset-nsdsyn_vs-pRFsize.csv'),
@@ -389,21 +389,21 @@ rule plot_full_width_half_maximum_1D_with_broderick_et_al:
         #fit_bandwidth_df = vis1D.extend_NSD_line(fit_bandwidth_df)
         params.roi_pal.insert(0, (0.5,0.5,0.5))
         vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,
-                                        fit_df=fit_bandwidth_df, bandwidth='fwhm',precision='precision',
+                                        fit_df=None, bandwidth='fwhm',precision='precision',
                                         row='goal', row_order=['replication','extension'],
-                                        hue='dset_type', hue_order=params.roi_list,
-                                        pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',width=3.4,
+                                        hue='dset_type', hue_order=params.roi_list, height=2.5, width=3.4,
+                                        pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',
                                         errorbar=("ci", 68), save_path=output[0])
 
 
 rule results_1D_all:
     input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.svg'),
-                    stimtest=['corrected'], stim_class=['avg'], normalize=['True'], e1=0.5, e2=4, enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
-        # b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
-        #            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png']),
-        # c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
-        #            stimtest=['corrected', 'uncorrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['png'])
+        # a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.svg'),
+        #            stimtest=['corrected'], stim_class=['avg'], normalize=['True'], e1=0.5, e2=4, enum=['7'], bins_to_plot=['0-6'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, dset='nsdsyn', subj=make_subj_list('nsdsyn')),
+        b = expand(os.path.join(config['OUTPUT_DIR'],'figures', "sfp_model","results_1D", "all",'{stimtest}', 'pperiod_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
+                   stimtest=['corrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['svg']),
+        c = expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_1D","all",'{stimtest}', 'fwhm_class-{stim_class}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_vs-pRFcenter.{fig_format}'),
+                   stimtest=['corrected'], stim_class=['avg'], e1=0.5, e2=4, enum=['7','log3'], lr=LR_1D, max_epoch=MAX_EPOCH_1D, fig_format=['svg'])
 
 rule run_model:
     input:
