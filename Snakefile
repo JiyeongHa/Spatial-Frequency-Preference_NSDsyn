@@ -482,7 +482,7 @@ rule plot_avg_model_parameters:
                                      pal=pal, params_list=params_list,
                                      ylim_list=ylim_list, yticks_list=ytick_list,
                                      width_ratios=(0.8, 2, 1.5, 1.5, 1.5), fig_size=(8.6, 1.5),
-                                     dot_scale=0.9,errwidth=2,
+                                     dot_scale=0.9, errwidth=2,
                                      save_path=output[0])
 
 rule predict_Pv_based_on_model:

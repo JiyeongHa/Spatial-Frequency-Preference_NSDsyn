@@ -204,7 +204,7 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
 
 def make_param_summary_fig(params_df, hue, hue_order, pal,
                            params_list, ylim_list, yticks_list,
-                           errwidth=1.2, title_list=None,
+                           title_list=None,
                            width_ratios=(0.8,1.8,1.3,1.3,1.3), fig_size=(7, 1.5),
                            save_path=None, **kwargs):
     rc.update({
