@@ -227,7 +227,6 @@ def make_param_summary_fig(params_df, hue, hue_order, pal,
                                                   yticks=yticks_list[i],
                                                   ax=ax,
                                                   pal=pal, **kwargs)
-        plt.setp(g.collections, clip_on=False)
         g.legend_.remove()
         if title_list is not None:
             ax.set_title(title_list[i], fontweight="bold")
