@@ -495,15 +495,6 @@ rule  fit_to_bootstraps:
                bts=np.arange(0,100), lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=ROIS, vs='pRFsize')
 
 
-def y_filter_for_goal(goal):
-    if goal in ['replication', 'Replication']:
-        ylim_list = [(1, 3), (0, 0.42), (-0.15, 0.15), (-0.07, 0.07), (-0.11, 0.11)]
-        ytick_list = [[1, 2, 3], [0, 0.2, 0.4], [-0.15, 0, 0.15], [-0.05, 0, 0.05], [-0.1, 0, 0.1]]
-    elif goal in ['extension', 'Extension']:
-        ylim_list = [(1.6, 5), (0, 0.4), (-0.2, 0.205), (-0.05, 0.07), (-0.8, 0.4)]
-        ytick_list = [[2, 3, 4, 5], [0, 0.2, 0.4], [-0.2, 0, 0.2], [-0.05, 0, 0.05], [-0.8, -0.4, 0, 0.4]]
-    return ylim_list, ytick_list
-
 rule plot_avg_model_parameters:
     input:
         nsd_model_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn",'{{stimtest}}', 'model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'), subj=make_subj_list('nsdsyn'), roi=ROIS),
@@ -533,7 +524,7 @@ rule plot_avg_model_parameters:
         final_df = pd.concat((tmp, final_df),axis=0)
         params_list = [['sigma'], ['slope', 'intercept'], ['p_1', 'p_2'], ['A_1', 'A_2'], ['p_3', 'p_4']]
         tmp, hue_order, pal = vis2D.filter_for_goal(final_df, wildcards.goal)
-        ylim_list, ytick_list = y_filter_for_goal(wildcards.goal)
+        ylim_list, ytick_list = vis2D.get_y_values_for_summary_fig(wildcards.goal)
         vis2D.make_param_summary_fig(tmp,'dset_type', hue_order=hue_order,
                                      pal=pal, params_list=params_list,
                                      ylim_list=ylim_list, yticks_list=ytick_list,
@@ -587,18 +578,21 @@ rule plot_replication_prediction_figures:
 
         tmp, hue_order, pal = vis2D.filter_for_goal(final_params, 'replication')
         weighted_mean_df = vis2D.get_weighted_average_of_params(tmp, ['dset_type'], params.ecc, params.angle, params.local_ori)
+        my_param = vis2D.get_params(wildcards.params)
+        param_ylim, param_yticks = vis2D.get_param_y_values((wildcards.params, 'replication')
+        pred_ylim, pred_yticks = vis2D.get_prediction_y_values((wildcards.params, 'replication')
 
         vis2D.plot_param_and_prediction(params_df=tmp,
-                                        params=['sigma'],
+                                        params=my_param,
                                         hue='dset_type',
                                         hue_order=hue_order,
                                         prediction_df=weighted_mean_df,
                                         prediction_y=None,
                                         pal=pal,
-                                        params_ylim=(1.6, 4.75),
-                                        params_yticks=[2, 3, 4],
-                                        prediction_ylim=None,
-                                        prediction_yticks=None,
+                                        params_ylim=param_ylim,
+                                        params_yticks=param_yticks,
+                                        prediction_ylim=pred_ylim,
+                                        prediction_yticks=pred_yticks,
                                         title='Bandwidth of V1 spatial frequency tuning curves',
                                         prediction_ylabel='Preferred period (deg)',
                                         figsize=(3.5, 1.8),

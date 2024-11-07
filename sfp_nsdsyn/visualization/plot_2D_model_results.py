@@ -38,6 +38,66 @@ rc = {'text.color': 'black',
       }
 mpl.rcParams.update(rc)
 
+
+def get_y_values_for_summary_fig(goal):
+    if goal in ['replication', 'Replication']:
+        ylim_list = [(1, 3), (0, 0.42), (-0.15, 0.15), (-0.07, 0.07), (-0.11, 0.11)]
+        ytick_list = [[1, 2, 3], [0, 0.2, 0.4], [-0.15, 0, 0.15], [-0.05, 0, 0.05], [-0.1, 0, 0.1]]
+    elif goal in ['extension', 'Extension']:
+        ylim_list = [(1.6, 5), (0, 0.4), (-0.2, 0.205), (-0.05, 0.07), (-0.8, 0.4)]
+        ytick_list = [[2, 3, 4, 5], [0, 0.2, 0.4], [-0.2, 0, 0.2], [-0.05, 0, 0.05], [-0.8, -0.4, 0, 0.4]]
+    return ylim_list, ytick_list
+
+def get_params(param):
+    if param == 'ecc_effect':
+        return ['slope', 'intercept']
+    else:
+        return [param]
+
+def get_param_y_values(param, goal):
+    if goal in ['replication','Replication']:
+        switcher = {'sigma': [(1,3), [1,2,3]],
+                     'ecc_effect': [(0, 0.43), [0, 0.2, 0.4]],
+                     'p_1': [(-0.2, 0.2),[-0.2,0,0.2]],
+                     'p_2': [(-0.2, 0.2), [-0.2,0,0.2]],
+                     'p_3': [(-0.2, 0.2), [-0.2,0,0.2]],
+                     'p_4':  [(-0.2, 0.2), [-0.2,0,0.2]],
+                     'A_1': [(-0.1,0.1), [-0.1,-0.05,0,0.05,0.1]],
+                     'A_2': [(-0.05,0.05), [-0.05,0,0.05]]}
+    elif goal in ['extension', 'Extension']:
+        switcher = {'sigma': [(1.8, 5), [2,3,4,5]],
+                     'ecc_effect': [(0, 0.4), [0, 0.2, 0.4]],
+                     'p_1': [(-0.05, 0.22),[0,0.1,0.2]],
+                     'p_2': [(-0.2, 0.02), [-0.2,-0.1,0]],
+                     'p_3': [(-1, 0.2), [-1,-0.5,0]],
+                     'p_4':  [(-0.2, 0.2), [-0.2,0,0.2]],
+                     'A_1': [(-0.1,0.1), [-0.1,-0.05,0,0.05,0.1]],
+                     'A_2': [(-0.1,0.1), [-0.1,-0.05,0,0.05,0.1]]}
+    else:
+        raise ValueError('the goal should be either replication or extension')
+    return switcher.get(param, None)
+
+
+def get_prediction_y_values(param, goal):
+    if goal in ['replication','Replication']:
+        switcher = {'sigma': [(0,1), [0, 0.5, 1]],
+                     'ecc_effect': [(0,2), [0,1,2],],
+                     'p_1': [(-0.5, 0.5),[-0.5,0,0.5]],
+                     'p_2': [(-0.5, 0.5),[-0.5,0,0.5]],
+                     'p_3': [(-0.5, 0.5),[-0.5,0,0.5]],
+                     'p_4':  [(-0.5, 0.5),[-0.5,0,0.5]]}
+    elif goal in ['extension', 'Extension']:
+        switcher = {'sigma': [(0,1), [0, 0.5, 1]],
+                    'ecc_effect': [(0,1), [0, 0.5, 1]],
+                    'p_1': [(-0.1, 0.4),[0,0.2,0.4]],
+                    'p_2': [(-0.4, 0.025),[-0.4,-0.2,0]],
+                    'p_3': [(-2, 0.4), [-2,-1,0]],
+                    'p_4': [(-0.4, 0.4), [-0.4,0,0.4]]}
+    else:
+        raise ValueError('the goal should be either replication or extension')
+    return switcher.get(param, None)
+
+
 def merge_model_and_precision(pt_path, precision_path, *ARGS_2D):
     from sfp_nsdsyn.two_dimensional_model import load_all_models
     if type(pt_path) is not list:
