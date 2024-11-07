@@ -123,30 +123,6 @@ rule prep_nsdsyn_data:
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
-rule nsdsyn_data_for_bootstraps:
-    input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
-    run:
-        import random
-        subj_df = pd.read_csv(input.subj_df)
-        phase_list = subj_df.phase.unique()
-        task_list = subj_df.task.unique()
-        bootstrap_df = pd.DataFrame({})
-        assert subj_df.class_idx.nunique() == 28
-        for i in subj_df.class_idx.unique():
-            sample_df = subj_df.query('class_idx == @i')
-            sample_phases = random.choices(phase_list, k=8)
-            sample_tasks = random.choices(task_list, k=8)
-            for p, t in zip(sample_phases,sample_tasks):
-                tmp = sample_df.query('phase == @p & task == @t')
-                bootstrap_df = pd.concat([bootstrap_df, tmp])
-        bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
-        bootstrap_df['bootstrap'] = int(wildcards.bts)
-        bootstrap_df.to_csv(output[0], index=False)
-
-
 rule prep_broderick_data:
     input:
         stim_info = os.path.join(config['BRODERICK_DIR'], 'stimuli', 'task-sfprescaled_stim_description.csv'),
@@ -462,10 +438,34 @@ rule run_model:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+
+rule nsdsyn_data_for_bootstraps:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    run:
+        import random
+        subj_df = pd.read_csv(input.subj_df)
+        phase_list = subj_df.phase.unique()
+        task_list = subj_df.task.unique()
+        bootstrap_df = pd.DataFrame({})
+        assert subj_df.class_idx.nunique() == 28
+        for i in subj_df.class_idx.unique():
+            sample_df = subj_df.query('class_idx == @i')
+            sample_phases = random.choices(phase_list, k=8)
+            sample_tasks = random.choices(task_list, k=8)
+            for p, t in zip(sample_phases,sample_tasks):
+                tmp = sample_df.query('phase == @p & task == @t')
+                bootstrap_df = pd.concat([bootstrap_df, tmp])
+        bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
+        bootstrap_df['bootstrap'] = int(wildcards.bts)
+        bootstrap_df.to_csv(output[0], index=False)
+
 rule run_model_for_bootstraps:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', 'corrected', 'precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
         model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     resources:
