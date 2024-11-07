@@ -465,9 +465,9 @@ rule nsdsyn_data_for_bootstraps:
 rule run_model_for_bootstraps:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', 'corrected', 'precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', 'corrected', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
@@ -491,7 +491,7 @@ rule run_model_for_bootstraps:
 
 rule  fit_to_bootstraps:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
                bts=np.arange(0,100)[0], lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[0], roi=ROIS[0], vs='pRFsize')
 
 
