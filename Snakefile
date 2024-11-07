@@ -168,6 +168,7 @@ rule prep_broderick_data:
     run:
         from sfp_nsdsyn.Broderick_dataset import _transform_angle_corrected
         if wildcards.tavg == 'True':
+            results_names = ['modelmd']
         elif wildcards.tavg == 'False':
             results_names = ['models']
 
