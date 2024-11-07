@@ -464,7 +464,7 @@ rule run_model:
 
 rule run_model_for_bootstraps:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
         precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
         model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
