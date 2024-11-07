@@ -492,7 +492,7 @@ rule run_model_for_bootstraps:
 rule  fit_to_bootstraps:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-               bts=np.arange(0,100)[0], lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[0], roi=ROIS[0], vs='pRFsize')
+               bts=np.arange(0,100), lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=ROIS, vs='pRFsize')
 
 
 def y_filter_for_goal(goal):
