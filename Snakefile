@@ -123,6 +123,30 @@ rule prep_nsdsyn_data:
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0],index=False)
 
+rule nsdsyn_data_for_bootstraps:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    run:
+        import random
+        subj_df = pd.read_csv(input.subj_df)
+        phase_list = subj_df.phase.unique()
+        task_list = subj_df.task.unique()
+        bootstrap_df = pd.DataFrame({})
+        assert subj_df.class_idx.nunique() == 28
+        for i in subj_df.class_idx.unique():
+            sample_df = subj_df.query('class_idx == @i')
+            sample_phases = random.choices(phase_list, k=8)
+            sample_tasks = random.choices(task_list, k=8)
+            for p, t in zip(sample_phases,sample_tasks):
+                tmp = sample_df.query('phase == @p & task == @t')
+                bootstrap_df = pd.concat([bootstrap_df, tmp])
+        bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
+        bootstrap_df['bootstrap'] = int(wildcards.bts)
+        bootstrap_df.to_csv(output[0], index=False)
+
+
 rule prep_broderick_data:
     input:
         stim_info = os.path.join(config['BRODERICK_DIR'], 'stimuli', 'task-sfprescaled_stim_description.csv'),
@@ -144,7 +168,6 @@ rule prep_broderick_data:
     run:
         from sfp_nsdsyn.Broderick_dataset import _transform_angle_corrected
         if wildcards.tavg == 'True':
-            results_names = ['modelmd']
         elif wildcards.tavg == 'False':
             results_names = ['models']
 
@@ -395,7 +418,6 @@ rule plot_fwhm_1D_with_broderick_et_al:
                                         pal=params.roi_pal,lgd_title='ROIs', suptitle='Bandwidth',
                                         errorbar=("ci", 68), save_path=output[0])
 
-
 rule results_1D_all:
     input:
         # a = expand(os.path.join(config['OUTPUT_DIR'],"figures", "sfp_model","results_1D", "nsdsyn",  '{stimtest}', 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-pRFcenter.svg'),
@@ -438,6 +460,39 @@ rule run_model:
                                                          eps=1e-8)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+rule run_model_for_bootstraps:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
+    run:
+        subj_df = pd.read_csv(input.subj_df)
+        precision_df = pd.read_csv(input.precision)
+        df = subj_df.merge(precision_df,on=['sub', 'vroinames', 'voxel'])
+        df = df.groupby(['sub', 'voxel', 'class_idx', 'names','vroinames']).mean().reset_index()
+        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
+        loss_history, model_history, _ = model.fit_model(subj_model,subj_dataset,
+                                                        learning_rate=float(wildcards.lr),
+                                                        max_epoch=int(wildcards.max_epoch),
+                                                        save_path=output.model,
+                                                        print_every=10000,
+                                                        loss_all_voxels=False,
+                                                        anomaly_detection=False,
+                                                        amsgrad=False,
+                                                        eps=1e-8)
+
+
+rule  fit_to_bootstraps:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+               bts=np.arange(0,100)[0], lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[0], roi=ROIS[0], vs='pRFsize')
+
 
 def y_filter_for_goal(goal):
     if goal in ['replication', 'Replication']:
@@ -560,30 +615,6 @@ rule results_2D:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","results_2D", 'corrected', "{goal}", 'fig1-params_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}'),
                goal=['replication','extension'], lr=LR_2D, max_epoch=MAX_EPOCH_2D, fig_format=['svg'])
-
-rule nsdsyn_data_for_bootstraps:
-    input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
-    output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
-    run:
-        import random
-        subj_df = pd.read_csv(input.subj_df)
-        phase_list = subj_df.phase.unique()
-        task_list = subj_df.task.unique()
-        bootstrap_df = pd.DataFrame({})
-        assert subj_df.class_idx.nunique() == 28
-        for i in subj_df.class_idx.unique():
-            sample_df = subj_df.query('class_idx == @i')
-            sample_phases = random.choices(phase_list, k=8)
-            sample_tasks = random.choices(task_list, k=8)
-            for p, t in zip(sample_phases,sample_tasks):
-                tmp = sample_df.query('phase == @p & task == @t')
-                bootstrap_df = pd.concat([bootstrap_df, tmp])
-        bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
-        bootstrap_df['bootstrap'] = int(wildcards.bts)
-        bootstrap_df.to_csv(output[0], index=False)
-
 
 rule binning_broderick:
     input:
@@ -717,39 +748,6 @@ rule plot_full_width_half_maximum_1D:
         fit_bandwidth_df = vis1D.fit_line_to_weighted_mean(tuning_with_precision_df, 'fwhm', 'precision', groupby=['vroinames'])
         vis1D.plot_bandwidth_in_octaves(tuning_with_precision_df,bandwidth='fwhm',precision='precision',hue='vroinames',hue_order=params.roi_list,fit_df=fit_bandwidth_df,pal=params.roi_pal,lgd_title='ROIs',row=None,row_order=None,suptitle=None,height=4,width=3,errorbar=(
             "ci", 68),save_path=output[0])
-
-rule run_model_for_bootstraps:
-    input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision','precision-v_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
-    output:
-        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-    resources:
-        cpus_per_task = 1,
-        mem_mb = 2000
-    run:
-        subj_df = pd.read_csv(input.subj_df)
-        precision_df = pd.read_csv(input.precision)
-        df = subj_df.merge(precision_df,on=['sub', 'vroinames', 'voxel'])
-        df = df.groupby(['sub', 'voxel', 'class_idx', 'names','vroinames']).mean().reset_index()
-        subj_model = model.SpatialFrequencyModel(full_ver=True)
-        subj_dataset = model.SpatialFrequencyDataset(df,beta_col='betas')
-        loss_history, model_history, _ = model.fit_model(subj_model,subj_dataset,
-            learning_rate=float(wildcards.lr),
-            max_epoch=int(wildcards.max_epoch),
-            save_path=output.model,
-            print_every=10000,
-            loss_all_voxels=False,
-            anomaly_detection=False,
-            amsgrad=False,
-            eps=1e-8)
-
-rule  fit_to_bootstraps:
-    input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps','bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-               bts=np.arange(0,100), lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[2:3], roi=ROIS[0], vs='pRFsize')
-
-
 
 rule plot_2D_model_loss_history_broderick_et_al:
     input:
