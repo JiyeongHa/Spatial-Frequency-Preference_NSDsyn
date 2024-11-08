@@ -571,7 +571,7 @@ rule plot_replication_prediction_figures:
         ecc=5,
         angle=np.deg2rad(180)
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs','figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
+        os.path.join(config['OUTPUT_DIR'],'logs','figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.log')
     run:
         nsd_df = vis2D.merge_model_and_precision(input.nsd_model_params,input.nsd_precision_s, *ARGS_2D)
         broderick_df = vis2D.merge_model_and_precision(input.broderick_model_params,input.broderick_precision_s,*ARGS_2D)
