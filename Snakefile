@@ -444,6 +444,8 @@ rule nsdsyn_data_for_bootstraps:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
     output:
         os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
     run:
         import random
         subj_df = pd.read_csv(input.subj_df)
@@ -471,6 +473,8 @@ rule run_model_for_bootstraps:
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs', "sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
     run:
         subj_df = pd.read_csv(input.subj_df)
         precision_df = pd.read_csv(input.precision)
