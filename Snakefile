@@ -203,13 +203,6 @@ rule make_precision_s_df:
         precision_s['precision'] = 1 / precision_s['sigma_v_squared']
         precision_s.to_csv(output[0], index=False)
 
-rule est:
-    input:
-       a =  expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}','model','{stimtest}', 'dset-{dset}_sub-{subj}_roi-V1_vs-{vs}_tavg-{tavg}.csv'),
-        dset='broderick', stimtest='corrected', subj=make_subj_list('broderick'), roi=['V1'], vs='pRFsize', tavg=['False']),
-       b = expand(os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-pRFsize.csv'),
-                   dset='broderick', stimtest='corrected', subj=make_subj_list('broderick'), roi=['V1'])
-
 def get_ecc_bin_list(wildcards):
     bin_list, bin_labels = tuning.get_bin_labels(wildcards.e1, wildcards.e2, wildcards.enum)
     return bin_list, bin_labels
@@ -469,12 +462,12 @@ rule run_model_for_bootstraps:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
         precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', 'corrected', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs',"sfp_model","results_2D","{dset}",'bootstraps','bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log')
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
-    log:
-        os.path.join(config['OUTPUT_DIR'],'logs', "sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
     run:
         subj_df = pd.read_csv(input.subj_df)
         precision_df = pd.read_csv(input.precision)
@@ -566,12 +559,12 @@ rule plot_replication_prediction_figures:
         broderick_prediction=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'{{stimtest}}', 'sfstimuli-{{frame}}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.h5'), subj=make_subj_list('broderick'))
     output:
         os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","prediction_2D","all", 'replication', '{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs','figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg_{fig_format}.log')
     params:
         local_ori=np.deg2rad(90),
         ecc=5,
         angle=np.deg2rad(180)
-    log:
-        os.path.join(config['OUTPUT_DIR'],'logs','figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg_{fig_format}.log')
     run:
         nsd_df = vis2D.merge_model_and_precision(input.nsd_model_params,input.nsd_precision_s, *ARGS_2D)
         broderick_df = vis2D.merge_model_and_precision(input.broderick_model_params,input.broderick_precision_s,*ARGS_2D)
@@ -582,9 +575,9 @@ rule plot_replication_prediction_figures:
 
         tmp, hue_order, pal = vis2D.filter_for_goal(final_params, 'replication')
         weighted_mean_df = vis2D.get_weighted_average_of_params(tmp, ['dset_type'], params.ecc, params.angle, params.local_ori)
-        my_param = vis2D.get_params(wildcards.params)
-        param_ylim, param_yticks = vis2D.get_param_y_values((wildcards.params, 'replication')
-        pred_ylim, pred_yticks = vis2D.get_prediction_y_values((wildcards.params, 'replication')
+        my_param = vis2D.get_params(wildcards.param)
+        param_ylim, param_yticks = vis2D.get_param_y_values(wildcards.param, 'replication')
+        pred_ylim, pred_yticks = vis2D.get_prediction_y_values(wildcards.param, 'replication')
 
         vis2D.plot_param_and_prediction(params_df=tmp,
                                         params=my_param,
@@ -602,6 +595,7 @@ rule plot_replication_prediction_figures:
                                         figsize=(3.5, 1.8),
                                         width_ratios=[1.5, 4],
                                         save_path=output[0])
+
 
 rule pv_again:
     input:
