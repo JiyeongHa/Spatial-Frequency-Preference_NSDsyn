@@ -566,12 +566,12 @@ rule plot_replication_prediction_figures:
         broderick_prediction=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","broderick",'{{stimtest}}', 'sfstimuli-{{frame}}_eccentricity-{{ecc1}}-{{ecc2}}-{{n_ecc}}_angle-{{ang1}}-{{ang2}}-{{n_ang}}_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.h5'), subj=make_subj_list('broderick'))
     output:
         os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","prediction_2D","all", 'replication', '{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
-    log:
-        os.path.join(config['OUTPUT_DIR'],'figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
     params:
         local_ori=np.deg2rad(90),
         ecc=5,
         angle=np.deg2rad(180)
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs','figures',"sfp_model","prediction_2D","all",'replication','{stimtest}','param-{param}_n_lr-{lr}_eph-{max_epoch}_sub-avg.{fig_format}')
     run:
         nsd_df = vis2D.merge_model_and_precision(input.nsd_model_params,input.nsd_precision_s, *ARGS_2D)
         broderick_df = vis2D.merge_model_and_precision(input.broderick_model_params,input.broderick_precision_s,*ARGS_2D)
