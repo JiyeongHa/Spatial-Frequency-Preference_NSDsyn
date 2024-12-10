@@ -1,20 +1,16 @@
 # Spatial Frequency Maps in Human Visual Cortex: </br>A Replication and Extension
 
-==============================
-
 This repository includes codes to reproduce the analysis and figures to map spatial frequency preferences in human visual cortex using Natural Scenes Dataset - synthetic data.
 
 for [spatial frequency preferences in human visual cortex](https://jov.arvojournals.org/article.aspx?articleid=2792643).
 
 Citation
-=================
 ```
 Ha, Broderick, Kay, & Winawer (2022). Spatial Frequency Maps in Human Visual Cortex: A Replication and Extension. .., .., . https://??
 
 ```
 
 Table of Contents
-=================
 * [Setup](#setup)
    * [Software requirements](#software-requirements)
       * [Python](#python)
