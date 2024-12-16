@@ -11,18 +11,15 @@ Ha, Broderick, Kay, & Winawer (2022). Spatial Frequency Maps in Human Visual Cor
 ```
 
 Table of Contents
-* [Setup](#setup)
-   * [Software requirements](#software-requirements)
-      * [Python](#python)
-         * [Conda environment](#conda-environment)
-         * [Jupyter notebook](#jupyter-notebook)
+
+* [Dependencies](#dependencies)
+     * [Conda environment](#conda-environment)
 * [Data](#data)
    * [Processed data](#processed-data)
    * [NSD synthetic data](#nsd-synthetic-data)
 
-# Python requirements
+# Dependencies
 All of the code in this repository is written in Python (3.7 and 3.8). To reproduce the python environment, we recommend using Conda to manage the dependencies.
-
 
 ## Conda environment 
 1. Install [miniconda](https://docs.conda.io/en/latest/miniconda.html) for your
@@ -35,10 +32,18 @@ All of the code in this repository is written in Python (3.7 and 3.8). To reprod
 6. Type `conda activate sfp` to activate this environment
    and all required packages will be available.
    
-
-
+   
 # Data 
 ## NSD synthetic data
+The access to the NSD synthetic data will be granted after filling out the form on the NSD website (https://naturalscenesdataset.org/).
 
 ## processed data
-The data for this project is available on OpenNeuro.  
+The data for this project is available on OSF (https://osf.io/umqkw/).  
+
+# Analysis pipeline
+We used snakemake to manage the analysis pipeline. The pipeline is defined in the `Snakefile` in the root directory. To reproduce all the figures, you can use the following command:
+Add `-N` if you wish to run the pipeline in dry-run mode.
+```
+snakemake -j1 figure_all
+
+```
