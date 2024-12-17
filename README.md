@@ -17,6 +17,9 @@ Table of Contents
 * [Data](#data)
    * [Processed data](#processed-data)
    * [NSD synthetic data](#nsd-synthetic-data)
+* [Analysis pipeline](#analysis-pipeline)
+    * [Reproducing the figures](#reproducing-the-figures)
+    * [Understanding the pipeline](#understanding-the-pipeline)
 
 # Dependencies
 All of the code in this repository is written in Python (3.7 and 3.8). To reproduce the python environment, we recommend using Conda to manage the dependencies.
@@ -41,9 +44,14 @@ The access to the NSD synthetic data will be granted after filling out the form 
 The data for this project is available on OSF (https://osf.io/umqkw/).  
 
 # Analysis pipeline
+## Reproducing the figures
 We used snakemake to manage the analysis pipeline. The pipeline is defined in the `Snakefile` in the root directory. To reproduce all the figures, you can use the following command:
 Add `-N` if you wish to run the pipeline in dry-run mode.
 ```
 snakemake -j1 figure_all
 
 ```
+
+## Understanding the pipeline 
+We also provide a set of jupyter notebooks to understand the pipeline. Under the `notebooks` directory, you can find the `pipeline.ipynb` notebook. This notebook provides a step-by-step guide to the analysis pipeline. The number indicates the order of the analysis steps.
+
