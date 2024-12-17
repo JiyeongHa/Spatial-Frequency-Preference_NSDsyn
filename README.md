@@ -53,5 +53,8 @@ snakemake -j1 figure_all
 ```
 
 ## Understanding the pipeline 
-We also provide a set of jupyter notebooks to understand the pipeline. Under the `notebooks` directory, you can find the `pipeline.ipynb` notebook. This notebook provides a step-by-step guide to the analysis pipeline. The number indicates the order of the analysis steps.
-
+We also provide a set of jupyter notebooks under the `notebooks` directory to understand the pipeline. The notebooks provide a step-by-step guide to the analysis pipeline. The number indicates the order of the analysis steps.
+Step 0: Stimulus check
+Step 1: Prepping the data
+Step 2: One-dimensional model: Fitting a log-Gaussian function to eccentricity-binned data
+Step 3: Two-dimensional model: Fitting the Broderick et al. model to the data
