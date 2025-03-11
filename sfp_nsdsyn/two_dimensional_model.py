@@ -388,7 +388,8 @@ def model_to_df(pt_file_path, *args):
         model_dict[name] = param.detach().numpy()
     model_df = pd.DataFrame(model_dict)
     for arg in args:
-        model_df[utils.match_wildcards_with_col(arg)] = [k for k in pt_file_path.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
+        cur_pt_file = pt_file_path.split('/')[-1]
+        model_df[utils.match_wildcards_with_col(arg)] = [k for k in cur_pt_file.split('_') if arg in k][0][len(arg)+1:].replace('-', ' ')
     return model_df
 
 def load_all_models(pt_file_path_list, *args):

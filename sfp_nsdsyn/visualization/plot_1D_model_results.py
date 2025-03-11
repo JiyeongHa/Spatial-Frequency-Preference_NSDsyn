@@ -114,7 +114,7 @@ def plot_tuning_curves_NSD(data_df, params_df,
     #leg.legendHandles[0].set_edgecolor('black')
     #leg.legendHandles[1].set_color('black')
 
-    fig.supxlabel('Local spatial frequency (cpd)')
+    fig.supxlabel('Spatial frequency (cpd)')
     fig.supylabel('BOLD response\n(Normalized amplitude)', ha='center')
     fig.subplots_adjust(wspace=0.32, left=0.12, bottom=0.2)
     utils.save_fig(save_path)

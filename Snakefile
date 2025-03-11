@@ -596,7 +596,6 @@ rule plot_replication_prediction_figures:
                                         width_ratios=[1.5, 4],
                                         save_path=output[0])
 
-
 rule pv_again:
     input:
         a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
@@ -915,11 +914,6 @@ rule plot_individual_model_parameters:
                                                      lgd_title='Subjects',
                                                      height=7, pal=utils.subject_color_palettes(wildcards.dset, params.subj_list),
                                                      save_path=output[0], suptitle=wildcards.roi)
-
-
-
-
-
 
 
 rule plot_all:
