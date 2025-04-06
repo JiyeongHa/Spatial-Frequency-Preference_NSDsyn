@@ -153,7 +153,7 @@ def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False)
 
 
 def normalize_pivotStyle(betas):
-    """calculate L2 norm for each voxel and normalized using the L2 norm"""
+    """calculate L2 norm for each voxel and normalize using the L2 norm"""
     return betas / torch.linalg.norm(betas, ord=2, dim=1, keepdim=True)
 
 
@@ -199,27 +199,40 @@ class SpatialFrequencyDataset:
         self.voxel_info = df.pivot('voxel', 'class_idx', beta_col).index.astype(int).to_list()
 
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, full_ver=True):
+    def __init__(self, params=None, full_ver=True):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
-        self.sigma = _cast_as_param(np.random.random(1)+0.5)
-        self.slope = _cast_as_param(np.random.random(1))
-        self.intercept = _cast_as_param(np.random.random(1))
         self.full_ver = full_ver
-        if full_ver is True:
-            self.p_1 = _cast_as_param(np.random.random(1) / 10)
-            self.p_2 = _cast_as_param(np.random.random(1) / 10)
-            self.p_3 = _cast_as_param(np.random.random(1) / 10)
-            self.p_4 = _cast_as_param(np.random.random(1) / 10)
-            self.A_1 = _cast_as_param(np.random.random(1))
-            self.A_2 = _cast_as_param(np.random.random(1))
+        if params is None:
+            self.sigma = _cast_as_param(np.random.random(1)+0.5)
+            self.slope = _cast_as_param(np.random.random(1))
+            self.intercept = _cast_as_param(np.random.random(1))
+            if full_ver is True:
+                self.p_1 = _cast_as_param(np.random.random(1) / 10)
+                self.p_2 = _cast_as_param(np.random.random(1) / 10)
+                self.p_3 = _cast_as_param(np.random.random(1) / 10)
+                self.p_4 = _cast_as_param(np.random.random(1) / 10)
+                self.A_1 = _cast_as_param(np.random.random(1))
+                self.A_2 = _cast_as_param(np.random.random(1))
+                self.A_3 = 0
+                self.A_4 = 0
+        else:
+            self.sigma = _cast_as_param(params['sigma'][0])
+            self.slope = _cast_as_param(params['slope'][0])
+            self.intercept = _cast_as_param(params['intercept'][0])
+            self.p_1 = _cast_as_param(params['p_1'][0])
+            self.p_2 = _cast_as_param(params['p_2'][0])
+            self.p_3 = _cast_as_param(params['p_3'][0])
+            self.p_4 = _cast_as_param(params['p_4'][0])
+            self.A_1 = _cast_as_param(params['A_1'][0])
+            self.A_2 = _cast_as_param(params['A_2'][0])
             self.A_3 = 0
             self.A_4 = 0
 
     def get_Av(self, theta_l, theta_v):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
-        # theta_l = _cast_as_tensor(theta_l)
-        # theta_v = _cast_as_tensor(theta_v)
+        theta_l = _cast_as_tensor(theta_l)
+        theta_v = _cast_as_tensor(theta_v)
         if self.full_ver is True:
             Av = 1 + self.A_1 * torch.cos(2 * theta_l) + \
                  self.A_2 * torch.cos(4 * theta_l) + \
@@ -231,9 +244,9 @@ class SpatialFrequencyModel(torch.nn.Module):
 
     def get_Pv(self, theta_l, theta_v, r_v):
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
-        # theta_l = _cast_as_tensor(theta_l)
-        # theta_v = _cast_as_tensor(theta_v)
-        # r_v = _cast_as_tensor(r_v)
+        theta_l = _cast_as_tensor(theta_l)
+        theta_v = _cast_as_tensor(theta_v)
+        r_v = _cast_as_tensor(r_v)
         ecc_dependency = self.slope * r_v + self.intercept
         if self.full_ver is True:
             Pv = ecc_dependency * (1 + self.p_1 * torch.cos(2 * theta_l) +
@@ -244,15 +257,16 @@ class SpatialFrequencyModel(torch.nn.Module):
             Pv = ecc_dependency
         return torch.clamp(Pv, min=1e-6)
 
-    def forward(self, theta_l, theta_v, r_v, w_l):
+    def forward(self, theta_l, theta_v, r_v, w_l, to_numpy=False):
         """ In the forward function we accept a Variable of input data and we must
         return a Variable of output data. Return predicted BOLD response
         in eccentricity (formula no. 5 in Broderick et al. (2022)) """
-        # w_l = _cast_as_tensor(w_l)
-
+        w_l = _cast_as_tensor(w_l)
         Av = self.get_Av(theta_l, theta_v)
         Pv = self.get_Pv(theta_l, theta_v, r_v)
         pred = Av * torch.exp(-(torch.log2(w_l) + torch.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
+        if to_numpy:
+            pred = pred.detach().numpy()
         return pred
 
 def loss_fn(sigma_v_info, prediction, target):
@@ -396,5 +410,5 @@ def load_all_models(pt_file_path_list, *args):
     model_df = pd.DataFrame({})
     for pt_file_path in pt_file_path_list:
         tmp = model_to_df(pt_file_path, *args)
-        model_df = model_df.append(tmp)
+        model_df = pd.concat((model_df, tmp), axis=1)
     return model_df
