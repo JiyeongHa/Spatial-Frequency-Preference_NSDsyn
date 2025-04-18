@@ -410,5 +410,5 @@ def load_all_models(pt_file_path_list, *args):
     model_df = pd.DataFrame({})
     for pt_file_path in pt_file_path_list:
         tmp = model_to_df(pt_file_path, *args)
-        model_df = pd.concat((model_df, tmp), axis=1)
+        model_df = pd.concat((model_df, tmp), axis=0)
     return model_df
