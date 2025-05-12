@@ -7,10 +7,7 @@ import h5py
 import itertools
 import pandas as pd
 from scipy.io import loadmat
-from . import voxel_selection as vs
-from . import utils as utils
-from . import bootstrapping as bts
-from . import two_dimensional_model as model
+
 
 def download_stim_info_csv(save_path):
     import requests
@@ -89,24 +86,6 @@ def load_stim_info_as_df(stim_description_path, drop_phase=False, force_download
     else:
         stim_df = pd.read_csv(stim_description_path)
     return stim_df
-
-#
-# def load_stim_info_as_df(stim_description_path, drop_phase=False):
-#     """stimulus description file will be loaded as a dataframe.
-#        drop_phase arg will remove phase information in the output.
-#        For example, each unique combination of stim classes and frequency levels
-#        (total of 28) will have one row."""
-#     if os.path.exists(stim_description_path) is False:
-#         download_stim_info_csv(stim_description_path)
-#
-#     # stimuli information
-#     stim_df = pd.read_csv(stim_description_path)
-#     stim_df = stim_df.drop(columns=['phase_idx', 'names_idx'])
-#     if 'stim_idx' not in stim_df.columns.to_list():
-#         stim_df = stim_df.reset_index().rename(columns={'index':'stim_idx'})
-#     if drop_phase is True:
-#         stim_df = stim_df.query('phase == 0')
-#     return stim_df
 
 def load_mask_and_roi(roi_path, roi_vals):
     mask = {}
