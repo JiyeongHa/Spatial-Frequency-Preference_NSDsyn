@@ -263,8 +263,8 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
     return g
 
 def make_param_summary_fig(params_df, hue, hue_order, pal,
-                           params_list, ylim_list, yticks_list,
-                           title_list=None,
+                           params_list, ylim_list=None, yticks_list=None,
+                           title_list=None, 
                            width_ratios=(0.8,1.8,1.3,1.3,1.3), fig_size=(7, 1.5),
                            save_path=None, **kwargs):
     rc.update({
@@ -283,8 +283,8 @@ def make_param_summary_fig(params_df, hue, hue_order, pal,
     for i, ax in enumerate(axes.flatten()):
         g = plot_precision_weighted_avg_parameter(params_df, params_list[i],
                                                   hue, hue_order,
-                                                  ylim=ylim_list[i],
-                                                  yticks=yticks_list[i],
+                                                  ylim=ylim_list[i] if ylim_list is not None else None,
+                                                  yticks=yticks_list[i] if yticks_list is not None else None,
                                                   ax=ax,
                                                   pal=pal, **kwargs)
         g.legend_.remove()
