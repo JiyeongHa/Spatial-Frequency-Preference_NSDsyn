@@ -195,7 +195,29 @@ def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
     spiral_index["memory_task"] = spiral_index["memory_task"].astype(int)
     return spiral_index
 
-def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixation_task','memory_task'], average=True):
+def _remove_repeated_stimuli(df, return_all_columns=False):
+    df['prev_stim_idx'] = df['image_idx'].shift(1)
+    df['repeated'] = df['image_idx'] == df['prev_stim_idx']
+    df = df.query('repeated == False')
+    counts = df.groupby('image_idx')['trial'].count()
+    assert (counts == 2).all(), "Not all counts are 2"
+    if return_all_columns is False:
+        df = df.drop(columns=['prev_stim_idx', 'repeated'])
+    return df
+
+def find_run(design_mat_path, stim_df):
+    trial_orders = _load_exp_design_mat(design_mat_path)
+    df = pd.DataFrame(trial_orders, columns=['image_idx']).reset_index().rename(columns={'index': 'trial'})
+    df['run'] = df['trial'] // 93
+    df = df.query('105 <= image_idx <= 216')
+    df = _remove_repeated_stimuli(df)
+    df['task'] = df['run'].apply(lambda x: 'fixation_task' if x % 2 == 0 else 'memory_task')
+    df = df.sort_values('image_idx')
+    df =pd.merge(df, stim_df, on='image_idx')
+    df = df.reset_index(drop=True)
+    return df
+
+def load_betas_as_dict(betas_path, stim_df, mask, task_keys=['fixation_task','memory_task'], average=True):
     """Check the directory carefully. There are three different types of beta in NSD synthetic dataset: b1, b2, or b3.
     b2 (folder: betas_fithrf) is results of GLM in which the HRF is estimated for each voxel.
     b3 (folder: betas_fithrf_GLMdenoise_RR) is the result from GLM ridge regression,
@@ -203,18 +225,19 @@ def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixa
     and ridge regression is used to better estimate the single-trial betas.
     task_from should be either 'fix', 'memory', or 'both'. """
     betas_dict = {}
-    design_df = _find_beta_index_for_spiral_stimuli(design_mat, image_idx)
     with h5py.File(betas_path, 'r') as f:
         # betas[hemi].shape shows 784 x # of voxels
         tmp_betas = f.get('betas')
         if mask is None:
             mask = np.ones((tmp_betas.shape[-1],), bool)
         tmp_betas = tmp_betas[:, mask]
-        n_image = design_df.shape[0]
+        n_image = stim_df.image_idx.nunique()
+        assert n_image == 112, "The number of images is not 112"
+        stim_df = stim_df.sort_values(['image_idx'])
         for task_name in task_keys:
+            task_trials = stim_df.query('task == @task_name')['trial']
             task_betas = np.empty([n_image, tmp_betas.shape[1]])
-            for x_img_idx in np.arange(0, n_image):
-                task_betas[x_img_idx] = tmp_betas[design_df[task_name][x_img_idx], :]
+            task_betas = tmp_betas[task_trials, :]
             task_betas = np.float32(task_betas) / 300
             k = f'{task_name}_betas'
             betas_dict[k] = task_betas.T
@@ -224,6 +247,7 @@ def load_betas_as_dict(betas_path, design_mat, image_idx, mask, task_keys=['fixa
         betas_dict['avg_betas'] = np.mean([a for a in betas_dict.values()], axis=0)
         betas_dict = {'avg_betas': betas_dict['avg_betas']}
     return betas_dict
+
 
 def melt_2D_betas_dict_into_df(betas_dict, x_axis='voxel', y_axis='stim_idx', long_format=True):
     """convert beta mgzs to dataframe and melt it into a long dataframe based on x and y axes.
@@ -324,9 +348,8 @@ def make_sf_dataframe(stim_info,
     stim_df = load_stim_info_as_df(stim_info, drop_phase=drop_phase, force_download=force_download)
     mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
     prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
-    betas_dict = load_betas_as_dict(betas, design_mat,
-                                    stim_df['image_idx'], mask,
-                                    task_keys, task_average)
+    stim_df = find_run(design_mat, stim_df)
+    betas_dict = load_betas_as_dict(betas, stim_df, mask, task_keys=task_keys, average=task_average)
     sf_df = merge_all(stim_df,
                       betas_dict,
                       prf_dict,
