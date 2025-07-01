@@ -442,26 +442,28 @@ rule nsdsyn_data_for_bootstraps:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps', 'bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     run:
-        import random
+        import sfp_nsdsyn.bootstrapping as bts
         subj_df = pd.read_csv(input.subj_df)
-        phase_list = subj_df.phase.unique()
-        task_list = subj_df.task.unique()
-        bootstrap_df = pd.DataFrame({})
-        assert subj_df.class_idx.nunique() == 28
-        for i in subj_df.class_idx.unique():
-            sample_df = subj_df.query('class_idx == @i')
-            sample_phases = random.choices(phase_list, k=8)
-            sample_tasks = random.choices(task_list, k=8)
-            for p, t in zip(sample_phases,sample_tasks):
-                tmp = sample_df.query('phase == @p & task == @t')
-                bootstrap_df = pd.concat([bootstrap_df, tmp])
-        bootstrap_df = bootstrap_df.groupby(['sub','voxel','names','class_idx','vroinames']).mean().reset_index()
-        bootstrap_df['bootstrap'] = int(wildcards.bts)
-        bootstrap_df.to_csv(output[0], index=False)
+        for bts in range(wildcards.bts):
+            if bts % 5 == 0:
+                print(f'Bootstrap {bts} of {wildcards.bts} started!')
+            sample_df = bts.sample_run_and_average(subj_df, 
+                                                class_idx=range(28), 
+                                                sample_size=8, 
+                                                replace=True, 
+                                                to_group=['class_idx','voxel','run','vroinames','sub','hemi','names'])
+            sample_df['bootstrap'] = bts
+            sample_df.to_csv(output[0], ignore_index=True)
+
+rule all_bootstraps:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps', 'bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+               subj=make_subj_list('nsdsyn'), bts=np.arange(0,100), roi=['V1'], vs='pRFsize')
+        
 
 rule run_model_for_bootstraps:
     input:

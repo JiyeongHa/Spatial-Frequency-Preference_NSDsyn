@@ -4,6 +4,60 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
+
+
+def sample_run_and_average(df, class_idx=range(28), sample_size=8,
+                           to_group=['class_idx','voxel','run','vroinames','sub','hemi','names'], 
+                           replace=True):
+    """This function is used to sample the data over runs for each class index. 
+    For all the class_idx, it will sample 8 runs with replacement. 
+    Each sampled run will be averaged.   
+    
+    Args:
+        df: Input dataframe containing the data
+        to_group: List of columns to group by
+        replace: Whether to sample with replacement
+        
+    Returns:
+        DataFrame containing bootstrapped samples
+    """
+    if class_idx is None:
+        class_idx = df.class_idx.unique()
+    bts_df = pd.DataFrame({})
+    for c in class_idx:
+        sample_df = df.query('class_idx == @c')
+        runs = sample_df['run'].unique()
+        runs_sample = np.random.choice(runs, size=sample_size, replace=replace)
+        
+        # Create empty list to store sampled dataframes
+        run_dfs = []
+        # For each run in our bootstrap sample
+        for i, run in enumerate(runs_sample):
+            # Get data for this run and append to list
+            run_df = sample_df[sample_df['run'] == run]
+            run_df = run_df.groupby(to_group).mean().reset_index()
+            run_df['sample'] = i
+            run_dfs.append(run_df)
+        # Concatenate all sampled run dataframes
+        sample_df = pd.concat(run_dfs, ignore_index=True)
+        bts_df = pd.concat([bts_df, sample_df], ignore_index=True)
+    return bts_df
+
+def bootstrap_over_runs(df, n_bootstraps=100, class_idx=range(28), sample_size=8, replace=True, 
+                        to_group=['class_idx','voxel','run','vroinames','sub','hemi','names'],
+                        print_every=5):
+
+    bts_df = pd.DataFrame({})
+    for b in range(n_bootstraps):
+        if print_every is not None:
+            if b % print_every == 0:
+                print(f'Bootstrap {b} of {n_bootstraps} started!')
+        sample_df = sample_run_and_average(df, class_idx=class_idx, sample_size=sample_size, replace=replace, to_group=to_group)
+        sample_df['bootstrap'] = b
+        bts_df = pd.concat([bts_df, sample_df], ignore_index=True)
+    return bts_df
+
+
 def bootstrap_sample(data, stat=np.mean, n_select=8, n_bootstrap=100):
     """ Bootstrap sample from data"""
     bootstrap = []
