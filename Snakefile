@@ -448,16 +448,15 @@ rule nsdsyn_data_for_bootstraps:
     run:
         import sfp_nsdsyn.bootstrapping as bts
         subj_df = pd.read_csv(input.subj_df)
-        for bts in range(wildcards.bts):
-            if bts % 5 == 0:
-                print(f'Bootstrap {bts} of {wildcards.bts} started!')
-            sample_df = bts.sample_run_and_average(subj_df, 
-                                                class_idx=range(28), 
-                                                sample_size=8, 
-                                                replace=True, 
-                                                to_group=['class_idx','voxel','run','vroinames','sub','hemi','names'])
-            sample_df['bootstrap'] = bts
-            sample_df.to_csv(output[0], ignore_index=True)
+        if int(wildcards.bts) % 5 == 0:
+            print(f'Bootstrap {int(wildcards.bts)} started!')
+        sample_df = bts.sample_run_and_average(subj_df, 
+                                            class_idx=range(28), 
+                                            sample_size=8, 
+                                            replace=True, 
+                                            to_group=['class_idx','voxel','run','vroinames','sub','hemi','names'])
+        sample_df['bootstrap'] = int(wildcards.bts)
+        sample_df.to_csv(output[0], ignore_index=True)
 
 rule all_bootstraps:
     input:
