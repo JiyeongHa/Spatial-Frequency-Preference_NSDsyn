@@ -456,7 +456,7 @@ rule nsdsyn_data_for_bootstraps:
                                             replace=True, 
                                             to_group=['class_idx','voxel','run','vroinames','sub','hemi','names'])
         sample_df['bootstrap'] = int(wildcards.bts)
-        sample_df.to_csv(output[0], ignore_index=True)
+        sample_df.to_csv(output[0], index=False)
 
 rule all_bootstraps:
     input:
