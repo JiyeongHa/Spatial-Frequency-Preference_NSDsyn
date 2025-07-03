@@ -13,6 +13,7 @@ import random
 from itertools import combinations
 import matplotlib.pyplot as plt
 import seaborn as sns
+import sfp_nsdsyn.utils as utils
 from sfp_nsdsyn import two_dimensional_model as model
 import warnings
 warnings.filterwarnings("ignore")
@@ -24,7 +25,6 @@ def set_random_seed(seed=42):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
-
 
 def create_train_test_split(class_idx, n_folds = 7, n_test_classes = 4, random_state=42):
     """
@@ -160,7 +160,8 @@ def analyze_cv_results(cv_results):
             'train_loss': cv_results['train_loss'],
             'test_loss': cv_results['test_loss']
         })
-        
+
+    
     # Calculate statistics
     analysis = {
         'mean_train_loss': np.round(np.mean(cv_results['train_loss']),3),
@@ -179,6 +180,57 @@ def analyze_cv_results(cv_results):
     print(f"Mean generalization error: {analysis['mean_generalization_error']:.4f}")
     
     return analysis
+
+def plot_cv_results_group(all_df, save_path=None):
+    """
+    Plot cross-validation results
+    """
+    from matplotlib import gridspec
+    sns.set_context("notebook")
+    sample_df = all_df.melt(id_vars=['sub','fold','model_params'], 
+                            var_name='loss_type', 
+                            value_name='loss')
+    fig = plt.figure(figsize=(8, 13))
+    # Create GridSpec with custom width ratios for top row
+    gs = gridspec.GridSpec(3, 2, width_ratios=[1, 2], height_ratios=[1, 1, 1])
+
+    # Create axes using the GridSpec
+    axes = np.empty((2, 2), dtype=object)
+    axes[0, 0] = fig.add_subplot(gs[0, 0])  # larger
+    axes[0, 1] = fig.add_subplot(gs[0, 1])  # smaller
+    axes[1, 0] = fig.add_subplot(gs[1, 0:2])  # same size
+    axes[1, 1] = fig.add_subplot(gs[2, 0:2])  # same size
+    # Plot 1: Train vs Test loss across folds & subjects
+    sns.barplot(ax=axes[0, 0], 
+                data=sample_df, x='loss_type', y='loss', hue='loss_type')
+    # Plot 2: Train vs Test loss across subjects for each fold
+    sns.barplot(ax=axes[0, 1], 
+                data=sample_df, 
+                x='fold', y='loss', 
+                hue='loss_type', 
+                errorbar=('ci', 68))
+    axes[0, 1].set_xlabel('Fold')
+    fig.text(0.45, 1.01, 'Train vs Test Loss', ha='center', va='top', fontweight='bold')
+    axes[0, 0].grid(True, alpha=0.3)
+    # Plot 3: Train loss for each subject and fold
+    sns.lineplot(ax=axes[1, 0], data=all_df, x='fold', y='train_loss', hue='sub', hue_order=all_df['sub'].unique())
+    axes[1, 0].set_xlabel(' ')
+    axes[1, 0].set_ylabel('Loss')
+    axes[1, 0].set_title('Train Loss for Each Subject and Fold', fontweight='bold')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+    # Plot 4: Test loss for each subject and fold
+    sns.lineplot(ax=axes[1, 1], data=all_df, x='fold', y='test_loss', hue='sub', hue_order=all_df['sub'].unique())
+    axes[1, 1].set_xlabel('Fold')
+    axes[1, 1].set_title('Test Loss for Each Subject and Fold', fontweight='bold')
+    for ax in axes.flat:
+        ax.set_ylabel('Loss')
+
+    plt.tight_layout()
+    if save_path:
+        utils.save_fig(save_path)
+    plt.show()
+
 
 def plot_cv_results(cv_results, analysis, save_path=None):
     """

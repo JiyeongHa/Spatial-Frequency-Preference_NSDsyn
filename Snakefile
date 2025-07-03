@@ -93,7 +93,7 @@ rule prep_nsdsyn_data:
         spiral_betas = os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
     params:
         rois_vals = lambda wildcards: [prep.convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
-        task_keys = ['fixation_task', 'memory_task'],
+        task_keys = ['fixation', 'memory'],
         stim_size= get_stim_size_in_degree('nsdsyn')
     run:
         from sfp_nsdsyn import prep
@@ -121,7 +121,8 @@ rule prep_nsdsyn_data:
                                      outer_border=params.stim_size[1],
                                      to_group=['voxel'], return_voxel_list=False)
         sf_df['sub'] = wildcards.subj
-        sf_df.to_csv(output[0],index=False)
+        sf_df.to_csv(output[0], index=False)
+
 
 rule prep_all_nsdsyn:
     input:
@@ -437,6 +438,35 @@ rule run_model:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
 
+rule run_cross_validation:
+    input:
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
+    run:
+        df = pd.read_csv(input.subj_df)
+        precision_df = pd.read_csv(input.precision)
+        df = df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
+        df = df.groupby(['sub','voxel','class_idx','vroinames']).mean().reset_index()
+        sfp_model = model.SpatialFrequencyModel(full_ver=True)
+        cv_results = cv2d.run_cross_validation(df, 
+                                               sfp_model, 
+                                               n_folds=7, 
+                                               n_test_classes=4, 
+                                               learning_rate=float(wildcards.lr), 
+                                               max_epoch=int(wildcards.max_epoch), 
+                                               print_every=10000, 
+                                               save_path=None, 
+                                               loss_all_voxels=False, 
+                                               random_state=42)
+        cv_results_df = pd.DataFrame(cv_results)
+        cv_results_df.to_hdf(output[0], index=False)
+
+rule cvresults_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+               dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=['V1'], vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D)
 
 rule nsdsyn_data_for_bootstraps:
     input:
@@ -444,7 +474,7 @@ rule nsdsyn_data_for_bootstraps:
     output:
         os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps', 'bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.log')
     run:
         import sfp_nsdsyn.bootstrapping as bts
         subj_df = pd.read_csv(input.subj_df)
@@ -461,7 +491,7 @@ rule nsdsyn_data_for_bootstraps:
 rule all_bootstraps:
     input:
         expand(os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps', 'bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
-               subj=make_subj_list('nsdsyn'), bts=np.arange(0,100), roi=['V1'], vs='pRFsize')
+               subj=make_subj_list('nsdsyn'), bts=np.arange(10,100), roi=['V1'], vs='pRFsize')
         
 
 rule run_model_for_bootstraps:
