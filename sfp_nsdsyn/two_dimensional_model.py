@@ -107,31 +107,26 @@ class PredictBOLD2d():
         self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
         self.w_l = self.subj_df['local_sf']  # in cycles per degree
 
-    def get_Av(self, full_ver):
+    def get_Av(self):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
-        if full_ver is True:
-            Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
-                 self.A_2 * np.cos(4 * self.theta_l)
-        elif full_ver is False:
-            Av = 1
+        Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
+                self.A_2 * np.cos(4 * self.theta_l)
         return Av
 
-    def get_Pv(self, full_ver):
+    def get_Pv(self):
         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
         ecc_dependency = self.amp * self.r_v + self.intercept
-        if full_ver is True:
-            Pv = ecc_dependency * (1 + self.p_1 * np.cos(2 * self.theta_l) +
-                                   self.p_2 * np.cos(4 * self.theta_l) +
-                                   self.p_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
-                                   self.p_4 * np.cos(4 * (self.theta_l - self.theta_v)))
-        elif full_ver is False:
-            Pv = ecc_dependency
+        Pv = ecc_dependency * (1 + self.p_1 * np.cos(2 * self.theta_l) +
+                                self.p_2 * np.cos(4 * self.theta_l) +
+                                self.p_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
+                                self.p_4 * np.cos(4 * (self.theta_l - self.theta_v)))
+
         return Pv
 
-    def forward(self, full_ver=True):
+    def forward(self):
         """ Return predicted BOLD response in eccentricity (formula no. 5 in Broderick et al. (2022)) """
-        Av = self.get_Av(full_ver=full_ver)
-        Pv = self.get_Pv(full_ver=full_ver)
+        Av = self.get_Av()
+        Pv = self.get_Pv()
         return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
 
 
@@ -247,13 +242,10 @@ class SpatialFrequencyModel(torch.nn.Module):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         theta_l = _cast_as_tensor(theta_l)
         theta_v = _cast_as_tensor(theta_v)
-        if self.full_ver is True:
-            Av = 1 + self.A_1 * torch.cos(2 * theta_l) + \
-                 self.A_2 * torch.cos(4 * theta_l) + \
-                 self.A_3 * torch.cos(2 * (theta_l - theta_v)) + \
-                 self.A_4 * torch.cos(4 * (theta_l - theta_v))
-        elif self.full_ver is False:
-            Av = 1
+        Av = 1 + self.A_1 * torch.cos(2 * theta_l) + \
+                self.A_2 * torch.cos(4 * theta_l) + \
+                self.A_3 * torch.cos(2 * (theta_l - theta_v)) + \
+                self.A_4 * torch.cos(4 * (theta_l - theta_v))
         return torch.clamp(Av, min=1e-6)
 
     def get_Pv(self, theta_l, theta_v, r_v):
@@ -262,13 +254,10 @@ class SpatialFrequencyModel(torch.nn.Module):
         theta_v = _cast_as_tensor(theta_v)
         r_v = _cast_as_tensor(r_v)
         ecc_dependency = self.slope * r_v + self.intercept
-        if self.full_ver is True:
-            Pv = ecc_dependency * (1 + self.p_1 * torch.cos(2 * theta_l) +
-                                   self.p_2 * torch.cos(4 * theta_l) +
-                                   self.p_3 * torch.cos(2 * (theta_l - theta_v)) +
-                                   self.p_4 * torch.cos(4 * (theta_l - theta_v)))
-        elif self.full_ver is False:
-            Pv = ecc_dependency
+        Pv = ecc_dependency * (1 + self.p_1 * torch.cos(2 * theta_l) +
+                                self.p_2 * torch.cos(4 * theta_l) +
+                                self.p_3 * torch.cos(2 * (theta_l - theta_v)) +
+                                self.p_4 * torch.cos(4 * (theta_l - theta_v)))
         return torch.clamp(Pv, min=1e-6)
 
     def forward(self, theta_l, theta_v, r_v, w_l, to_numpy=False):
@@ -361,29 +350,29 @@ def group_params(df, params=['sigma', 'slope', 'intercept'], group=[1, 2, 2]):
 
 
 
-def load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, df_type, roi):
+def load_history_df_subj(output_dir, dataset, stat, model_type, sn_list, lr_rate, max_epoch, df_type, roi):
     all_history_df = pd.DataFrame()
     subj_list = [utils.sub_number_to_string(x, dataset) for x in sn_list]
-    for cur_ver, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(full_ver, subj_list, lr_rate, max_epoch, roi):
+    for cur_model_type, cur_subj, cur_lr, cur_epoch, cur_roi in itertools.product(model_type, subj_list, lr_rate, max_epoch, roi):
         model_history_path = os.path.join(output_dir,
-                                          f'{df_type}_history_dset-{dataset}_bts-{stat}_full_ver-{cur_ver}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}_{cur_roi}.h5')
+                                          f'{df_type}_history_dset-{dataset}_bts-{stat}_model-{cur_model_type}_{cur_subj}_lr-{cur_lr}_eph-{cur_epoch}_{cur_roi}.h5')
         tmp = pd.read_hdf(model_history_path)
-        if {'lr_rate', 'max_epoch', 'full_ver', 'subj'}.issubset(tmp.columns) is False:
+        if {'lr_rate', 'max_epoch', 'model_type', 'subj'}.issubset(tmp.columns) is False:
             tmp['dset'] = dataset
             tmp['lr_rate'] = cur_lr
             tmp['max_epoch'] = cur_epoch
-            tmp['full_ver'] = cur_ver
+            tmp['model_type'] = cur_model_type
             tmp['subj'] = cur_subj
             tmp['vroinames'] = cur_roi
         all_history_df = pd.concat((all_history_df, tmp), axis=0, ignore_index=True)
     return all_history_df
 
 
-def load_loss_and_model_history_Broderick_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, roi, losses=True):
-    loss_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "loss", roi)
-    model_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "model", roi)
+def load_loss_and_model_history_Broderick_subj(output_dir, dataset, stat, model_type, sn_list, lr_rate, max_epoch, roi, losses=True):
+    loss_history = load_history_df_subj(output_dir, dataset, stat, model_type, sn_list, lr_rate, max_epoch, "loss", roi)
+    model_history = load_history_df_subj(output_dir, dataset, stat, model_type, sn_list, lr_rate, max_epoch, "model", roi)
     if losses is True:
-        losses_history = load_history_df_subj(output_dir, dataset, stat, full_ver, sn_list, lr_rate, max_epoch, "losses", roi)
+        losses_history = load_history_df_subj(output_dir, dataset, stat, model_type, sn_list, lr_rate, max_epoch, "losses", roi)
     else:
         losses_history = []
     return loss_history, model_history, losses_history
