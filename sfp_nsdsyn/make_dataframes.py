@@ -172,14 +172,14 @@ def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
     trial_orders = _load_exp_design_mat(design_mat_path)
     spiral_index = pd.DataFrame({})
     spiral_index['image_idx'] = image_idx
-    spiral_index['fixation_task'] = np.nan
-    spiral_index['memory_task'] = np.nan
+    spiral_index['fixation'] = np.nan
+    spiral_index['memory'] = np.nan
     for x_trial in np.arange(0, trial_orders.shape[0]):
         task_number = np.ceil(x_trial + 1 / 93) % 2  # 1 is fixation task, 0 is memory task
         if task_number == 1:
-            task_name = "fixation_task"
+            task_name = "fixation"
         elif task_number == 0:
-            task_name = "memory_task"
+            task_name = "memory"
         else:
             raise Exception('not a number assigned to NSD tasks!')
         # if it's the first trial and if it's not a picture repeated
@@ -191,8 +191,8 @@ def _find_beta_index_for_spiral_stimuli(design_mat_path, image_idx):
                 if len(cur_loc) != 1:
                     raise Exception(f'cur_loc length is more than 1!\n')
                 spiral_index.loc[cur_loc[0], task_name] = x_trial
-    spiral_index["fixation_task"] = spiral_index["fixation_task"].astype(int)
-    spiral_index["memory_task"] = spiral_index["memory_task"].astype(int)
+    spiral_index["fixation"] = spiral_index["fixation"].astype(int)
+    spiral_index["memory"] = spiral_index["memory"].astype(int)
     return spiral_index
 
 def _remove_repeated_stimuli(df, return_all_columns=False):
@@ -211,13 +211,13 @@ def find_run(design_mat_path, stim_df):
     df['run'] = df['trial'] // 93
     df = df.query('105 <= image_idx <= 216')
     df = _remove_repeated_stimuli(df)
-    df['task'] = df['run'].apply(lambda x: 'fixation_task' if x % 2 == 0 else 'memory_task')
+    df['task'] = df['run'].apply(lambda x: 'fixation' if x % 2 == 0 else 'memory')
     df = df.sort_values('image_idx')
     df =pd.merge(df, stim_df, on='image_idx')
     df = df.reset_index(drop=True)
     return df
 
-def load_betas_as_dict(betas_path, stim_df, mask, task_keys=['fixation_task','memory_task'], average=True):
+def load_betas_as_dict(betas_path, stim_df, mask, task_keys=['fixation','memory'], average=True):
     """Check the directory carefully. There are three different types of beta in NSD synthetic dataset: b1, b2, or b3.
     b2 (folder: betas_fithrf) is results of GLM in which the HRF is estimated for each voxel.
     b3 (folder: betas_fithrf_GLMdenoise_RR) is the result from GLM ridge regression,
@@ -297,7 +297,7 @@ def merge_all(stim_df,
     betas_dict_x, betas_dict_y = betas_dict_xy
     betas_df = melt_2D_betas_dict_into_df(betas_dict, betas_dict_x, betas_dict_y, betas_long_format)
     betas_prf_df = add_1D_prf_dict_to_df(prf_dict, betas_df, roi_dict, on=between_voxels)
-    betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
+    betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=('stim_idx','task'))
     return betas_prf_stim_df
 
 def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, sfstimuli='scaled'):
@@ -343,7 +343,7 @@ def make_sf_dataframe(stim_info,
                       prfs,
                       betas,
                       drop_phase=False, force_download=False,
-                      task_keys=['fixation_task','memory_task'], task_average=True,
+                      task_keys=['fixation','memory'], task_average=True,
                       angle_to_radians=True):
     stim_df = load_stim_info_as_df(stim_info, drop_phase=drop_phase, force_download=force_download)
     mask, roi_dict = load_common_mask_and_rois(rois, rois_vals)
@@ -356,7 +356,7 @@ def make_sf_dataframe(stim_info,
                       roi_dict,
                       betas_dict_xy=('voxel', 'stim_idx'),
                       betas_long_format=True,
-                      between_stim_and_voxel='stim_idx',
+                      between_stim_and_voxel=('stim_idx','task'),
                       between_voxels='voxel')
     sf_df['local_sf'], sf_df['local_ori'] = calculate_local_stim_properties(sf_df['w_a'], sf_df['w_r'],
                                                                             sf_df['eccentricity'], sf_df['angle'],
