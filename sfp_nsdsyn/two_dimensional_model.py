@@ -202,7 +202,6 @@ class SpatialFrequencyModel(torch.nn.Module):
     def __init__(self, params=None, model=1):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
-        self.full_ver = full_ver
         if params is None:
             self.sigma = _cast_as_param(np.random.random(1)+0.5)
             self.slope = _cast_as_param(np.random.random(1))
