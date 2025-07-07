@@ -11,6 +11,6 @@ from . import two_dimensional_model as model
 from .visualization import plot_1D_model_results as vis1D
 from .visualization import plot_2D_model_results as vis2D
 from .visualization import plot_basic_model_results as vis
-
+from . import cross_validation_2d_model as cv2d
 
 
