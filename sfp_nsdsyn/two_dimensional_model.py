@@ -199,7 +199,7 @@ class SpatialFrequencyDataset:
         self.voxel_info = df.pivot('voxel', 'class_idx', beta_col).index.astype(int).to_list()
 
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, params=None, full_ver=True):
+    def __init__(self, params=None, model=1):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.full_ver = full_ver
@@ -207,15 +207,30 @@ class SpatialFrequencyModel(torch.nn.Module):
             self.sigma = _cast_as_param(np.random.random(1)+0.5)
             self.slope = _cast_as_param(np.random.random(1))
             self.intercept = _cast_as_param(np.random.random(1))
-            if full_ver is True:
-                self.p_1 = _cast_as_param(np.random.random(1) / 10)
-                self.p_2 = _cast_as_param(np.random.random(1) / 10)
+            self.p_1 = _cast_as_param(np.random.random(1) / 10)
+            self.p_2 = _cast_as_param(np.random.random(1) / 10)
+            self.A_3 = 0
+            self.A_4 = 0
+            if model is 1: #original model
                 self.p_3 = _cast_as_param(np.random.random(1) / 10)
                 self.p_4 = _cast_as_param(np.random.random(1) / 10)
                 self.A_1 = _cast_as_param(np.random.random(1))
                 self.A_2 = _cast_as_param(np.random.random(1))
-                self.A_3 = 0
-                self.A_4 = 0
+            elif model is 2: #no relative orientation
+                self.p_3 = 0
+                self.p_4 = 0
+                self.A_1 = _cast_as_param(np.random.random(1))
+                self.A_2 = _cast_as_param(np.random.random(1))
+            elif model is 3: #no amplitude modulation
+                self.p_3 = _cast_as_param(np.random.random(1) / 10)
+                self.p_4 = _cast_as_param(np.random.random(1) / 10)
+                self.A_1 = 0
+                self.A_2 = 0
+            elif model is 4: #no relative orientation and amplitude modulation
+                self.p_3 = 0
+                self.p_4 = 0
+                self.A_1 = 0
+                self.A_2 = 0
         else:
             self.sigma = _cast_as_param(params['sigma'][0])
             self.slope = _cast_as_param(params['slope'][0])
@@ -308,7 +323,7 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
         torch.save(sfp_model.state_dict(), save_path)
     params_col = [name for name, param in sfp_model.named_parameters() if param.requires_grad]
     params_val = [param for name, param in sfp_model.named_parameters() if param.requires_grad]
-    print(f'**epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, model_values))}')
+    print(f'*epoch no.{max_epoch}: Finished! final model params...\n {dict(zip(params_col, np.round(model_values,2)))}') 
     print(f'Elapsed time: {np.round(elapsed_time, 2)} sec')
 
     voxel_list = dataset.voxel_info
