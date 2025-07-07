@@ -9,6 +9,23 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 
+
+def load_dataframe(output_dir, dset, subj, roi, vs, precision=True):
+    """Load subject data and precision information"""
+    # Load main dataframe
+    subj_df_path = os.path.join(output_dir, 'dataframes', dset, 'model',
+                               f'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+    subj_df = pd.read_csv(subj_df_path)
+    if precision:
+        # Load precision dataframe
+        precision_path = os.path.join(output_dir, 'dataframes', dset, 'precision', 
+                                    f'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        precision_df = pd.read_csv(precision_path)
+        # Merge dataframes
+        df = subj_df.merge(precision_df, on=['sub', 'voxel', 'vroinames'])
+
+    return df
+
 def sub_number_to_string(sub_number, dataset="nsdsyn"):
     """ Return number (1,2,3,..) to "subj0x" form """
     if dataset == "nsdsyn":
