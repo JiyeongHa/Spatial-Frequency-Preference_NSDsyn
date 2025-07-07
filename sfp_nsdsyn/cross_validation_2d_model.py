@@ -190,7 +190,7 @@ def plot_cv_results_group(all_df, save_path=None):
     sample_df = all_df.melt(id_vars=['sub','fold','model_params'], 
                             var_name='loss_type', 
                             value_name='loss')
-    fig = plt.figure(figsize=(8, 13))
+    fig = plt.figure(figsize=(8, 13), dpi=300)
     # Create GridSpec with custom width ratios for top row
     gs = gridspec.GridSpec(3, 2, width_ratios=[1, 2], height_ratios=[1, 1, 1])
 
