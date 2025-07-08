@@ -103,7 +103,7 @@ def run_cross_validation(df, sfp_model,
         train_dset, test_dset = split_train_test_dataset(df, 
                                                         train_classes_list[fold], 
                                                         test_classes_list[fold])
-        
+        sfp_model.train()
         loss_history, model_history, _ = model.fit_model(sfp_model, 
                                                          train_dset,
                                                          learning_rate=learning_rate,
@@ -231,6 +231,34 @@ def plot_cv_results_group(all_df, save_path=None):
         utils.save_fig(save_path)
     plt.show()
 
+
+def plot_model_params(model_df, params_list, ax=None, hue='sub', save_path=None):
+    """
+    Plot model parameters
+    """    
+    model_long_df = model_df.melt(id_vars=['sub','fold'],
+                                  var_name='param_name', 
+                                  value_name='value')
+    
+    if ax is None:
+        fig, axes = plt.subplots(1,len(params_list), figsize=(9, 3), 
+                                 gridspec_kw={'width_ratios': [1,2,1.5,1.5,1.5]})
+    for i, ax in enumerate(axes.flatten()):
+        tmp_param = params_list[i]
+        tmp = model_long_df.query(f'param_name in @tmp_param')
+        sns.pointplot(ax=ax, data=tmp, linestyles='',
+                    x='param_name', y='value', 
+                    order=params_list[i], hue=hue,
+                    palette=sns.color_palette("Set2"), dodge=True)
+        ax.set_title(params_list[i])
+        ax.set_xlabel('')
+        ax.get_legend().remove()
+    plt.tight_layout()
+    
+    ax.legend(loc='center left', bbox_to_anchor=(1.02, 0.7), frameon=False)
+    plt.subplots_adjust(right=0.9)
+    if save_path:
+        utils.save_fig(save_path)
 
 def plot_cv_results(cv_results, analysis, save_path=None):
     """
