@@ -70,12 +70,27 @@ def evaluate_model(my_model, dataset):
         
     return mean_loss.item(), losses.detach().numpy()
 
+def cross_validation_evaluate_model(my_model, dataset):
+
+    """
+    Evaluate model on test dataset
+    """
+    my_model.eval()
+    with torch.no_grad():
+        predictions = my_model.forward(theta_l=dataset.ori, 
+                                       theta_v=dataset.angle, 
+                                       r_v=dataset.eccen, 
+                                       w_l=dataset.sf)
+        target = dataset.target
+
+    return target, predictions
+
 
 def run_cross_validation(df, sfp_model,
                          n_folds=7, n_test_classes=4, 
                          learning_rate=1e-4, max_epoch=1000, 
-                         print_every=100, save_path=None,
-                         loss_all_voxels=False, random_state=42):
+                         print_every=100, 
+                         random_state=42):
     
     train_classes_list, test_classes_list = create_train_test_split(df.class_idx.unique(), 
                                                                     n_folds = n_folds, 
@@ -83,18 +98,12 @@ def run_cross_validation(df, sfp_model,
                                                                     random_state=random_state)
 
     # Store results
-    cv_results = {
-        'fold': [],
-        'test_classes': [],
-        'train_loss': [],
-        'test_loss': [],
-        'train_losses_per_voxel': [],
-        'test_losses_per_voxel': [],
-        'model_params': [],
-        'loss_history': [],
-        'model_history': []
-        }
-    
+    cv_results = {'fold': [], 'test_classes': []}
+    all_targets = []
+    all_predictions = []
+    all_sigma_v_squared = []
+    model_params = pd.DataFrame({})
+
     # Run cross-validation
     for fold in range(n_folds):
         print(f"\n{'='*50}")
@@ -110,11 +119,15 @@ def run_cross_validation(df, sfp_model,
                                                          max_epoch=max_epoch,
                                                          print_every=print_every,
                                                          save_path=None,
-                                                         loss_all_voxels=loss_all_voxels)
-        # Evaluate on training/testing data
-        train_loss, train_losses_per_voxel = evaluate_model(sfp_model, train_dset)
-        test_loss, test_losses_per_voxel = evaluate_model(sfp_model, test_dset)
-        
+                                                         loss_all_voxels=False)
+
+        # Get predictions on testing data 
+        sfp_model.eval()
+        predictions = sfp_model.forward(theta_l=test_dset.ori, 
+                                       theta_v=test_dset.angle, 
+                                       r_v=test_dset.eccen, 
+                                       w_l=test_dset.sf)
+
         # Get final model parameters
         final_params = {}
         for name, param in sfp_model.named_parameters():
@@ -124,18 +137,31 @@ def run_cross_validation(df, sfp_model,
         # Store results
         cv_results['fold'].append(fold)
         cv_results['test_classes'].append(test_classes_list[fold])
-        cv_results['train_loss'].append(train_loss)
-        cv_results['test_loss'].append(test_loss)
-        cv_results['train_losses_per_voxel'].append(train_losses_per_voxel)
-        cv_results['test_losses_per_voxel'].append(test_losses_per_voxel)
-        cv_results['model_params'].append(final_params)
-        cv_results['loss_history'].append(loss_history)
-        cv_results['model_history'].append(model_history)
+
+        # Store test losses per voxel
+        all_targets.append(test_dset.target)
+        all_predictions.append(predictions)
+        all_sigma_v_squared.append(test_dset.sigma_v_squared)
+
+        # Store model parameters
+        tmp = pd.DataFrame(final_params, index=[0])
+        tmp['fold'] = fold
+        model_params = pd.concat([model_params, tmp], axis=0)
+        model_params.reset_index(drop=True, inplace=True)
         
-        print(f"Train loss: {train_loss:.4f}")
-        print(f"Test loss: {test_loss:.4f}")
     
-    return cv_results
+    # Calculate test loss 
+    all_targets = torch.cat(all_targets, dim=1)
+    all_predictions = torch.cat(all_predictions, dim=1)
+    all_sigma_v_squared = torch.cat(all_sigma_v_squared, dim=1)
+    losses = model.loss_fn(all_sigma_v_squared, all_predictions, all_targets)
+    print(f"Test loss: {losses.mean():.4f}")
+
+    # Merge results other than losses
+    cv_results = pd.DataFrame(cv_results)
+    cv_results = pd.merge(cv_results, model_params, on='fold')
+
+    return cv_results, losses
 
 
 

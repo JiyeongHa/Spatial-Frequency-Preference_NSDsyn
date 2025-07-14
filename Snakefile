@@ -443,30 +443,29 @@ rule run_cross_validation:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
         precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
+        os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvlosses_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.npy')
     run:
         df = pd.read_csv(input.subj_df)
         precision_df = pd.read_csv(input.precision)
         df = df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
         df = df.groupby(['sub','voxel','class_idx','vroinames']).mean().reset_index()
         sfp_model = model.SpatialFrequencyModel(model=int(wildcards.model_type))
-        cv_results = cv2d.run_cross_validation(df, 
-                                               sfp_model, 
-                                               n_folds=7, 
-                                               n_test_classes=4, 
-                                               learning_rate=float(wildcards.lr), 
-                                               max_epoch=int(wildcards.max_epoch), 
-                                               print_every=10000, 
-                                               save_path=None, 
-                                               loss_all_voxels=False, 
-                                               random_state=42)
-        cv_results_df = pd.DataFrame(cv_results)
-        cv_results_df.to_hdf(output[0], index=False)
+        cv_results, cv_losses = cv2d.run_cross_validation(df, 
+                                                          sfp_model, 
+                                                          n_folds=7, 
+                                                          n_test_classes=4, 
+                                                          learning_rate=float(wildcards.lr), 
+                                                          max_epoch=int(wildcards.max_epoch), 
+                                                          print_every=10000, 
+                                                          random_state=42)
+        cv_results.to_csv(output[0], index=False)
+        np.save(output[1], cv_losses)
 
 rule cvresults_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-               dset='nsdsyn', model_type=[2,3,4], subj=make_subj_list('nsdsyn'), roi=['V1'], vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D)
+        expand(os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+               dset='nsdsyn', model_type=[1], subj=make_subj_list('nsdsyn')[:2], roi=['V1'], vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D)
 
 rule nsdsyn_data_for_bootstraps:
     input:
