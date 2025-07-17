@@ -197,47 +197,78 @@ class SpatialFrequencyModel(torch.nn.Module):
     def __init__(self, params=None, model=1):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
-        if params is None:
-            self.sigma = _cast_as_param(np.random.random(1)+0.5)
-            self.slope = _cast_as_param(np.random.random(1))
-            self.intercept = _cast_as_param(np.random.random(1))
-            self.p_1 = _cast_as_param(np.random.random(1) / 10)
-            self.p_2 = _cast_as_param(np.random.random(1) / 10)
-            self.A_3 = 0
-            self.A_4 = 0
-            if model is 1: #original model
-                self.p_3 = _cast_as_param(np.random.random(1) / 10)
-                self.p_4 = _cast_as_param(np.random.random(1) / 10)
-                self.A_1 = _cast_as_param(np.random.random(1))
-                self.A_2 = _cast_as_param(np.random.random(1))
-            elif model is 2: #no relative orientation
-                self.p_3 = 0
-                self.p_4 = 0
-                self.A_1 = _cast_as_param(np.random.random(1))
-                self.A_2 = _cast_as_param(np.random.random(1))
-            elif model is 3: #no amplitude modulation
-                self.p_3 = _cast_as_param(np.random.random(1) / 10)
-                self.p_4 = _cast_as_param(np.random.random(1) / 10)
-                self.A_1 = 0
-                self.A_2 = 0
-            elif model is 4: #no relative orientation and amplitude modulation
-                self.p_3 = 0
-                self.p_4 = 0
-                self.A_1 = 0
-                self.A_2 = 0
+        self.A_3 = 0
+        self.A_4 = 0
+        if params is not None:
+            self._init_existing_params(params)
         else:
-            self.sigma = _cast_as_param(params['sigma'][0])
-            self.slope = _cast_as_param(params['slope'][0])
-            self.intercept = _cast_as_param(params['intercept'][0])
-            self.p_1 = _cast_as_param(params['p_1'][0])
-            self.p_2 = _cast_as_param(params['p_2'][0])
-            self.p_3 = _cast_as_param(params['p_3'][0])
-            self.p_4 = _cast_as_param(params['p_4'][0])
-            self.A_1 = _cast_as_param(params['A_1'][0])
-            self.A_2 = _cast_as_param(params['A_2'][0])
-            self.A_3 = 0
-            self.A_4 = 0
+            if model == 1: # original model
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = _cast_as_param(np.random.random(1))
+                self.intercept = _cast_as_param(np.random.random(1))
+                self.p_1 = _cast_as_param(np.random.random(1) / 10)
+                self.p_2 = _cast_as_param(np.random.random(1) / 10)
+                self.p_3 = _cast_as_param(np.random.random(1) / 10)
+                self.p_4 = _cast_as_param(np.random.random(1) / 10)
+                self.A_1 = _cast_as_param(np.random.random(1))
+                self.A_2 = _cast_as_param(np.random.random(1))
 
+            elif model == 2: #no relative orientation
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = _cast_as_param(np.random.random(1))
+                self.intercept = _cast_as_param(np.random.random(1))
+                self.p_1 = _cast_as_param(np.random.random(1) / 10)
+                self.p_2 = _cast_as_param(np.random.random(1) / 10)
+                self.p_3 = 0
+                self.p_4 = 0
+                self.A_1 = _cast_as_param(np.random.random(1))
+                self.A_2 = _cast_as_param(np.random.random(1))
+
+            elif model == 3: #no amplitude modulation
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = _cast_as_param(np.random.random(1))
+                self.intercept = _cast_as_param(np.random.random(1))
+                self.p_1 = _cast_as_param(np.random.random(1) / 10)
+                self.p_2 = _cast_as_param(np.random.random(1) / 10)
+                self.p_3 = _cast_as_param(np.random.random(1) / 10)
+                self.p_4 = _cast_as_param(np.random.random(1) / 10)
+                self.A_1 = 0
+                self.A_2 = 0
+
+            elif model == 4: #no relative orientation and amplitude modulation
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = _cast_as_param(np.random.random(1))
+                self.intercept = _cast_as_param(np.random.random(1))
+                self.p_1 = _cast_as_param(np.random.random(1) / 10)
+                self.p_2 = _cast_as_param(np.random.random(1) / 10)
+                self.p_3 = 0
+                self.p_4 = 0
+                self.A_1 = 0
+                self.A_2 = 0
+
+            elif model == 5: # sigma and slope
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = _cast_as_param(np.random.random(1))
+                self.intercept = 0
+                self.p_1 = self.p_2 = self.p_3 = self.p_4 = self.A_1 = self.A_2 = 0
+
+            elif model == 6: # sigma and intercept
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = 0
+                self.intercept = _cast_as_param(np.random.random(1))
+                self.p_1 = self.p_2 = self.p_3 = self.p_4 = self.A_1 = self.A_2 = 0
+
+            elif model == 7: # sigma, intercept, and slope
+                self.sigma = _cast_as_param(np.random.random(1)+0.5)
+                self.slope = _cast_as_param(np.random.random(1))
+                self.intercept = _cast_as_param(np.random.random(1))
+                self.p_1 = self.p_2 = self.p_3 = self.p_4 = self.A_1 = self.A_2 = 0
+                
+    def _init_existing_params(self, params):
+        param_names = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+        for param in param_names:
+            setattr(self, param, _cast_as_param(params[param][0]))
+        
     def get_Av(self, theta_l, theta_v):
         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
         theta_l = _cast_as_tensor(theta_l)
