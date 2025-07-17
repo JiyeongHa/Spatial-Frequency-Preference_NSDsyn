@@ -15,8 +15,40 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import sfp_nsdsyn.utils as utils
 from sfp_nsdsyn import two_dimensional_model as model
+from sfp_nsdsyn.visualization.plot_2D_model_results import weighted_mean, _change_params_to_math_symbols
 import warnings
+import matplotlib as mpl
 warnings.filterwarnings("ignore")
+
+
+
+rc = {'text.color': 'black',
+    'axes.labelcolor': 'black',
+    'xtick.color': 'black',
+    'ytick.color': 'black',
+    'axes.edgecolor': 'black',
+    'font.family': 'Helvetica',
+    'axes.linewidth': 1,
+    'axes.labelpad': 3,
+    'axes.spines.right': False,
+    'axes.spines.top': False,
+    'ytick.major.pad': 5,
+    'xtick.major.pad': 5,
+    'xtick.major.width': 1,
+    'ytick.major.width': 1,
+    'lines.linewidth': 1,
+    'font.size': 11,
+    'axes.titlesize': 11,
+    'axes.labelsize': 11,
+    'xtick.labelsize': 11,
+    'ytick.labelsize': 11,
+    'legend.title_fontsize': 11,
+    'legend.fontsize': 11,
+    'figure.titlesize': 12,
+    'figure.dpi': 72 * 3,
+    'savefig.dpi': 72 * 4
+    }
+mpl.rcParams.update(rc)
 
 def set_random_seed(seed=42):
     """Set random seed for reproducibility"""
@@ -207,13 +239,13 @@ def analyze_cv_results(cv_results):
     
     return analysis
 
-def plot_cv_results_group(all_df, save_path=None):
+def plot_cv_results_group(loss_df, save_path=None):
     """
     Plot cross-validation results
     """
     from matplotlib import gridspec
     sns.set_context("notebook")
-    sample_df = all_df.melt(id_vars=['sub','fold','model_params'], 
+    sample_df = loss_df.melt(id_vars=['sub'], 
                             var_name='loss_type', 
                             value_name='loss')
     fig = plt.figure(figsize=(8, 13), dpi=300)
@@ -228,13 +260,9 @@ def plot_cv_results_group(all_df, save_path=None):
     axes[1, 1] = fig.add_subplot(gs[2, 0:2])  # same size
     # Plot 1: Train vs Test loss across folds & subjects
     sns.barplot(ax=axes[0, 0], 
-                data=sample_df, x='loss_type', y='loss', hue='loss_type')
-    # Plot 2: Train vs Test loss across subjects for each fold
-    sns.barplot(ax=axes[0, 1], 
                 data=sample_df, 
-                x='fold', y='loss', 
-                hue='loss_type', 
-                errorbar=('ci', 68))
+                x='loss_type', y='loss', hue='loss_type', errorbar=('ci', 68))
+
     axes[0, 1].set_xlabel('Fold')
     fig.text(0.45, 1.01, 'Train vs Test Loss', ha='center', va='top', fontweight='bold')
     axes[0, 0].grid(True, alpha=0.3)
@@ -256,35 +284,6 @@ def plot_cv_results_group(all_df, save_path=None):
     if save_path:
         utils.save_fig(save_path)
     plt.show()
-
-
-def plot_model_params(model_df, params_list, ax=None, hue='sub', save_path=None):
-    """
-    Plot model parameters
-    """    
-    model_long_df = model_df.melt(id_vars=['sub','fold'],
-                                  var_name='param_name', 
-                                  value_name='value')
-    
-    if ax is None:
-        fig, axes = plt.subplots(1,len(params_list), figsize=(9, 3), 
-                                 gridspec_kw={'width_ratios': [1,2,1.5,1.5,1.5]})
-    for i, ax in enumerate(axes.flatten()):
-        tmp_param = params_list[i]
-        tmp = model_long_df.query(f'param_name in @tmp_param')
-        sns.pointplot(ax=ax, data=tmp, linestyles='',
-                    x='param_name', y='value', 
-                    order=params_list[i], hue=hue,
-                    palette=sns.color_palette("Set2"), dodge=True)
-        ax.set_title(params_list[i])
-        ax.set_xlabel('')
-        ax.get_legend().remove()
-    plt.tight_layout()
-    
-    ax.legend(loc='center left', bbox_to_anchor=(1.02, 0.7), frameon=False)
-    plt.subplots_adjust(right=0.9)
-    if save_path:
-        utils.save_fig(save_path)
 
 def plot_cv_results(cv_results, analysis, save_path=None):
     """
@@ -396,59 +395,215 @@ def save_cv_results(cv_results, analysis, output_path):
     analysis_df.to_csv(analysis_path, index=False)
     print(f"Analysis summary saved to: {analysis_path}")
 
-def main():
-    """Main function to run cross-validation"""
-    # Configuration
-    output_dir = '/Volumes/server/Projects/sfp_nsd/derivatives'
-    dset = 'nsdsyn'
-    subj = 'subj01'
-    roi = 'V1'
-    vs = 'pRFsize'
-    
-    # Cross-validation parameters
-    n_folds = 10
-    n_test_classes = 4
-    learning_rate = 0.001
-    max_epochs = 1000
-    print_every = 100
-    random_state = 42
-    
-    # Output paths
-    output_path = os.path.join(output_dir, 'cv_results', 
-                              f'cv_results_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.h5')
-    plot_path = os.path.join(output_dir, 'cv_results', 
-                            f'cv_plot_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.png')
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    print("Loading data...")
-    df = load_data(output_dir, dset, subj, roi, vs)
-    print(f"Loaded data with {len(df)} samples")
-    print(f"Number of unique classes: {df['class_idx'].nunique()}")
-    print(f"Number of unique voxels: {df['voxel'].nunique()}")
-    
-    print("\nRunning cross-validation...")
-    cv_results = run_cross_validation(
-        df, 
-        n_folds=n_folds,
-        n_test_classes=n_test_classes,
-        learning_rate=learning_rate,
-        max_epochs=max_epochs,
-        print_every=print_every,
-        random_state=random_state
-    )
-    
-    print("\nAnalyzing results...")
-    analysis = analyze_cv_results(cv_results)
-    
-    print("\nPlotting results...")
-    plot_cv_results(cv_results, analysis, save_path=plot_path)
-    
-    print("\nSaving results...")
-    save_cv_results(cv_results, analysis, output_path)
-    
-    print("\nCross-validation completed successfully!")
+def normalize_loss_across_model(loss_df, add_mean=True, match_broderick=True):
+    """
+    Normalize loss values for each subject for model comparisonby subtracting subject-specific means
+    and optionally adding back the global mean or scaling to match Broderick et al.
 
-if __name__ == "__main__":
-    main() 
+    Parameters
+    ----------
+    loss_df : pd.DataFrame
+        DataFrame containing loss values with columns 'subj', 'loss'
+    add_mean : bool, optional
+        If True, adds back the mean loss across all subjects after normalization.
+        Default is True.
+    match_broderick : bool, optional
+        If True, scales the normalized loss values by a factor of 8 to match
+        Broderick et al. Default is True.
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with additional columns:
+        - normalized_loss: Loss values normalized 
+    """
+    subj_mean_df = loss_df.groupby('subj').mean().rename(columns={'loss': 'mean_loss'})
+    mean_across_all = loss_df['loss'].mean()
+    loss_df = pd.merge(loss_df, subj_mean_df, on='subj', how='right')
+    loss_df['normalized_loss'] = loss_df['loss'] - loss_df['mean_loss']
+    if add_mean:
+        loss_df['normalized_loss'] = loss_df['normalized_loss'] + mean_across_all
+    if match_broderick:
+        loss_df['normalized_loss'] = loss_df['normalized_loss']*8
+    return loss_df
+
+def plot_model_comparison(loss_df, 
+                          x='model_type', 
+                          y='normalized_loss', 
+                          hue='subj', 
+                          ylim=None,
+                          xlim=None,
+                          ax=None,
+                          save_path=None,
+                          rc=None,
+                          orient='h',
+                          **kwargs):
+    """
+    Plot model comparison
+    """
+    if ax is None:
+        _, ax = plt.subplots(1, 1, figsize=(5, 4), dpi=72*3)
+    sns.pointplot(data=loss_df,
+                  ax=ax, 
+                  x=x,
+                  y=y, 
+                  hue=hue,
+                  orient=orient,
+                  **kwargs)
+    ax.set_ylabel('Model type')
+    ax.set_xlabel('Normalized loss')
+    #ax.set_title('7-fold cross-validation results')
+    if hue is None or hue is x or hue is y:
+        ax.get_legend().remove()
+    else:
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+
+    if ylim is not None:
+        ax.set(ylim=ylim)
+    if xlim is not None:
+        ax.set(xlim=xlim)
+    if save_path:
+        utils.save_fig(save_path)
+
+def show_model_type(data=None, ax=None):
+    ax.tick_params(axis='x', bottom=False, top=False)
+    ax.tick_params(axis='y', left=False, right=False)
+    # Move y-tick labels closer to the axis by adjusting labelpad
+    ax.yaxis.set_tick_params(pad=0)
+    ax.xaxis.set_tick_params(pad=0)
+    sns.set_context("notebook")
+    if data is None:
+        # Create data for heatmap
+        x = np.linspace(0, 1, 9)  # 9 points along x-axis
+        y = np.linspace(1, 7, 7)  # 7 points along y-axis
+        X, Y = np.meshgrid(x, y)  # Create 2D grid
+        data =np.tile(y[:, np.newaxis], (1, len(x)))  # Create data that only depends on y value
+        data[1, 5:7] = np.nan
+        data[2, 7:] = np.nan
+        data[3, 5:] = np.nan
+        data[4, [2, 3, 4, 5, 6, 7, 8]] = np.nan
+        data[5, [1, 3, 4, 5, 6, 7, 8]] = np.nan
+        data[6, 3:] = np.nan
+    tab10_palette_7 = sns.color_palette("tab10", 7)
+
+    # Convert 0 values to NaN so they show as white
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 4), dpi=72*3)
+    sns.heatmap(data, 
+                cmap=tab10_palette_7,
+                xticklabels=range(1,10),
+                yticklabels=range(1,8),
+                cbar=False,
+                ax=ax)
+    # Add black grid lines
+    for i in range(data.shape[0] + 1):
+        ax.axhline(i, color='w', alpha=0.5, lw=1)
+    for i in range(data.shape[1] + 1):
+        ax.axvline(i, color='w', alpha=0.5, lw=1)
+        
+    ax.set_xticklabels([r"$\sigma$", r"$m$", r"$b$", r"$p_1$", r"$p_2$", r"$p_3$", r"$p_4$", r"$A_1$", r"$A_2$"], ha='center')
+    ax.set_yticklabels([f'Model {i}' for i in range(1,len(data)+1)], rotation=0)
+    ax.tick_params(axis='x', labeltop=True, labelbottom=False)
+
+
+def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
+    sns.set_theme("paper", style='ticks', rc=rc)
+
+    tmp = group_params(df, params, [1]*len(params))
+    tmp = tmp.query('params in @params')
+    tmp['value_and_weights'] = tmp.apply(lambda row: row.value + row.precision * 1j, axis=1)
+    tmp['params'] = _change_params_to_math_symbols(tmp['params'])
+    g = sns.pointplot(data=tmp,
+                      x='params', y='value_and_weights',
+                      hue=hue, hue_order=hue_order,
+                      palette=pal, linestyles='',
+                      estimator=weighted_mean, errorbar=("ci", 68),
+                      dodge=0.23,
+                      ax=ax, **kwargs)
+    g.set(ylabel='Parameter estimates', xlabel=None)
+    if 'p_' in params[0] or 'A_' in params[0] or 'sigma' in params[0]:
+        g.tick_params(axis='x', labelsize=rc['axes.labelsize'], pad=5)
+    else:
+        g.tick_params(axis='x', pad=5)
+    if ylim is not None:
+        g.set(ylim=ylim)
+    if yticks is not None:
+        g.set(yticks=yticks)
+
+    ticks = [t.get_text() for t in g.get_xticklabels()]
+    if any('p_' in s for s in ticks) or any('A_' in s for s in ticks):
+        g.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+
+    return g
+def _replace_param_names_with_latex(params_list):
+    """
+    Replace entries in params_list with LaTeX-formatted names for plotting.
+    """
+    new_list = {
+        'sigma': r"$\sigma$",
+        'slope': r"$Slope$" "\n" r"$a$",
+        'intercept': r"$Intercept$" "\n" r"$b$",
+        'p_1': r"$p_1$",
+        'p_2': r"$p_2$",
+        'p_3': r"$p_3$",
+        'p_4': r"$p_4$",
+        'A_1': r"$A_1$",
+        'A_2': r"$A_2$"
+    }
+    return [[new_list.get(param, param) for param in sublist] for sublist in params_list]
+
+def plot_model_params(model_df, 
+                      params_list,
+                      hue='sub', 
+                      ax=None, 
+                      save_path=None, 
+                      weighted_average=False, 
+                      ylim=None, yticks=None,
+                      **kwargs):
+    """
+    Plot model parameters
+    """ 
+    # Get columns that are not in params_list
+    flat_params_list = [param for sublist in params_list for param in sublist]
+    non_param_columns = [col for col in model_df.columns if col not in flat_params_list]
+    model_long_df = model_df.melt(id_vars=non_param_columns,
+                                  var_name='param', 
+                                  value_name='value')
+    if weighted_average:
+        model_long_df['value_and_weights'] = model_long_df.apply(lambda row: row.value + row.precision * 1j, axis=1)
+        kwargs['estimator'] = weighted_mean
+        y = 'value_and_weights'
+    else:
+        y = 'value'
+
+    model_long_df['param'] = _change_params_to_math_symbols(model_long_df['param'])
+    params_list = _replace_param_names_with_latex(params_list)
+    if ax is None:
+        fig, axes = plt.subplots(1,len(params_list), figsize=(9, 3), 
+                                 gridspec_kw={'width_ratios': [1,2,1.5,1.5,1.5]})
+    for i, ax in enumerate(axes.flatten()):
+        tmp_param = params_list[i]
+        tmp = model_long_df.query(f'param in @tmp_param')
+        sns.pointplot(ax=ax, data=tmp, linestyles='',
+                      x='param', y=y, scale=0.8, errorbar=('ci', 68),
+                      order=params_list[i], hue=hue, dodge=0.5, **kwargs)
+        ax.set_ylabel('Parameter estimates')
+        ax.set_xlabel('')
+        ax.get_legend().remove()
+        if i >= 2:
+            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+        if i == 1:    
+            ax.margins(x=0.05)
+
+    if ylim is not None:
+        for i,ax in enumerate(axes.flatten()):
+            ax.set(ylim=ylim[i])
+    if yticks is not None:
+        for i,ax in enumerate(axes.flatten()):
+            ax.set(yticks=yticks[i])
+    plt.tight_layout()
+    
+    ax.legend(loc='center left', title='Model type', bbox_to_anchor=(1.02, 0.7), frameon=False)
+    plt.subplots_adjust(right=0.9)
+    if save_path:
+        utils.save_fig(save_path)
