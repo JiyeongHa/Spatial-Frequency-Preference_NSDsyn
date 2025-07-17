@@ -460,12 +460,12 @@ rule run_cross_validation:
                                                           print_every=10000, 
                                                           random_state=42)
         cv_results.to_csv(output[0], index=False)
-        np.save(output[1], cv_losses)
+        np.save(output[1], cv_losses.detach().numpy())
 
 rule cvresults_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvresults_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
-               dset='nsdsyn', model_type=[1], subj=make_subj_list('nsdsyn')[:2], roi=['V1'], vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D)
+        expand(os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvlosses_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.npy'),
+               dset='nsdsyn', model_type=[1,2,3,4,5,6,7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D)
 
 rule nsdsyn_data_for_bootstraps:
     input:
