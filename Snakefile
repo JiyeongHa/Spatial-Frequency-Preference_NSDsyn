@@ -467,13 +467,13 @@ rule cvresults_all:
         expand(os.path.join(config['OUTPUT_DIR'],'sfp_model','cross_validation','{dset}','model-{model_type}','cvlosses_bts-False_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.npy'),
                dset='nsdsyn', model_type=[1,2,3,4,5,6,7], subj=make_subj_list('nsdsyn'), roi=['V1'], vs='pRFsize', lr=LR_2D, max_epoch=MAX_EPOCH_2D)
 
-rule nsdsyn_data_for_bootstraps:
+rule bootstrap_data:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','model','dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv')
     output:
-        os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','bootstraps', 'bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps', 'bootstrap-{bts}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','nsdsyn','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}.log')
+        os.path.join(config['OUTPUT_DIR'],'logs', 'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.log')
     run:
         import sfp_nsdsyn.bootstrapping as bts
         subj_df = pd.read_csv(input.subj_df)
@@ -495,12 +495,16 @@ rule all_bootstraps:
 
 rule run_model_for_bootstraps:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps','bootstrap-{bts}_dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', 'corrected', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','bootstraps', 'bootstrap-{bts}_dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model=os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt')
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'bootstraps', 'bootstrap-{bts}_model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'bootstraps', 'bootstrap-{bts}_loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     log:
-        os.path.join(config['OUTPUT_DIR'],'logs',"sfp_model","results_2D","{dset}",'bootstraps','bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'bootstraps', 'bootstrap-{bts}_loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+    benchmark:
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'bootstraps', 'bootstrap-{bts}_loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
@@ -520,12 +524,14 @@ rule run_model_for_bootstraps:
                                                         anomaly_detection=False,
                                                         amsgrad=False,
                                                         eps=1e-8)
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')                                                
 
 
 rule  fit_to_bootstraps:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
-               bts=np.arange(0,100), lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn'), roi=ROIS, vs='pRFsize')
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'bootstraps', 'bootstrap-{bts}_model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+               bts=np.arange(101,102), lr=LR_2D, max_epoch=MAX_EPOCH_2D, dset='nsdsyn', subj=make_subj_list('nsdsyn')[:1], roi=['V1'], vs='pRFsize')
 
 
 rule plot_avg_model_parameters:
