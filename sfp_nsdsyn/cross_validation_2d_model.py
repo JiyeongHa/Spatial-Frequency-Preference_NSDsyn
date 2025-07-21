@@ -478,12 +478,12 @@ def show_model_type(data=None, ax=None):
         y = np.linspace(1, 7, 7)  # 7 points along y-axis
         X, Y = np.meshgrid(x, y)  # Create 2D grid
         data =np.tile(y[:, np.newaxis], (1, len(x)))  # Create data that only depends on y value
-        data[1, 5:7] = np.nan
-        data[2, 7:] = np.nan
+        data[5, 5:7] = np.nan
+        data[4, 7:] = np.nan
         data[3, 5:] = np.nan
-        data[4, [2, 3, 4, 5, 6, 7, 8]] = np.nan
-        data[5, [1, 3, 4, 5, 6, 7, 8]] = np.nan
-        data[6, 3:] = np.nan
+        data[2, 3:] = np.nan
+        data[1, [1, 3, 4, 5, 6, 7, 8]] = np.nan
+        data[0, [2, 3, 4, 5, 6, 7, 8]] = np.nan
     tab10_palette_7 = sns.color_palette("tab10", 7)
 
     # Convert 0 values to NaN so they show as white
@@ -493,6 +493,7 @@ def show_model_type(data=None, ax=None):
                 cmap=tab10_palette_7,
                 xticklabels=range(1,10),
                 yticklabels=range(1,8),
+                square=False,
                 cbar=False,
                 ax=ax)
     # Add black grid lines
@@ -503,7 +504,7 @@ def show_model_type(data=None, ax=None):
         
     ax.set_xticklabels([r"$\sigma$", r"$m$", r"$b$", r"$p_1$", r"$p_2$", r"$p_3$", r"$p_4$", r"$A_1$", r"$A_2$"], ha='center')
     ax.set_yticklabels([f'Model {i}' for i in range(1,len(data)+1)], rotation=0)
-    ax.tick_params(axis='x', labeltop=True, labelbottom=False)
+    ax.tick_params(axis='x', labeltop=False, labelbottom=True)
 
 
 def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
@@ -541,7 +542,7 @@ def _replace_param_names_with_latex(params_list):
     """
     new_list = {
         'sigma': r"$\sigma$",
-        'slope': r"$Slope$" "\n" r"$a$",
+        'slope': r"$Slope$" "\n" r"$m$",
         'intercept': r"$Intercept$" "\n" r"$b$",
         'p_1': r"$p_1$",
         'p_2': r"$p_2$",
