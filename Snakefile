@@ -513,7 +513,7 @@ rule run_model_for_bootstraps:
         precision_df = pd.read_csv(input.precision)
         df = subj_df.merge(precision_df,on=['sub', 'vroinames', 'voxel'])
         df = df.groupby(['sub', 'voxel', 'class_idx', 'names','vroinames']).mean().reset_index()
-        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_model = model.SpatialFrequencyModel()
         subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
         loss_history, model_history, _ = model.fit_model(subj_model,subj_dataset,
                                                         learning_rate=float(wildcards.lr),
