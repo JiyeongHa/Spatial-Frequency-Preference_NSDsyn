@@ -79,12 +79,12 @@ def load_stim_info_as_df(stim_description_path, drop_phase=False, force_download
         stim_df = stim_df.rename(columns={'phi': 'phase'})
         stim_df['names'] = stim_df.apply(_label_stim_names, axis=1)
         stim_df['freq_lvl'] = stim_df.apply(_label_freq_lvl_new, axis=1)
-        if drop_phase:
-            stim_df = stim_df.drop_duplicates(subset=['class_idx'])
-            stim_df = stim_df.drop(columns='phase')
         stim_df.to_csv(stim_description_path, index=False)
     else:
         stim_df = pd.read_csv(stim_description_path)
+    if drop_phase:
+        stim_df = stim_df.drop_duplicates(subset=['class_idx'])
+        stim_df = stim_df.drop(columns='phase')
     return stim_df
 
 def load_mask_and_roi(roi_path, roi_vals):
