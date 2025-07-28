@@ -450,8 +450,9 @@ def plot_model_comparison(loss_df,
                   hue=hue,
                   orient=orient,
                   **kwargs)
-    ax.set_ylabel('Model type')
     ax.set_xlabel('Normalized loss')
+
+    #ax.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
     #ax.set_title('7-fold cross-validation results')
     if hue is None or hue is x or hue is y:
         ax.get_legend().remove()
@@ -462,6 +463,8 @@ def plot_model_comparison(loss_df,
         ax.set(ylim=ylim)
     if xlim is not None:
         ax.set(xlim=xlim)
+    ax.yaxis.set_visible(False)
+    ax.spines['left'].set_visible(False)
     if save_path:
         utils.save_fig(save_path)
 
@@ -486,11 +489,23 @@ def show_model_type(data=None, ax=None):
         data[0, [2, 3, 4, 5, 6, 7, 8]] = np.nan
     tab10_palette_7 = sns.color_palette("tab10", 7)
 
+            
+    custom_palette = sns.color_palette([
+        (0.50, 0.50, 0.50),
+        (0.80, 0.73, 0.47),
+        (0.22, 0.42, 0.69),
+        (0.80, 0.47, 0.65),
+        (0.80, 0.20, 0.20),
+        (0.59, 0.45, 0.34),
+        (0.42, 0.25, 0.63)
+    ])
+
+
     # Convert 0 values to NaN so they show as white
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 4), dpi=72*3)
     sns.heatmap(data, 
-                cmap=tab10_palette_7,
+                cmap=custom_palette,
                 xticklabels=range(1,10),
                 yticklabels=range(1,8),
                 square=False,
@@ -501,7 +516,8 @@ def show_model_type(data=None, ax=None):
         ax.axhline(i, color='w', alpha=0.5, lw=1)
     for i in range(data.shape[1] + 1):
         ax.axvline(i, color='w', alpha=0.5, lw=1)
-        
+    # Decrease the space between ticklabels and axis
+    ax.tick_params(axis='x', pad=0)
     ax.set_xticklabels([r"$\sigma$", r"$m$", r"$b$", r"$p_1$", r"$p_2$", r"$p_3$", r"$p_4$", r"$A_1$", r"$A_2$"], ha='center')
     ax.set_yticklabels([f'Model {i}' for i in range(1,len(data)+1)], rotation=0)
     ax.tick_params(axis='x', labeltop=False, labelbottom=True)
@@ -553,14 +569,14 @@ def _replace_param_names_with_latex(params_list):
     }
     return [[new_list.get(param, param) for param in sublist] for sublist in params_list]
 
-def plot_model_params(model_df, 
-                      params_list,
-                      hue='sub', 
-                      ax=None, 
-                      save_path=None, 
-                      weighted_average=False, 
-                      ylim=None, yticks=None,
-                      **kwargs):
+def plot_model_comparison_params(model_df, 
+                                 params_list,
+                                 hue='sub', 
+                                 ax=None, 
+                                 save_path=None, 
+                                 weighted_average=False, 
+                                 ylim=None, yticks=None,
+                                 **kwargs):
     """
     Plot model parameters
     """ 
@@ -576,25 +592,32 @@ def plot_model_params(model_df,
         y = 'value_and_weights'
     else:
         y = 'value'
-
     model_long_df['param'] = _change_params_to_math_symbols(model_long_df['param'])
     params_list = _replace_param_names_with_latex(params_list)
     if ax is None:
-        fig, axes = plt.subplots(1,len(params_list), figsize=(9, 3), 
+        fig, axes = plt.subplots(1,len(params_list), figsize=(7, 3), 
                                  gridspec_kw={'width_ratios': [1,2,1.5,1.5,1.5]})
     for i, ax in enumerate(axes.flatten()):
         tmp_param = params_list[i]
         tmp = model_long_df.query(f'param in @tmp_param')
+        
         sns.pointplot(ax=ax, data=tmp, linestyles='',
-                      x='param', y=y, scale=0.8, errorbar=('ci', 68),
-                      order=params_list[i], hue=hue, dodge=0.5, **kwargs)
-        ax.set_ylabel('Parameter estimates')
+                      x='param', y=y, scale=1, 
+                      errorbar=('ci', 68),
+                      order=params_list[i], 
+                      hue=hue, dodge=0.5,
+                      **kwargs)
+        
         ax.set_xlabel('')
         ax.get_legend().remove()
         if i >= 2:
             ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
         if i == 1:    
             ax.margins(x=0.05)
+        if i == 0:
+            ax.set_ylabel('Parameter estimates')
+        else:
+            ax.set_ylabel('')
 
     if ylim is not None:
         for i,ax in enumerate(axes.flatten()):
