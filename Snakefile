@@ -967,29 +967,20 @@ rule generate_synthetic_data:
         stim_info_path=os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", 'nsdsynthetic_sf_stim_description.csv'),
         subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn")
     output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_n_vox-{n_voxels}.csv")
+        os.path.join(config['OUTPUT_DIR'], "simulation", "grating-{grating_type}_nvox-{n_voxels}_noise-{noise_level}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_n_vox-{n_voxels}.log")
+        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "grating-{grating_type}_nvox-{n_voxels}_noise-{noise_level}.log")
     run:
         params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
-        np.random.seed(1)
-        syn_data = sim.SynthesizeData(n_voxels=int(wildcards.n_voxels), pw=(wildcards.pw == "True"), p_dist="data", stim_info_path=input.stim_info_path, subj_df_dir=input.subj_df_dir)
+        np.random.seed(42)
+        syn_data = sim.SynthesizeData(n_voxels=int(wildcards.n_voxels), 
+                                      grating_type=wildcards.grating_type, 
+                                      p_dist="data", 
+                                      noise_level=wildcard.noise_level
+                                      stim_info_path=input.stim_info_path, 
+                                      subj_df_dir=input.subj_df_dir)
         syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=(wildcards.full_ver=="True"))
         syn_df_2d.to_csv(output[0])
-
-rule generate_noisy_synthetic_data:
-    input:
-        syn_df_2d = os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D",  "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_n_vox-{n_voxels}.csv")
-    output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}.csv")
-    log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "simulation","synthetic_data_2D","syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}.csv")
-    run:
-        np.random.seed(1)
-        syn_df = pd.read_csv(input.syn_df_2d)
-        noisy_df_2d = sim.copy_df_and_add_noise(syn_df, beta_col="normed_betas", noise_mean=0, noise_sd=syn_df['noise_SD']*float(wildcards.n_sd_mtpl))
-        noisy_df_2d.to_csv(output[0])
-
 
 rule plot_synthetic_data:
     input:

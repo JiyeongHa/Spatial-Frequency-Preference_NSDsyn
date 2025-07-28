@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from itertools import product
 from . import utils as utils
-from . import two_dimensional_model as model
+from . import two_dimensional_model as model2d
 from . import bootstrapping as bts
 from . import binning as binning
 from . import one_dimensional_model as fitting
@@ -17,72 +17,108 @@ class SynthesizeData():
     2. Generate synthetic voxels. Eccentricity and polar angle will be drawn from the uniform distribution.
     3. Generate BOLD predictions, with or without noise. """
 
-    def __init__(self, n_voxels=100, pw=True, p_dist="uniform",
-                 stim_info_path='/Users/auna/Dropbox/NYU/Projects/SF/natural-scenes-dataset/derivatives/nsdsynthetic_sf_stim_description.csv',
-                 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
+    def __init__(self, roi, n_voxels=100, grating_type='scaled', 
+                 precision_weight=True, p_dist="data",
+                 sample_subj_list='all',
+                 stim_info_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsyn_stim_description_corrected.csv',
+                 dataframe_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes',
+                 random_state=42):
+        """
+        grating_type: 'scaled' or 'constant'
+        """
+        self.roi = roi
         self.n_voxels = n_voxels
+        self.grating_type = grating_type
+        self.stim_info_path = stim_info_path
         self.p_dist = p_dist
-        self.subj_df_dir = subj_df_dir
-        self.pw = pw
-        self.stim_info = self.get_stim_info_for_n_voxels(stim_info_path)
-        self.syn_voxels = self.generate_synthetic_voxels()
-
-    def get_stim_info_for_n_voxels(self, stim_info_path):
-        stim_info = prep.load_stim_info_as_df(stim_info_path, drop_phase=True)
-        stim_info['voxel'] = 0
-        tmp_df = stim_info.copy()
-        for i in np.arange(1, self.n_voxels):
-            tmp_df['voxel'] = i
-            stim_info = pd.concat([stim_info, tmp_df], ignore_index=True)
-        return stim_info
-
-    def _sample_pRF_from_data(self):
-        prf_loc_dir = os.path.join(self.subj_df_dir, 'pRF_loc')
-
-        if not os.path.exists(prf_loc_dir):
-            os.makedirs(prf_loc_dir)
-        prf_path = os.path.join(prf_loc_dir, f'pRF_loc_n_vox-{self.n_voxels}.csv')
-        if os.path.exists(prf_path):
-            prf_df = pd.read_csv(prf_path)
+        self.precision_weight = precision_weight
+        self.dataframe_dir = dataframe_dir
+        if sample_subj_list == 'all':
+            self.sample_subj_list = ['subj01', 'subj02', 'subj03', 'subj04', 'subj05', 'subj06', 'subj07', 'subj08']
         else:
-            random_sn = np.random.choice(np.arange(1,9), size=(8,), replace=False)
-            tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
-            polar_angles = np.random.choice(tmp_df['angle'].unique(), size=(self.n_voxels,), replace=False)
-            eccentricity = np.random.choice(tmp_df['eccentricity'].unique(), size=(self.n_voxels,), replace=False)
-            prf_df = pd.DataFrame({'angle': polar_angles, 'eccentricity': eccentricity})
-            utils.save_df_to_csv(prf_df, prf_path, indexing=False)
-        return prf_df
+            self.sample_subj_list = sample_subj_list
+        self.random_state = random_state
 
-    # def _sample_noise_from_data(self):
-    #     if self.df is None:
-    #         random_sn = np.random.randint(1, 9, size=1)
-    #         tmp_df = utils.load_all_subj_df(random_sn, df_dir=self.subj_df_dir, df_name='df_LITE_after_vs.csv')
-    #     else:
-    #         tmp_df = self.df
-    #     #measure_sd_each_cond(to_sd='betas', dv_to_group=['subj', 'voxel'])
-    #     return noise
 
-    def generate_synthetic_voxels(self):
+    def get_stim_info_for_n_voxels(self):
+        stim_info = prep.load_stim_info_as_df(self.stim_info_path, 
+                                              drop_phase=False, 
+                                              force_download=False)
+        stim_info = stim_info.drop_duplicates(subset=['class_idx','names'])
+        stim_info = stim_info.drop(columns=['image_idx','stim_idx','phase','phase_idx']).reset_index(drop=True)
+        stim_info['voxel'] = 0
+        if self.n_voxels > 1:
+            tmp_df = stim_info.copy()
+            for i in np.arange(1, self.n_voxels):
+                tmp_df['voxel'] = i
+                stim_info = pd.concat((stim_info, tmp_df), ignore_index=True)
+        return stim_info
+    
+    def add_pRF_info(self, stim_info):
         """Generate synthesized data for n voxels. if p_dist is set to "uniform",
         Each voxel's polar angle and eccentricity will be drawn from uniform distribution.
         For  p_dist == "data", the probability distribution will be from the actual data.
         The polar angle is in the unit of degree and eccentricity is in the unit of visual angle."""
-        df = pd.DataFrame()
-        df['voxel'] = np.arange(0, self.n_voxels)
         if self.p_dist == "uniform":
-            df['angle'] = np.random.uniform(0, 360, size=self.n_voxels)
-            df['eccentricity'] = np.random.uniform(0, 4.2, size=self.n_voxels)
+            prf_df = pd.DataFrame({'voxel': range(self.n_voxels), 
+                                   'angle': np.random.uniform(0, 360, size=self.n_voxels), 
+                                   'eccentricity': np.random.uniform(0, 4.2, size=self.n_voxels)})
         elif self.p_dist == "data":
             prf_df = self._sample_pRF_from_data()
-            df = pd.concat((df, prf_df), axis=1)
-        sigma_v = sample_sigma_v(self.n_voxels, pw=self.pw, df_dir=self.subj_df_dir)
-        df = df.merge(sigma_v, on='voxel')
-        syn_df = self.stim_info.merge(df, on='voxel')
-        #TODO: fix this
-        #syn_df = preprocessing.calculate_local_orientation(syn_df,,,
-        #syn_df = preprocessing.calculate_local_sf(syn_df)
+        syn_df = stim_info.merge(prf_df, on='voxel')
+        syn_df['local_sf'], syn_df['local_ori'] = prep.calculate_local_stim_properties(w_a=syn_df['w_a'], 
+                                                                                       w_r=syn_df['w_r'],
+                                                                                       eccentricity=syn_df['eccentricity'],
+                                                                                       angle=syn_df['angle'],
+                                                                                       angle_in_radians=True,
+                                                                                       stimulus=self.grating_type)
         return syn_df
+    
+    def _sample_pRF_from_data(self):
+        
+        all_subj_df = []
+        for subj in self.sample_subj_list:
+            subj_df = pd.read_csv(os.path.join(self.dataframe_dir, 'nsdsyn', 'model', 
+                                               f'dset-nsdsyn_sub-{subj}_roi-{self.roi}_vs-pRFsize_tavg-False.csv'))
+            subj_df = subj_df.drop_duplicates(subset=['voxel'])
+            all_subj_df.append(subj_df)
+        all_subj_df = pd.concat(all_subj_df, ignore_index=True)
 
+        sampled_voxels = all_subj_df.sample(n=self.n_voxels, replace=False, random_state=self.random_state)
+        polar_angles = sampled_voxels['angle'].values
+        eccentricity = sampled_voxels['eccentricity'].values
+        prf_df = pd.DataFrame({'voxel': range(self.n_voxels), 'angle': polar_angles, 'eccentricity': eccentricity})
+        return prf_df
+
+    def add_sigma_v(self, df):
+        """Sample sigma_v_squared from the NSD synthetic data.
+        The final output is a dataframe that contains two columns: noise_SD (sigma_v_squared) & sigma_v_squared.
+        It will first attempt to read in an any saved sigma_v_squared.csv files.
+        If none exists, it will automatically sample from the actual data after calculating sigma_v_squared for each  voxel and for each
+        subject. """
+
+        if self.precision_weight is False:
+            measured_noise_sd = 0.03995
+            sigma_v_df = pd.DataFrame({'voxel': range(self.n_voxels), 
+                                       'noise_SD': measured_noise_sd, 
+                                       'sigma_v_squared': 1.0})
+        else:
+            sigma_v_df = pd.DataFrame({})
+            for subj in self.sample_subj_list:
+                tmp = pd.read_csv(os.path.join(self.dataframe_dir, 'nsdsyn', 'precision', f'precision-v_sub-{subj}_roi-{self.roi}_vs-pRFsize.csv'))
+                sigma_v_df = pd.concat((sigma_v_df, tmp), ignore_index=True)
+            sigma_v_df = sigma_v_df.drop_duplicates(subset=['voxel'])
+            sigma_v_df = sigma_v_df.sample(n=self.n_voxels, replace=False, random_state=self.random_state)
+            sigma_v_df['voxel'] = range(self.n_voxels)
+            sigma_v_df = sigma_v_df.reset_index(drop=True)
+        return df.merge(sigma_v_df[['voxel', 'noise_SD', 'sigma_v_squared']], on='voxel').reset_index(drop=True)
+        
+    def synthesize_BOLD_2d(self, syn_df, params, model=7):
+        my_model = model2d.SpatialFrequencyModel(params=params, model=model)
+        syn_df['betas'] = my_model.forward(theta_l=syn_df['local_sf'], theta_v=syn_df['angle'],
+                                           r_v=syn_df['eccentricity'], w_l=syn_df['local_ori'], to_numpy=True)
+        syn_df['normed_betas'] = model2d.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
+        return syn_df
 
     def synthesize_BOLD_1d(self, bin_list, bin_labels, params):
         syn_df = self.syn_voxels.copy()
@@ -103,12 +139,7 @@ class SynthesizeData():
 
         return syn_df
 
-    def synthesize_BOLD_2d(self, params, full_ver=True):
-        syn_df = self.syn_voxels.copy()
-        syn_model = model.PredictBOLD2d(params, 0, self.syn_voxels)
-        syn_df['betas'] = syn_model.forward(full_ver=full_ver)
-        syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
-        return syn_df
+
 
 
 
@@ -204,37 +235,6 @@ def melt_beta_task_type(df, include_avg=False, id_cols=None):
         id_cols = df.drop(columns=new_tasks).columns.tolist()
     df = pd.melt(df, id_vars=id_cols, value_vars=new_tasks, var_name='task', value_name='betas')
     return df
-
-def sample_sigma_v(n_voxels, pw=True,
-                   df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
-    """Sample sigma_v_squared from the NSD synthetic data.
-    The final output is a dataframe that contains two columns: noise_SD (sigma_v_squared) & sigma_v_squared.
-    It will first attempt to read in an any saved sigma_v_squared.csv files.
-    If none exists, it will automatically sample from the actual data after calculating sigma_v_squared for each  voxel and for each
-    subject. """
-
-    sigma_v_dir = os.path.join(df_dir, 'sigma_v')
-    if not os.path.exists(sigma_v_dir):
-        os.makedirs(sigma_v_dir)
-    if pw is False:
-        measured_noise_sd = 0.03995
-        noise_SD = pd.DataFrame(np.ones((n_voxels,), dtype=np.float64)*measured_noise_sd).reset_index().rename(columns={'index': 'voxel', 0: 'noise_SD'})
-        sigma_v_squared = pd.DataFrame(np.ones((n_voxels,), dtype=np.float64)).reset_index().rename(columns={'index': 'voxel', 0: 'sigma_v_squared'})
-        sigma_v_df = noise_SD.merge(sigma_v_squared, on='voxel')
-    else:
-        betas = 'normed_betas'
-        sigma_v_path = os.path.join(sigma_v_dir, f'sigma_v_{betas}_n_vox-{n_voxels}.csv')
-        if os.path.exists(sigma_v_path):
-            sigma_v_df = pd.read_csv(sigma_v_path)
-        else:
-            all_sigma_v_path = re.sub('_n_vox.+.csv', '.csv', sigma_v_path)
-            all_sigma_v_df = _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, df_dir)
-            sigma_v_df = all_sigma_v_df[['noise_SD', 'sigma_v_squared']].sample(n=n_voxels,
-                                                                                replace=False,
-                                                                                random_state=1)
-            sigma_v_df = sigma_v_df.reset_index().reset_index().drop(columns='index').rename(columns={'level_0': 'voxel'})
-            utils.save_df_to_csv(sigma_v_df, sigma_v_path, indexing=False)
-    return sigma_v_df
 
 def _check_all_sigma_v_df_in_path(betas, all_sigma_v_path, subj_df_dir):
     if os.path.exists(all_sigma_v_path):
