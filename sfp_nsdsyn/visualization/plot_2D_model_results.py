@@ -118,7 +118,7 @@ def weighted_mean(x, **kws):
 
 def _change_params_to_math_symbols(params_col):
     params_col = params_col.replace({'sigma': r"$\sigma$",
-                                     'slope': r"$Slope$" "\n" r"$a$",
+                                     'slope': r"$Slope$" "\n" r"$m$",
                                      'intercept': r"$Intercept$" "\n" r"$b$",
                                      'p_1': r"$p_1$",
                                      'p_2': r"$p_2$",
@@ -998,3 +998,181 @@ def plot_within_subject_error_for_V123(df, to_plot, precision, ylim=None, yticks
     utils.save_fig(save_path)
     return ax
 
+def rand_jitter(arr, jitter_amount=0.05):
+    arr = np.asarray(arr)
+    if len(arr) == 1:
+        stdev = 0.05
+    else:
+        stdev = jitter_amount * (arr.max() - arr.min()) 
+    return arr + np.random.randn(len(arr)) * stdev
+
+
+def plot_individual_parameters(params_df, x, y, hue, hue_order, 
+                                params_list, ylim_list=None, yticks_list=None,
+                                title_list=None, 
+                                figsize=(7, 6),
+                                save_path=None, **kwargs):
+    rc.update({
+          'axes.titlesize': 11,
+          'axes.titlepad': 20,
+          'axes.labelsize': 11,
+          'ytick.labelsize': 11,
+          'legend.title_fontsize': 11,
+          'legend.fontsize': 11})
+    
+    sns.set_theme("paper", style='ticks', rc=rc)
+    pal = sns.color_palette('tab10', len(hue_order))
+
+    from matplotlib.gridspec import GridSpec
+
+    fig = plt.figure(figsize=figsize)
+
+    # Define a 2x6 grid for flexibility
+    gs = GridSpec(nrows=2, ncols=6, figure=fig)
+
+    # First row
+    ax1 = fig.add_subplot(gs[0, 0:2])        # 1 column = smallest
+    ax2 = fig.add_subplot(gs[0, 2:5])      # 3 columns = largest
+    ax3 = fig.add_subplot(gs[1, 0:2])      # 2 columns = medium
+    # Second row
+    ax4 = fig.add_subplot(gs[1, 2:4])      # 2 columns = medium
+    ax5 = fig.add_subplot(gs[1, 4:6])      # 2 columns = medium
+
+    # Optionally turn off unused cells (gs[1, 4:6])
+    # Or you can assign ax6 = fig.add_subplot(gs[1, 4:6]) and hide it
+
+    # Add simple demo content
+    axes = [ax1, ax2, ax3, ax4, ax5]
+    for i, ax in enumerate(axes):
+        param = params_list[i]
+        for j, sub in enumerate(hue_order):
+            tmp = params_df.query('parameter in @param & sub == @sub')
+            x_jittered = rand_jitter(np.arange(len(param)))
+            ax.errorbar(x=x_jittered, 
+                        y=tmp[y], 
+                        yerr=[tmp['yerr_lower'], tmp['yerr_upper']], 
+                        fmt='o', 
+                        color=pal[j], 
+                        label=sub,
+                        linewidth=1,
+                        capsize=3,
+                        markersize=3,
+                        )
+            ax.set_ylabel('')
+            ax.set_xlabel('')
+        if len(param) > 1:
+            ax.margins(x=0.2)
+        else:
+            ax.margins(x=0.1)
+        if i == 0:
+            ax.set(xlim=[-1,1], xticks=[0])
+        else:
+            ax.set(xlim=[-0.4,1.4], xticks=np.arange(len(param)))
+        ax.set_xticklabels(param)
+
+        if ylim_list is not None:
+                ax.set_ylim(ylim_list[i])
+        if yticks_list is not None:
+            ax.set_yticks(yticks_list[i])
+
+    axes[0].set_ylabel('Parameter estimates')
+    axes[2].set_ylabel('Parameter estimates')
+    axes[3].set_xlabel('Parameter')
+
+    axes[1].legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+
+    plt.tight_layout()
+    fig.subplots_adjust(wspace=0.8, hspace=0.3)
+
+    utils.save_fig(save_path)
+    #return fig, axes
+
+def _replace_param_names_with_latex(params_list):
+    """
+    Replace entries in params_list with LaTeX-formatted names for plotting.
+    """
+    new_list = {
+        'sigma': r"$\sigma$",
+        'slope': r"$Slope$" "\n" r"$m$",
+        'intercept': r"$Intercept$" "\n" r"$b$",
+        'p_1': r"$p_1$",
+        'p_2': r"$p_2$",
+        'p_3': r"$p_3$",
+        'p_4': r"$p_4$",
+        'A_1': r"$A_1$",
+        'A_2': r"$A_2$"
+    }
+    return [[new_list.get(param, param) for param in sublist] for sublist in params_list]
+
+def plot_model_comparison_params(model_df, 
+                                 params_list,
+                                 hue='sub', 
+                                 ax=None, 
+                                 save_path=None, 
+                                 weighted_average=False, 
+                                 ylim=None, yticks=None,
+                                 **kwargs):
+    """
+    Plot model parameters
+    """ 
+    rc.update({
+        'axes.titlesize': 11,
+        'axes.titlepad': 20,
+        'axes.labelsize': 11,
+        'ytick.labelsize': 9,
+        'xtick.labelsize': 11,
+        'legend.title_fontsize': 11,
+        'legend.fontsize': 11,
+        })
+    sns.set_theme("paper", style='ticks', rc=rc)
+    # Get columns that are not in params_list
+    flat_params_list = [param for sublist in params_list for param in sublist]
+    non_param_columns = [col for col in model_df.columns if col not in flat_params_list]
+    model_long_df = model_df.melt(id_vars=non_param_columns,
+                                  var_name='param', 
+                                  value_name='value')
+    if weighted_average:
+        model_long_df['value_and_weights'] = model_long_df.apply(lambda row: row.value + row.precision * 1j, axis=1)
+        kwargs['estimator'] = weighted_mean
+        y = 'value_and_weights'
+    else:
+        y = 'value'
+    model_long_df['param'] = _change_params_to_math_symbols(model_long_df['param'])
+    params_list = _replace_param_names_with_latex(params_list)
+    if ax is None:
+        fig, axes = plt.subplots(1,len(params_list), figsize=(8.5, 2.5), 
+                                 gridspec_kw={'width_ratios': [1,2,1.7,1.5,1.5]})
+    for i, ax in enumerate(axes.flatten()):
+        tmp_param = params_list[i]
+        tmp = model_long_df.query(f'param in @tmp_param')
+        
+        sns.pointplot(ax=ax, data=tmp, linestyles='',
+                      x='param', y=y, scale=1, 
+                      errorbar=('ci', 68),
+                      order=params_list[i], 
+                      hue=hue, dodge=0.5,
+                      **kwargs)
+        
+        ax.set_xlabel('')
+        ax.get_legend().remove()
+        if i >= 2:
+            ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+            ax.margins(x=0.05)
+        if i == 1:    
+            ax.margins(x=0.04)
+            ax.tick_params(axis='x', labelsize=rc['xtick.labelsize']-0.5, pad=5)
+        if i == 0:
+            ax.set_ylabel('Parameter estimates')
+        else:
+            ax.set_ylabel('')
+
+    if ylim is not None:
+        for i,ax in enumerate(axes.flatten()):
+            ax.set(ylim=ylim[i])
+    if yticks is not None:
+        for i,ax in enumerate(axes.flatten()):
+            ax.set(yticks=yticks[i])
+    #ax.legend(loc='center left', title='Model type', bbox_to_anchor=(1.02, 0.7), frameon=False)
+    fig.subplots_adjust(wspace=0.8, top=0.9)
+    if save_path:
+        utils.save_fig(save_path)
