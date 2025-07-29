@@ -6,7 +6,7 @@ import torch
 import itertools
 from timeit import default_timer as timer
 from . import utils as utils
-
+from pathlib import Path
 
 
 def stim_w_r_and_w_a(stim_df,
@@ -339,6 +339,8 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
     sfp_model.eval()
     elapsed_time = timer() - start
     if save_path is not None:
+        if not os.path.exists(os.path.dirname(save_path)):
+            os.makedirs(os.path.dirname(save_path))
         torch.save(sfp_model.state_dict(), save_path)
     params_col = [name for name, param in sfp_model.named_parameters() if param.requires_grad]
     params_val = [param for name, param in sfp_model.named_parameters() if param.requires_grad]
