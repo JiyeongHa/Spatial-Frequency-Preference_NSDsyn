@@ -47,7 +47,6 @@ def break_down_phase(df):
     return df
 
 
-
 def get_Pv_row(row, params, modulator=True):
     if params.shape[0] != 1:
         raise Exception('params should be a df with one row!')

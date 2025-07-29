@@ -119,6 +119,10 @@ class SynthesizeData():
                                            r_v=syn_df['eccentricity'], w_l=syn_df['local_ori'], to_numpy=True)
         syn_df['normed_betas'] = model2d.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
         return syn_df
+        
+    def add_noise(self, df, beta_col, noise_mean=0, noise_sd=0.03995):
+        df[beta_col] = df[beta_col] + np.random.normal(noise_mean, noise_sd, len(df[beta_col]))
+        return df
 
     def synthesize_BOLD_1d(self, bin_list, bin_labels, params):
         syn_df = self.syn_voxels.copy()
@@ -214,8 +218,6 @@ def merge_sigma_v_squared(syn_df):
 
 
 
-def add_noise(betas, noise_mean=0, noise_sd=0.03995):
-    return betas + np.random.normal(noise_mean, noise_sd, len(betas))
 
 def copy_df_and_add_noise(df, beta_col, noise_mean=0, noise_sd=0):
 
