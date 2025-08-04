@@ -85,50 +85,6 @@ def get_Pv(slope, eccentricity, intercept,
     return Pv
 
 
-
-# class PredictBOLD2d():
-#     """ Define parameters used in forward model"""
-
-#     def __init__(self, params, params_idx, subj_df):
-#         self.params_df = params.iloc[params_idx]
-#         self.sigma = self.params_df['sigma']
-#         self.amp = self.params_df['slope']
-#         self.intercept = self.params_df['intercept']
-#         self.p_1 = self.params_df['p_1']
-#         self.p_2 = self.params_df['p_2']
-#         self.p_3 = self.params_df['p_3']
-#         self.p_4 = self.params_df['p_4']
-#         self.A_1 = self.params_df['A_1']
-#         self.A_2 = self.params_df['A_2']
-#         self.subj_df = subj_df.copy()
-#         self.theta_l = self.subj_df['local_ori']
-#         self.theta_v = self.subj_df['angle']
-#         self.r_v = self.subj_df['eccentricity']  # voxel eccentricity (in degrees)
-#         self.w_l = self.subj_df['local_sf']  # in cycles per degree
-
-#     def get_Av(self):
-#         """ Calculate A_v (formula no. 7 in Broderick et al. (2022)) """
-#         Av = 1 + self.A_1 * np.cos(2 * self.theta_l) + \
-#                 self.A_2 * np.cos(4 * self.theta_l)
-#         return Av
-
-#     def get_Pv(self):
-#         """ Calculate p_v (formula no. 6 in Broderick et al. (2022)) """
-#         ecc_dependency = self.amp * self.r_v + self.intercept
-#         Pv = ecc_dependency * (1 + self.p_1 * np.cos(2 * self.theta_l) +
-#                                 self.p_2 * np.cos(4 * self.theta_l) +
-#                                 self.p_3 * np.cos(2 * (self.theta_l - self.theta_v)) +
-#                                 self.p_4 * np.cos(4 * (self.theta_l - self.theta_v)))
-
-#         return Pv
-
-#     def forward(self):
-#         """ Return predicted BOLD response in eccentricity (formula no. 5 in Broderick et al. (2022)) """
-#         Av = self.get_Av()
-#         Pv = self.get_Pv()
-#         return Av * np.exp(-(np.log2(self.w_l) + np.log2(Pv)) ** 2 / (2 * self.sigma ** 2))
-
-
 def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False):
     """calculate L2 norm for each voxel and normalized using the L2 norm"""
 
@@ -138,10 +94,11 @@ def normalize(voxel_info, to_norm, to_group=["subj", "voxel"], phase_info=False)
                 raise Exception('There are more than 28 conditions for one voxel!\n')
         normed = voxel_info.groupby(to_group)[to_norm].apply(lambda x: x / np.linalg.norm(x))
 
-    elif type(voxel_info) == torch.Tensor:
+    elif type(voxel_info) == list:
         normed = torch.empty(to_norm.shape, dtype=torch.float64)
-        for idx in voxel_info.unique():
+        for idx in voxel_info:
             voxel_idx = voxel_info == idx
+            print(voxel_idx)
             normed[voxel_idx] = to_norm[voxel_idx] / torch.linalg.norm(to_norm[voxel_idx])
     return normed
 
@@ -166,16 +123,6 @@ def _cast_as_param(x, requires_grad=True):
     return torch.nn.Parameter(_cast_as_tensor(x), requires_grad=requires_grad)
 
 
-# def _cast_args_as_tensors(args, on_cuda=False):
-#     return_args = []
-#     for v in args:
-#         if not torch.is_tensor(v):
-#             v = _cast_as_tensor(v)
-#         if on_cuda:
-#             v = v.cuda()
-#         return_args.append(v)
-#     return return_args
-
 
 def count_nan_in_torch_vector(x):
     return torch.nonzero(torch.isnan(torch.log2(x).view(-1)))
@@ -193,11 +140,13 @@ class SpatialFrequencyDataset:
         self.voxel_info = df.pivot('voxel', 'class_idx', beta_col).index.astype(int).to_list()
 
 class SpatialFrequencyModel(torch.nn.Module):
-    def __init__(self, params=None, model=7):
+    def __init__(self, params=None, model=7, random_state=42):
         """ The input subj_df should be across-phase averaged prior to this class."""
         super().__init__()  # Allows us to avoid using the base class name explicitly
         self.A_3 = 0
         self.A_4 = 0
+        self.random_state = random_state
+        np.random.seed(random_state)
         if params is not None:
             self._init_existing_params(params)
         else:
@@ -253,7 +202,7 @@ class SpatialFrequencyModel(torch.nn.Module):
                 self.A_2 = _cast_as_param(np.random.random(1))
 
             elif model == 7:  # original model
-                self.sigma = _cast_as_param(np.random.random(1) + 0.5)
+                self.sigma = _cast_as_param(np.random.random(1))
                 self.slope = _cast_as_param(np.random.random(1))
                 self.intercept = _cast_as_param(np.random.random(1))
                 self.p_1 = _cast_as_param(np.random.random(1) / 10)
@@ -262,7 +211,13 @@ class SpatialFrequencyModel(torch.nn.Module):
                 self.p_4 = _cast_as_param(np.random.random(1) / 10)
                 self.A_1 = _cast_as_param(np.random.random(1))
                 self.A_2 = _cast_as_param(np.random.random(1))
-                
+    
+    def print_current_params(self):
+        """Print the current parameters of the model."""
+        param_names = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
+        for param in param_names:
+            print(f"{param}: {getattr(self, param)}")
+            
     def _init_existing_params(self, params):
         param_names = ['sigma', 'slope', 'intercept', 'p_1', 'p_2', 'p_3', 'p_4', 'A_1', 'A_2']
         for param in param_names:
@@ -328,13 +283,14 @@ def fit_model(sfp_model, dataset, learning_rate=1e-4, max_epoch=1000, print_ever
         if loss_all_voxels is True:
             losses_history.append(losses.detach().numpy())
         if (t + 1) % print_every == 0 or t == 0:
-            print(f'**epoch no.{t} loss: {np.round(loss.item(), 3)}')
+            print(f'**epoch no.{t} loss: {np.round(loss.item(), 10)}')
         optimizer.zero_grad()  # clear previous gradients
         loss.backward()  # compute gradients of all variables wrt loss
         optimizer.step()  # perform updates using calculated gradients
         model_values = [v.detach().numpy().item() for v in sfp_model.parameters() if v.requires_grad]  # output needs to be put in there
         loss_history.append(loss.item())
         model_history.append(model_values)  # more than one item here
+    
     sfp_model.eval()
     elapsed_time = timer() - start
     if save_path is not None:
