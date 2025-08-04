@@ -32,7 +32,7 @@ rc = {'text.color': 'black',
       'ytick.labelsize': 9,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
-      'figure.titlesize': 14,
+      'figure.titlesize': 11,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -1107,8 +1107,9 @@ def _replace_param_names_with_latex(params_list):
 def plot_model_comparison_params(model_df, 
                                  params_list,
                                  hue='sub', 
-                                 ax=None, 
-                                 save_path=None, 
+                                 fig=None,axes=None, 
+                                 save_path=None,
+                                 suptitle=None, 
                                  weighted_average=False, 
                                  ylim=None, yticks=None,
                                  **kwargs):
@@ -1139,7 +1140,7 @@ def plot_model_comparison_params(model_df,
         y = 'value'
     model_long_df['param'] = _change_params_to_math_symbols(model_long_df['param'])
     params_list = _replace_param_names_with_latex(params_list)
-    if ax is None:
+    if axes is None:
         fig, axes = plt.subplots(1,len(params_list), figsize=(8.5, 2.5), 
                                  gridspec_kw={'width_ratios': [1,2,1.7,1.5,1.5]})
     for i, ax in enumerate(axes.flatten()):
@@ -1150,7 +1151,7 @@ def plot_model_comparison_params(model_df,
                       x='param', y=y, scale=1, 
                       errorbar=('ci', 68),
                       order=params_list[i], 
-                      hue=hue, dodge=0.5,
+                      hue=hue, dodge=0.2,
                       **kwargs)
         
         ax.set_xlabel('')
@@ -1172,7 +1173,9 @@ def plot_model_comparison_params(model_df,
     if yticks is not None:
         for i,ax in enumerate(axes.flatten()):
             ax.set(yticks=yticks[i])
-    #ax.legend(loc='center left', title='Model type', bbox_to_anchor=(1.02, 0.7), frameon=False)
-    fig.subplots_adjust(wspace=0.8, top=0.9)
+    if suptitle is not None:
+        fig.suptitle(suptitle, fontsize=12, fontweight='bold')
+    ax.legend(loc='center left', title='Model type', bbox_to_anchor=(1.02, 0.7), frameon=False)
+    fig.subplots_adjust(wspace=0.8, top=0.85)
     if save_path:
         utils.save_fig(save_path)

@@ -17,7 +17,7 @@ class SynthesizeData():
     2. Generate synthetic voxels. Eccentricity and polar angle will be drawn from the uniform distribution.
     3. Generate BOLD predictions, with or without noise. """
 
-    def __init__(self, roi, n_voxels=100, grating_type='scaled', 
+    def __init__(self, roi, n_voxels=100, 
                  precision_weight=True, p_dist="data",
                  sample_subj_list='all',
                  stim_info_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsyn_stim_description_corrected.csv',
@@ -28,19 +28,52 @@ class SynthesizeData():
         """
         self.roi = roi
         self.n_voxels = n_voxels
-        self.grating_type = grating_type
         self.stim_info_path = stim_info_path
         self.p_dist = p_dist
         self.precision_weight = precision_weight
         self.dataframe_dir = dataframe_dir
+        self.random_state = random_state
+        self.sample_subj_list = self._resolve_subj_list(sample_subj_list)
+        self.syn_df = self._synthesize_data()
+
+    def _resolve_subj_list(self, sample_subj_list):
         if sample_subj_list == 'all':
             self.sample_subj_list = ['subj01', 'subj02', 'subj03', 'subj04', 'subj05', 'subj06', 'subj07', 'subj08']
         else:
             self.sample_subj_list = sample_subj_list
-        self.random_state = random_state
+        return self.sample_subj_list
+    
+    def _synthesize_data(self):
+        stim_info = self._load_and_expand_stim_info()
+        syn_df = self._generate_pRF_data(stim_info)
+        syn_df = self._generate_sigma_v(syn_df)
+        return syn_df
+    
+    def _add_local_stim_properties(self, grating_type):
+        syn_df = self.syn_df.copy()
+        syn_df['local_sf'], syn_df['local_ori'] = prep.calculate_local_stim_properties(w_a=syn_df['w_a'], 
+                                                                                      w_r=syn_df['w_r'],
+                                                                                      eccentricity=syn_df['eccentricity'],
+                                                                                      angle=syn_df['angle'],
+                                                                                      angle_in_radians=True,
+                                                                                      stimulus=grating_type)
+        return syn_df
+    
+    def synthesize_BOLD_2d(self, params, grating_type='scaled', model=7):
+        sim_df = self._add_local_stim_properties(grating_type)
+        my_model = model2d.SpatialFrequencyModel(params=params, model=model)
+        sim_df['betas'] = my_model.forward(theta_l=sim_df['local_ori'], 
+                                           theta_v=sim_df['angle'],
+                                           r_v=sim_df['eccentricity'], 
+                                           w_l=sim_df['local_sf'], to_numpy=True)
+        sim_df['normed_betas'] = model2d.normalize(sim_df, to_norm="betas", to_group=['voxel'], phase_info=False)
+        return sim_df
+        
+    def add_noise(self, df, beta_col, noise_mean=0, noise_sd=0.03995):
+        return df[beta_col] + np.random.normal(noise_mean, noise_sd, len(df[beta_col]))
 
 
-    def get_stim_info_for_n_voxels(self):
+    def _load_and_expand_stim_info(self):
         stim_info = prep.load_stim_info_as_df(self.stim_info_path, 
                                               drop_phase=False, 
                                               force_download=False)
@@ -54,7 +87,7 @@ class SynthesizeData():
                 stim_info = pd.concat((stim_info, tmp_df), ignore_index=True)
         return stim_info
     
-    def add_pRF_info(self, stim_info):
+    def _generate_pRF_data(self, stim_info):
         """Generate synthesized data for n voxels. if p_dist is set to "uniform",
         Each voxel's polar angle and eccentricity will be drawn from uniform distribution.
         For  p_dist == "data", the probability distribution will be from the actual data.
@@ -66,31 +99,9 @@ class SynthesizeData():
         elif self.p_dist == "data":
             prf_df = self._sample_pRF_from_data()
         syn_df = stim_info.merge(prf_df, on='voxel')
-        syn_df['local_sf'], syn_df['local_ori'] = prep.calculate_local_stim_properties(w_a=syn_df['w_a'], 
-                                                                                       w_r=syn_df['w_r'],
-                                                                                       eccentricity=syn_df['eccentricity'],
-                                                                                       angle=syn_df['angle'],
-                                                                                       angle_in_radians=True,
-                                                                                       stimulus=self.grating_type)
         return syn_df
     
-    def _sample_pRF_from_data(self):
-        
-        all_subj_df = []
-        for subj in self.sample_subj_list:
-            subj_df = pd.read_csv(os.path.join(self.dataframe_dir, 'nsdsyn', 'model', 
-                                               f'dset-nsdsyn_sub-{subj}_roi-{self.roi}_vs-pRFsize_tavg-False.csv'))
-            subj_df = subj_df.drop_duplicates(subset=['voxel'])
-            all_subj_df.append(subj_df)
-        all_subj_df = pd.concat(all_subj_df, ignore_index=True)
-
-        sampled_voxels = all_subj_df.sample(n=self.n_voxels, replace=False, random_state=self.random_state)
-        polar_angles = sampled_voxels['angle'].values
-        eccentricity = sampled_voxels['eccentricity'].values
-        prf_df = pd.DataFrame({'voxel': range(self.n_voxels), 'angle': polar_angles, 'eccentricity': eccentricity})
-        return prf_df
-
-    def add_sigma_v(self, df):
+    def _generate_sigma_v(self, df):
         """Sample sigma_v_squared from the NSD synthetic data.
         The final output is a dataframe that contains two columns: noise_SD (sigma_v_squared) & sigma_v_squared.
         It will first attempt to read in an any saved sigma_v_squared.csv files.
@@ -113,16 +124,21 @@ class SynthesizeData():
             sigma_v_df = sigma_v_df.reset_index(drop=True)
         return df.merge(sigma_v_df[['voxel', 'noise_SD', 'sigma_v_squared']], on='voxel').reset_index(drop=True)
         
-    def synthesize_BOLD_2d(self, syn_df, params, model=7):
-        my_model = model2d.SpatialFrequencyModel(params=params, model=model)
-        syn_df['betas'] = my_model.forward(theta_l=syn_df['local_ori'], theta_v=syn_df['angle'],
-                                           r_v=syn_df['eccentricity'], w_l=syn_df['local_sf'], to_numpy=True)
-        syn_df['normed_betas'] = model2d.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
-        return syn_df
+    def _sample_pRF_from_data(self):
         
-    def add_noise(self, df, beta_col, noise_mean=0, noise_sd=0.03995):
-        df[beta_col] = df[beta_col] + np.random.normal(noise_mean, noise_sd, len(df[beta_col]))
-        return df
+        all_subj_df = []
+        for subj in self.sample_subj_list:
+            subj_df = pd.read_csv(os.path.join(self.dataframe_dir, 'nsdsyn', 'model', 
+                                               f'dset-nsdsyn_sub-{subj}_roi-{self.roi}_vs-pRFsize_tavg-False.csv'))
+            subj_df = subj_df.drop_duplicates(subset=['voxel'])
+            all_subj_df.append(subj_df)
+        all_subj_df = pd.concat(all_subj_df, ignore_index=True)
+
+        sampled_voxels = all_subj_df.sample(n=self.n_voxels, replace=False, random_state=self.random_state)
+        polar_angles = sampled_voxels['angle'].values
+        eccentricity = sampled_voxels['eccentricity'].values
+        prf_df = pd.DataFrame({'voxel': range(self.n_voxels), 'angle': polar_angles, 'eccentricity': eccentricity})
+        return prf_df
 
     def synthesize_BOLD_1d(self, bin_list, bin_labels, params):
         syn_df = self.syn_voxels.copy()
