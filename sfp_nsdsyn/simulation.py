@@ -115,8 +115,8 @@ class SynthesizeData():
         
     def synthesize_BOLD_2d(self, syn_df, params, model=7):
         my_model = model2d.SpatialFrequencyModel(params=params, model=model)
-        syn_df['betas'] = my_model.forward(theta_l=syn_df['local_sf'], theta_v=syn_df['angle'],
-                                           r_v=syn_df['eccentricity'], w_l=syn_df['local_ori'], to_numpy=True)
+        syn_df['betas'] = my_model.forward(theta_l=syn_df['local_ori'], theta_v=syn_df['angle'],
+                                           r_v=syn_df['eccentricity'], w_l=syn_df['local_sf'], to_numpy=True)
         syn_df['normed_betas'] = model2d.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
         return syn_df
         
