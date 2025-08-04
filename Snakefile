@@ -20,10 +20,10 @@ LR_1D = [0.005]
 MAX_EPOCH_1D = [8000]
 LR_2D = [0.0005]
 MAX_EPOCH_2D = [30000]
-measured_noise_sd =0.03995  # unnormalized 1.502063
+MEASURED_NOISE_SD = np.round(0.03995, 2)  # unnormalized 1.502063
 LR_RATE = [0.0005] #[0.0007]#np.linspace(5,9,5)*1e-4
 MULTIPLES_OF_NOISE_SD = [1]
-NOISE_SD = [np.round(measured_noise_sd*x, 2) for x in [1]]
+NOISE_SD = [np.round(MEASURED_NOISE_SD*x, 2) for x in [1]]
 N_VOXEL = [100]
 FULL_VER = ["True"]
 PW = ["True"]
@@ -406,16 +406,16 @@ rule results_1D_all:
 
 rule run_model:
     input:
-        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', '{stimtest}', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
-        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', '{stimtest}', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
+        subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
+        precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", '{stimtest}', 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}",'{stimtest}', 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", '{stimtest}', 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "test_results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "test_results_2D", "{dset}", 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","test_results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'{stimtest}', 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","test_results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
     benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'{stimtest}', 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","test_results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
@@ -424,7 +424,7 @@ rule run_model:
         precision_df = pd.read_csv(input.precision)
         df = subj_df.merge(precision_df, on=['sub', 'vroinames', 'voxel'])
         df = df.groupby(['sub','voxel','class_idx','vroinames']).mean().reset_index()
-        subj_model = model.SpatialFrequencyModel(full_ver=True)
+        subj_model = model.SpatialFrequencyModel()
         subj_dataset = model.SpatialFrequencyDataset(df, beta_col='betas')
         loss_history, model_history, _ = model.fit_model(subj_model, subj_dataset,
                                                          learning_rate=float(wildcards.lr),
@@ -437,6 +437,12 @@ rule run_model:
                                                          eps=1e-8)
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')
+
+rule run_model_all:
+    input:
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "test_results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+               dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi='V1', vs='pRFsize')
+ 
 
 rule run_cross_validation:
     input:
@@ -964,103 +970,74 @@ rule plot_all:
 
 rule generate_synthetic_data:
     input:
-        stim_info_path=os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", 'nsdsynthetic_sf_stim_description.csv'),
-        subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn")
+        stim_info_path=os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
+        params_path = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv")
     output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "grating-{grating_type}_nvox-{n_voxels}_noise-{noise_level}.csv")
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "grating-{grating_type}_nvox-{n_voxels}_noise-{noise_level}.log")
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}.log")
+    params:
+        subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes"),
+        random_state = 42
     run:
-        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
-        np.random.seed(42)
-        syn_data = sim.SynthesizeData(n_voxels=int(wildcards.n_voxels), 
-                                      grating_type=wildcards.grating_type, 
-                                      p_dist="data", 
-                                      noise_level=wildcard.noise_level
-                                      stim_info_path=input.stim_info_path, 
-                                      subj_df_dir=input.subj_df_dir)
-        syn_df_2d = syn_data.synthesize_BOLD_2d(params, full_ver=(wildcards.full_ver=="True"))
-        syn_df_2d.to_csv(output[0])
+        params_info = pd.read_csv(input.params_path)
+        params_info = params_info[params_info['vroinames'] == wildcards.roi]
+        params_dict = params_info.to_dict(orient='records')[0]
+        syn = sim.SynthesizeData(roi=wildcards.roi, 
+                                 n_voxels=int(wildcards.n_voxels), 
+                                 precision_weight=True,
+                                 sample_subj_list="all",
+                                 stim_info_path=input.stim_info_path,
+                                 dataframe_dir=params.subj_df_dir,
+                                 random_state=params.random_state)
+        syn_data = syn.synthesize_BOLD_2d(params_dict,
+                                          grating_type=wildcards.grating_type,
+                                          model=7)
+        syn_data['normed_betas'] = syn.add_noise(syn_data, 
+                                                 beta_col='normed_betas', 
+                                                 noise_sd=MEASURED_NOISE_SD*int(wildcards.noise_lvl))
+        syn_data.to_csv(output[0])
 
-rule plot_synthetic_data:
-    input:
-        all_files = expand(os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", "syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}.csv"), full_ver=FULL_VER, pw=PW, n_voxels=N_VOXEL, n_sd_mtpl=MULTIPLES_OF_NOISE_SD)
-    output:
-        os.path.join(config['OUTPUT_DIR'], "figures", 'lineplot_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}.png')
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", 'lineplot_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}.png')
-    run:
-        all_df = pd.DataFrame({})
-        for file in input.all_files:
-            tmp =  pd.read_csv(file)
-            all_df = pd.concat((all_df,tmp),ignore_index=True)
 
 rule run_simulation:
     input:
-        input_path = os.path.join(config['OUTPUT_DIR'],  "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}.csv"),
+        syn_data_path =os.path.join(config['OUTPUT_DIR'], "dataframes","simulation", "roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}.csv")
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'model_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'loss_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv'),
-        losses_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'losses_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.csv')
+        model_results = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'loss-history_roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}.h5')
     log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "simulation","results_2D",'loss_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_n_vox-{n_voxels}_lr-{lr}_eph-{max_epoch}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}.log')
+    params:
+        random_state = 42
+    benchmark:
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}.txt')
+    resources:
+        cpus_per_task = 1,
+        mem_mb = 4000
     run:
-        # add noise
-        syn_df = pd.read_csv(input.input_path)
-        syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
-        syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=(wildcards.full_ver=="True"))
-        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model,syn_dataset,learning_rate=float(wildcards.lr),max_epoch=int(wildcards.max_epoch),print_every=2000,anomaly_detection=False,amsgrad=False,eps=1e-8)
-        losses_history = model.shape_losses_history(losses, syn_df)
-        utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
-        utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
-        utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
+        syn_data = pd.read_csv(input.syn_data_path)
+        my_dataset = model.SpatialFrequencyDataset(syn_data, beta_col='normed_betas')
+        my_model = model.SpatialFrequencyModel(random_state=params.random_state)
+                
+        loss_history, model_history, _ = model.fit_model(my_model, my_dataset,
+                                                         save_path=output.model_results,
+                                                         learning_rate=float(wildcards.lr), 
+                                                         max_epoch=int(wildcards.max_epoch),
+                                                         print_every=1000, loss_all_voxels=False)
 
-rule generate_synthetic_data_subj:
+        model_history.to_hdf(output.model_history, key='stage', mode='w')
+        loss_history.to_hdf(output.loss_history, key='stage', mode='w')   
+
+rule run_simulation_all:
     input:
-        subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn")
-    output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_subj-{sn}.csv")
-    log:
-        os.path.join(config['OUTPUT_DIR'], 'logs', "simulation", "synthetic_data_2D", "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_subj-{sn}.log")
-    run:
-        params = pd.read_csv(os.path.join(config['DF_DIR'], config['PARAMS']))
-        subj_data = sim.SynthesizeRealData(sn=int(wildcards.sn), pw=(wildcards.pw == "True"), subj_df_dir=input.subj_df_dir)
-        subj_syn_df_2d = subj_data.synthesize_BOLD_2d(params, full_ver=(wildcards.full_ver=="True"))
-        subj_syn_df_2d.to_csv(output[0])
-
-rule generate_noisy_synthetic_data_subj:
-    input:
-        subj_syn_df_2d = os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D",  "original_syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-0_subj-{sn}.csv")
-    output:
-        os.path.join(config['OUTPUT_DIR'], "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}.csv")
-    log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "simulation","synthetic_data_2D","syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}.csv")
-    run:
-        np.random.seed(1)
-        subj_syn_df = pd.read_csv(input.subj_syn_df_2d)
-        noisy_df_2d = sim.copy_df_and_add_noise(subj_syn_df, beta_col="normed_betas", noise_mean=0, noise_sd=subj_syn_df['noise_SD']*float(wildcards.n_sd_mtpl))
-        noisy_df_2d.to_csv(output[0])
-
-
-rule run_simulation_subj:
-    input:
-        input_path = os.path.join(config['OUTPUT_DIR'],  "simulation", "synthetic_data_2D", "syn_data_2d_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}.csv"),
-    output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'model_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}_lr-{lr}_eph-{max_epoch}.csv'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'loss_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}_lr-{lr}_eph-{max_epoch}.csv'),
-        losses_history = os.path.join(config['OUTPUT_DIR'], "simulation", "results_2D", 'losses_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}_lr-{lr}_eph-{max_epoch}.csv')
-    log:
-        os.path.join(config['OUTPUT_DIR'],"logs", "simulation","results_2D",'loss_history_full_ver-{full_ver}_pw-{pw}_noise_mtpl-{n_sd_mtpl}_subj-{sn}_lr-{lr}_eph-{max_epoch}.log')
-    run:
-        # add noise
-        syn_df = pd.read_csv(input.input_path)
-        syn_dataset = model.SpatialFrequencyDataset(syn_df, beta_col='normed_betas')
-        syn_model = model.SpatialFrequencyModel(syn_dataset.my_tensor,full_ver=(wildcards.full_ver=="True"))
-        syn_loss_history, syn_model_history, syn_elapsed_time, losses = model.fit_model(syn_model,syn_dataset,learning_rate=float(wildcards.lr),max_epoch=int(wildcards.max_epoch),print_every=2000,anomaly_detection=False,amsgrad=False,eps=1e-8)
-        losses_history = model.shape_losses_history(losses, syn_df)
-        utils.save_df_to_csv(losses_history, output.losses_history, indexing=False)
-        utils.save_df_to_csv(syn_model_history, output.model_history, indexing=False)
-        utils.save_df_to_csv(syn_loss_history, output.loss_history, indexing=False)
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_nvox-{n_voxels}_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}.pt'),
+               roi=['V1'],
+               grating_type=['scaled', 'constant'],
+               n_voxels=[2500],
+               noise_lvl=[0,1,2],
+               lr=LR_2D,
+               max_epoch=MAX_EPOCH_2D)
 
 rule run_Broderick_subj:
     input:
