@@ -9,6 +9,7 @@ from . import bootstrapping as bts
 from . import binning as binning
 from . import one_dimensional_model as fitting
 from . import make_dataframes as prep
+from gsn.perform_gsn import perform_gsn
 import re
 
 class SynthesizeData():
@@ -20,6 +21,7 @@ class SynthesizeData():
     def __init__(self, roi, n_voxels=100, 
                  precision_weight=True, p_dist="data",
                  sample_subj_list='all',
+                 df = None,
                  stim_info_path='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/nsdsyn_stim_description_corrected.csv',
                  dataframe_dir='/Volumes/server/Projects/sfp_nsd/derivatives/dataframes',
                  random_state=42):
@@ -27,14 +29,19 @@ class SynthesizeData():
         grating_type: 'scaled' or 'constant'
         """
         self.roi = roi
-        self.n_voxels = n_voxels
-        self.stim_info_path = stim_info_path
-        self.p_dist = p_dist
         self.precision_weight = precision_weight
-        self.dataframe_dir = dataframe_dir
         self.random_state = random_state
-        self.sample_subj_list = self._resolve_subj_list(sample_subj_list)
-        self.syn_df = self._synthesize_data()
+        self.stim_info_path = stim_info_path
+        self.dataframe_dir = dataframe_dir
+        self.p_dist = p_dist
+        if df is not None:
+            self.syn_df = df[['sub','w_r','w_a','class_idx','names','freq_lvl','voxel','angle','eccentricity','noise_SD','sigma_v_squared']]
+            self.syn_df['trial'] = self.syn_df.groupby(['sub','voxel','class_idx']).cumcount()
+            self.n_voxels = self.syn_df.voxel.nunique()
+        else:
+            self.n_voxels = n_voxels
+            self.sample_subj_list = self._resolve_subj_list(sample_subj_list)
+            self.syn_df = self._synthesize_data()
 
     def _resolve_subj_list(self, sample_subj_list):
         if sample_subj_list == 'all':
@@ -59,18 +66,29 @@ class SynthesizeData():
                                                                                       stimulus=grating_type)
         return syn_df
     
-    def synthesize_BOLD_2d(self, params, grating_type='scaled', model=7):
+    def synthesize_BOLD_2d(self, params, grating_type='scaled', model=7, phase_info=False):
         sim_df = self._add_local_stim_properties(grating_type)
         my_model = model2d.SpatialFrequencyModel(params=params, model=model)
         sim_df['betas'] = my_model.forward(theta_l=sim_df['local_ori'], 
                                            theta_v=sim_df['angle'],
                                            r_v=sim_df['eccentricity'], 
                                            w_l=sim_df['local_sf'], to_numpy=True)
-        sim_df['normed_betas'] = model2d.normalize(sim_df, to_norm="betas", to_group=['voxel'], phase_info=False)
+        sim_df['normed_betas'] = model2d.normalize(sim_df, to_norm="betas", to_group=['voxel'], phase_info=phase_info)
         return sim_df
         
     def add_noise(self, df, beta_col, noise_mean=0, noise_sd=0.03995):
-        return df[beta_col] + np.random.normal(noise_mean, noise_sd, len(df[beta_col]))
+        sim_noise = np.random.normal(noise_mean, noise_sd, len(df[beta_col]))
+        return df[beta_col] + sim_noise
+    
+    def add_noise_from_covariance(self, df, beta_col, n_trials=8, noise_cov=None, noise_level=1):
+        sim_noise = sample_noise_from_covariance(noise_cov, n_samples=n_trials)
+        sim_noise_df = pd.DataFrame(sim_noise.T).reset_index().replace(np.arange(self.n_voxels), df.voxel.unique())
+        sim_noise_df.rename(columns={'index':'voxel'}, inplace=True)
+        sim_noise_df = sim_noise_df.melt(id_vars='voxel', var_name='trial', value_name='noise')
+        df = df.merge(sim_noise_df, on=['voxel', 'trial'])
+        df['noise'] = df['noise']*noise_level
+        df[f'noisy_{beta_col}'] = df[beta_col] + df['noise']
+        return df
 
 
     def _load_and_expand_stim_info(self):
@@ -160,77 +178,34 @@ class SynthesizeData():
         return syn_df
 
 
+def _reshape_betas_to_numpy(df, beta_col, new_shape=['voxel', 'class_idx', 'trial']):
+    df = df.sort_values(new_shape)
+    # Pivot to get shape: (n_voxels, n_class_idx, n_trials)
+    pivoted = df.pivot_table(
+        index=new_shape[0], 
+        columns=new_shape[1:], 
+        values=beta_col
+    )
+    # Convert to numpy and reshape
+    np_array = pivoted.to_numpy().reshape(
+        df[new_shape[0]].nunique(),
+        df[new_shape[1]].nunique(),
+        df[new_shape[2]].nunique()
+    )
+    return np_array
 
+def measure_noise_covariance(df, beta_col, new_shape=['voxel', 'class_idx', 'trial'], return_all=False):
+    np_array = _reshape_betas_to_numpy(df, beta_col, new_shape)
+    results = perform_gsn(np_array, {'wantshrinkage': True})
+    if return_all:
+        return results
+    else:
+        return results['cNb']
 
-
-class SynthesizeRealData():
-    """Synthesize using the real dataset information as much as possible for 2D model simulations.
-    This class consists of three parts:
-    1. Load stimulus information (stim class, frequency level, w_a, w_r, etc) without phase information
-    2. Choose one subject and load in all prf information and sigma_v in V1. The relationship between voxel info and
-    prf values should not be changed.
-    3. Generate BOLD predictions, with or without noise. """
-
-    def __init__(self, sn, pw=True,
-                 subj_df_dir='/Volumes/server/Projects/sfp_nsd/natural-scenes-dataset/derivatives/dataframes'):
-        self.sn = sn
-        self.subj_df_dir = subj_df_dir
-        self.pw = pw
-        self.subj_voxels = self.load_prf_stim_info_from_data()
-        self.n_voxels = self.subj_voxels.voxel.nunique()
-
-    def _get_sigma_v(self, subj_df, voxel_list):
-        sigma_v_dir = os.path.join(self.subj_df_dir, 'sigma_v')
-        if self.pw is False:
-            measured_noise_sd = 0.03995
-            sigma_v_df = pd.DataFrame({'voxel': voxel_list})
-            sigma_v_df['noise_SD'] = np.ones((voxel_list.shape[0]), dtype=np.float64) * measured_noise_sd
-            sigma_v_df['sigma_v_squared'] = np.ones((voxel_list.shape[0]), dtype=np.float64)
-        else:
-            betas = 'normed_betas'
-            all_sigma_v_path = os.path.join(sigma_v_dir, f'sigma_v_{betas}.csv')
-            if os.path.exists(all_sigma_v_path):
-                all_sigma_v_df = pd.read_csv(all_sigma_v_path)
-                subj = utils.sub_number_to_string(self.sn)
-                sigma_v_df = all_sigma_v_df.query('subj == @subj & voxel in @voxel_list')
-                sigma_v_df = sigma_v_df[['voxel', 'noise_SD', 'sigma_v_squared']]
-                print('used existing dir')
-            else:
-                sigma_v_df = bts.get_multiple_sigma_vs(subj_df, power=[1,2], to_group=['voxel'],
-                                                   columns=['noise_SD', 'sigma_v_squared'], to_sd=betas)
-                print('made new sigma_v')
-        return sigma_v_df
-
-    def _drop_phase_info(self, subj_df):
-        tmp_df = subj_df.groupby(['voxel', 'freq_lvl', 'names']).mean().reset_index()
-        subj_df_no_phase = tmp_df.drop(columns=['betas', 'normed_betas', 'phase', 'phase_idx', 'avg_betas'])
-        return subj_df_no_phase
-
-    def load_prf_stim_info_from_data(self):
-        tmp_df = utils.load_df(self.sn, df_dir=self.subj_df_dir, df_name='stim_voxel_info_df_vs.csv')
-        subj_df = tmp_df.query('vroinames == "V1"')
-        sigma_v_df = self._get_sigma_v(subj_df, tmp_df.voxel.unique())
-        subj_df = subj_df.merge(sigma_v_df, on='voxel')
-        subj_df = self._drop_phase_info(subj_df)
-        return subj_df
-
-    def synthesize_BOLD_2d(self, params, full_ver=True):
-        syn_df = self.subj_voxels.copy()
-        syn_model = model.PredictBOLD2d(params, 0, self.subj_voxels)
-        syn_df['betas'] = syn_model.forward(full_ver=full_ver)
-        syn_df['normed_betas'] = model.normalize(syn_df, to_norm="betas", to_group=['voxel'], phase_info=False)
-        return syn_df
-
-def merge_sigma_v_squared(syn_df):
-    sigma_v_df = bts.sigma_v(syn_df, power=2, to_sd='normed_betas', to_group=['voxel'])
-    sigma_v_df = sigma_v_df.rename(columns={'sigma_v': 'sigma_v_squared'})
-    new_df = syn_df.merge(sigma_v_df, on='voxel')
-    return new_df
-
-
-
-
-
+def sample_noise_from_covariance(cov_matrix, mean=None, n_samples=100):
+    if mean is None:
+        mean = np.zeros(cov_matrix.shape[0])
+    return np.random.multivariate_normal(mean=mean, cov=cov_matrix, size=n_samples,)
 
 
 
