@@ -569,10 +569,9 @@ def _replace_param_names_with_latex(params_list):
     }
     return [[new_list.get(param, param) for param in sublist] for sublist in params_list]
 
-def plot_model_comparison_params(model_df, 
-                                 params_list,
-                                 hue='sub', 
-                                 ax=None, 
+def plot_model_comparison_params(model_df,                                 params_list,
+                                 hue='sub',
+                                 fig=None, axes=None, 
                                  save_path=None, 
                                  weighted_average=False, 
                                  ylim=None, yticks=None,
@@ -594,8 +593,8 @@ def plot_model_comparison_params(model_df,
         y = 'value'
     model_long_df['param'] = _change_params_to_math_symbols(model_long_df['param'])
     params_list = _replace_param_names_with_latex(params_list)
-    if ax is None:
-        fig, axes = plt.subplots(1,len(params_list), figsize=(7, 3), 
+    if axes is None:
+        fig, axes = plt.subplots(1,len(params_list), figsize=(7, 5), 
                                  gridspec_kw={'width_ratios': [1,2,1.5,1.5,1.5]})
     for i, ax in enumerate(axes.flatten()):
         tmp_param = params_list[i]
