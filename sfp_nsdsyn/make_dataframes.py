@@ -320,12 +320,11 @@ def calculate_local_sf(w_a, w_r, eccentricity, stimulus='scaled'):
     l2_norm = np.sqrt((w_r ** 2 + w_a ** 2))
     if stimulus == 'scaled':
         local_sf = l2_norm / eccentricity
-        local_sf = np.divide(local_sf, 2*np.pi)
     elif stimulus == 'constant':
         local_sf = l2_norm
     else:
         raise ValueError('stimulus should be either scaled or constant!')
-    #TODO: ask about this
+    local_sf = np.divide(local_sf, 2*np.pi)
     # to convert this from radians per pixel to cycles per degrees,
     # we multiply by a conversion factor c = 1/2pi
     return local_sf
