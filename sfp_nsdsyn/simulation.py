@@ -80,7 +80,7 @@ class SynthesizeData():
         sim_noise = np.random.normal(noise_mean, noise_sd, len(df[beta_col]))
         return df[beta_col] + sim_noise
     
-    def add_noise_from_covariance(self, df, beta_col, n_trials=8, noise_cov=None, noise_level=1):
+    def add_noise_from_covariance(self, df, beta_col, n_trials, noise_cov, noise_level=1):
         sim_noise = sample_noise_from_covariance(noise_cov, n_samples=n_trials)
         sim_noise_df = pd.DataFrame(sim_noise.T).reset_index().replace(np.arange(self.n_voxels), df.voxel.unique())
         sim_noise_df.rename(columns={'index':'voxel'}, inplace=True)

@@ -1102,7 +1102,10 @@ def _replace_param_names_with_latex(params_list):
         'A_1': r"$A_1$",
         'A_2': r"$A_2$"
     }
-    return [[new_list.get(param, param) for param in sublist] for sublist in params_list]
+    if type(params_list[0]) is list:
+        return [[new_list.get(param, param) for param in sublist] for sublist in params_list]
+    else:
+        return [new_list.get(param, param) for param in params_list]
 
 def plot_model_comparison_params(model_df, 
                                  params_list,
@@ -1146,12 +1149,12 @@ def plot_model_comparison_params(model_df,
     for i, ax in enumerate(axes.flatten()):
         tmp_param = params_list[i]
         tmp = model_long_df.query(f'param in @tmp_param')
-        
+
         sns.pointplot(ax=ax, data=tmp, linestyles='',
                       x='param', y=y, scale=1, 
                       errorbar=('ci', 68),
                       order=params_list[i], 
-                      hue=hue, dodge=0.2,
+                      hue=hue, dodge=0.1,
                       **kwargs)
         
         ax.set_xlabel('')
@@ -1177,5 +1180,105 @@ def plot_model_comparison_params(model_df,
         fig.suptitle(suptitle, fontsize=12, fontweight='bold')
     ax.legend(loc='center left', title='Model type', bbox_to_anchor=(1.02, 0.7), frameon=False)
     fig.subplots_adjust(wspace=0.8, top=0.85)
+    if save_path:
+        utils.save_fig(save_path)
+
+def plot_simulation_results(model_df, params_list, ground_truth, hue, 
+                            scale=1,ylim=None, yticks=None, save_path=None, **kwargs):
+    
+    
+    rc.update({
+    'axes.labelsize': 10,
+    'ytick.labelsize': 9,
+    'xtick.labelsize': 10,
+    'legend.title_fontsize': 11,
+    'legend.fontsize': 11,
+    })
+    sns.set_theme("paper", style='ticks', rc=rc)
+    fig, axes = plt.subplots(1,len(params_list), figsize=(8, 2.3))
+    non_param_columns = [col for col in model_df.columns if col not in params_list]
+    model_long_df = model_df.melt(id_vars=non_param_columns,
+                                  var_name='param', 
+                                  value_name='value')
+    model_long_df['param'] = _change_params_to_math_symbols(model_long_df['param'])
+    params_list = _replace_param_names_with_latex(params_list)
+    for i, ax in enumerate(axes.flatten()):
+        ground_val = ground_truth[i]
+        param = params_list[i]
+        tmp = model_long_df.query('param == @param')
+        sns.pointplot(ax=ax, data=tmp, linestyles='',
+                x='param', y='value', scale=scale, 
+                errorbar=None, 
+                hue=hue, dodge=0.5,
+                **kwargs)
+        ax.axhline(y=ground_val, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
+        if ylim is not None:
+            ax.set(ylim=ylim[i])
+        if yticks is not None:
+            ax.set(yticks=yticks[i])
+        if i != 0:
+            ax.set_ylabel('')
+        else:
+            ax.set_ylabel('Parameter estimates')
+        ax.set_xlabel('')
+        ax.get_legend().remove()
+    
+    axes[-1].legend(loc='center left', bbox_to_anchor=(0.9, 0.7), frameon=False)
+    plt.tight_layout()
+    fig.subplots_adjust(wspace=1.2)
+    if save_path:
+        utils.save_fig(save_path)
+
+
+def plot_simulation_design(base_sfs, eccen, slope, intercept, color_map=None, uniform=True, save_path=None):
+    rc.update({
+        'xtick.major.size': 6,
+        'ytick.major.size': 6,
+        'xtick.minor.size': 3,
+        'ytick.minor.size': 3,
+    })
+    sns.set_theme("paper", style='ticks', rc=rc)
+    if color_map is None:
+        color_map = [(r/255, g/255, b/255) for r, g, b in [(31, 119, 180),(255, 127, 30)]]
+
+    # Calculations
+    sf_scaled = base_sfs[:, None] / (2 * np.pi * eccen[None, :])  # shape (6, 8)
+    sf_unscaled = base_sfs / (2 * np.pi)
+    pf = 1 / (slope * eccen + intercept)
+
+    # Plot
+    plt.figure(figsize=(2.6, 2.3))
+
+    # Red curves (one per base_sfs)
+    for i in range(sf_scaled.shape[0]):
+        plt.plot(eccen, 1 / sf_scaled[i, :], '-', color=color_map[0], linewidth=2, alpha=0.7, zorder=0)
+    if uniform:
+        # Green horizontal lines (one per base_sfs)
+        for val in 1 / sf_unscaled:
+            plt.axhline(y=val, color=color_map[1], linestyle='-', linewidth=2, alpha=0.9, zorder=1)
+
+    # Black line
+    plt.plot(eccen, 1 / pf, '-k', markersize=3, linewidth=2, zorder=2)
+
+    # Formatting
+    plt.xscale('log', base=2)
+    plt.yscale('log')
+    plt.grid(True)
+    plt.gca().set_xlim(0.5, 4)
+    plt.gca().set_xticks([0.5, 1, 2, 4], ['0.5', '1', '2', '4'])
+    plt.xlabel('Eccentricity (deg)')
+    plt.ylabel('Spatial period (cyc/eg)')
+    plt.margins(0.05)  # similar to 'axis padded'
+    if uniform:
+        plt.legend([plt.Line2D([0], [0], color=color_map[0], lw=2),
+                    plt.Line2D([0], [0], color=color_map[1], lw=2),
+                    plt.Line2D([0], [0], color='k', lw=2)],
+                ['scaled', 'uniform', 'ground truth'], 
+                loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
+    else:
+        plt.legend([plt.Line2D([0], [0], color=color_map[0], lw=2),
+                    plt.Line2D([0], [0], color='k', lw=2)],
+                ['scaled', 'ground truth'], 
+                loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
     if save_path:
         utils.save_fig(save_path)
