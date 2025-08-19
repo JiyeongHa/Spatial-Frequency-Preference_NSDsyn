@@ -1122,11 +1122,11 @@ def plot_model_comparison_params(model_df,
     rc.update({
         'axes.titlesize': 11,
         'axes.titlepad': 20,
-        'axes.labelsize': 11,
+        'axes.labelsize': 10,
         'ytick.labelsize': 9,
-        'xtick.labelsize': 11,
-        'legend.title_fontsize': 11,
-        'legend.fontsize': 11,
+        'xtick.labelsize': 10,
+        'legend.title_fontsize': 10,
+        'legend.fontsize': 10,
         })
     sns.set_theme("paper", style='ticks', rc=rc)
     # Get columns that are not in params_list
@@ -1145,7 +1145,7 @@ def plot_model_comparison_params(model_df,
     params_list = _replace_param_names_with_latex(params_list)
     if axes is None:
         fig, axes = plt.subplots(1,len(params_list), figsize=(8.5, 2.5), 
-                                 gridspec_kw={'width_ratios': [1,2,1.7,1.5,1.5]})
+                                 gridspec_kw={'width_ratios': [1,2,1.7,1.7,1.7]})
     for i, ax in enumerate(axes.flatten()):
         tmp_param = params_list[i]
         tmp = model_long_df.query(f'param in @tmp_param')
@@ -1154,14 +1154,15 @@ def plot_model_comparison_params(model_df,
                       x='param', y=y, scale=1, 
                       errorbar=('ci', 68),
                       order=params_list[i], 
-                      hue=hue, dodge=0.1,
+                      hue=hue,
+                      dodge=0.5,
                       **kwargs)
         
         ax.set_xlabel('')
         ax.get_legend().remove()
         if i >= 2:
+            ax.margins(x=0.1)
             ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
-            ax.margins(x=0.05)
         if i == 1:    
             ax.margins(x=0.04)
             ax.tick_params(axis='x', labelsize=rc['xtick.labelsize']-0.5, pad=5)
