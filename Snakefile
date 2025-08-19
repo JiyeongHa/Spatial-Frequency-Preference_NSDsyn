@@ -1006,22 +1006,22 @@ rule save_subj_cov_matrix:
     run:
         subj_data = pd.read_csv(input.subj_df_path)
         subj_data['trial'] = subj_data.groupby(['sub','voxel','class_idx']).cumcount()
-        subj_data['normed_betas'] = model.normalize(subj_data, 'betas', ['sub','voxel'], phase_info=True)
-        cov_matrix = sim.measure_noise_covariance(subj_data, 'normed_betas', 
+        cov_matrix = sim.measure_noise_covariance(subj_data, 'betas', 
                                                   new_shape=['voxel', 'class_idx', 'trial'], 
                                                   return_all=False)
         np.save(output[0], cov_matrix)
 
 rule generate_synthetic_data_with_noise_covariance:
     input:
-        params_path = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"),
+        params_path = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", "params_slopezero.csv"),
+        #params_path = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"),
         subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-{sub}_roi-{roi}_vs-pRFsize_tavg-False.csv"),
         cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-{roi}_sub-{sub}.npy"),
         subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv")
     output:
-        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}.csv")
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-0_intercept-{intercept}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}.log")
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-0_intercept-{intercept}.log")
     params:
         subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes"),
         random_state = 42
@@ -1034,7 +1034,9 @@ rule generate_synthetic_data_with_noise_covariance:
         
         params_info = pd.read_csv(input.params_path)
         params_info = params_info[params_info['vroinames'] == wildcards.roi]
+        params_info['intercept'] = float(wildcards.intercept)
         params_dict = params_info.to_dict(orient='records')[0]
+        print(params_info)
 
         syn = sim.SynthesizeData(roi=wildcards.roi, 
                                  df=subj_data,
@@ -1043,7 +1045,7 @@ rule generate_synthetic_data_with_noise_covariance:
                                           grating_type=wildcards.grating_type,
                                           model=7, phase_info=True)
         syn_data = syn.add_noise_from_covariance(syn_data, 
-                                                 beta_col='normed_betas', 
+                                                 beta_col='betas', 
                                                  n_trials=8, 
                                                  noise_cov=np.load(input.cov_matrix_path), 
                                                  noise_level=int(wildcards.noise_lvl))
@@ -1051,24 +1053,24 @@ rule generate_synthetic_data_with_noise_covariance:
 
 rule run_simulation:
     input:
-        syn_data_path =os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}.csv")
+        syn_data_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-0_intercept-{intercept}.csv")
     output:
-        model_results = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}.pt'),
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'loss-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}.h5')
+        model_results = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-0_intercept-{intercept}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-0_intercept-{intercept}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'loss-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-0_intercept-{intercept}.h5')
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}.log')
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-0_intercept-{intercept}.log')
     params:
         random_state = 42
     benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}.txt')
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model", "simulation", 'model-history_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-0_intercept-{intercept}.txt')
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
     run:
         syn_data = pd.read_csv(input.syn_data_path)
         syn_data = syn_data.groupby(['sub','voxel','class_idx']).mean().reset_index()
-        my_dataset = model.SpatialFrequencyDataset(syn_data, beta_col='normed_betas')
+        my_dataset = model.SpatialFrequencyDataset(syn_data, beta_col='noisy_betas')
         my_model = model.SpatialFrequencyModel(random_state=params.random_state)
                 
         loss_history, model_history, _ = model.fit_model(my_model, my_dataset,
@@ -1082,10 +1084,11 @@ rule run_simulation:
 
 rule run_simulation_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}.pt'),
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-0_intercept-{intercept}.pt'),
                roi=['V1'],
                grating_type=['scaled', 'constant'],
-               noise_lvl=[1,3,5,7],
+               noise_lvl=[0,1,3],
+               intercept=[0.25, 0.3],
                lr=LR_2D,
                sub=['subj01'],
                max_epoch=MAX_EPOCH_2D)

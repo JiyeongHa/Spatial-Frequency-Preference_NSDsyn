@@ -1251,7 +1251,7 @@ def plot_simulation_design(base_sfs, eccen, slope, intercept, color_map=None, un
 
     # Red curves (one per base_sfs)
     for i in range(sf_scaled.shape[0]):
-        plt.plot(eccen, 1 / sf_scaled[i, :], '-', color=color_map[0], linewidth=2, alpha=0.7, zorder=0)
+        plt.plot(eccen, 1 / sf_scaled[i, :], '-', color=color_map[0], linewidth=2, alpha=0.3, zorder=0)
     if uniform:
         # Green horizontal lines (one per base_sfs)
         for val in 1 / sf_unscaled:
@@ -1262,8 +1262,9 @@ def plot_simulation_design(base_sfs, eccen, slope, intercept, color_map=None, un
 
     # Formatting
     plt.xscale('log', base=2)
+    plt.ylim(0.01, 10)
+    plt.grid(axis='both', which='major', linestyle='-', linewidth=0.5)
     plt.yscale('log')
-    plt.grid(True)
     plt.gca().set_xlim(0.5, 4)
     plt.gca().set_xticks([0.5, 1, 2, 4], ['0.5', '1', '2', '4'])
     plt.xlabel('Eccentricity (deg)')
