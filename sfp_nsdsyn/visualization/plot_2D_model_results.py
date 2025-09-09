@@ -1161,7 +1161,15 @@ def plot_model_comparison_params(model_df,
         ax.set_xlabel('')
         ax.get_legend().remove()
         if i >= 2:
-            ax.margins(x=0.1)
+            #ax.margins(x=0.2)
+            # Move the first and last xtick labels further out to create more space in the center
+            xticks = ax.get_xticks()
+            # Calculate the spacing between ticks
+            spacing = xticks[1] - xticks[0]
+            # Move first tick left and last tick right
+            xticks[0] = xticks[0] - 0.3 * spacing
+            xticks[-1] = xticks[-1] + 0.3 * spacing
+            ax.set_xticks(xticks)
             ax.axhline(y=0, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
         if i == 1:    
             ax.margins(x=0.04)
