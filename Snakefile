@@ -1024,12 +1024,15 @@ rule generate_synthetic_data_with_noise_covariance:
         subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes"),
     run:
         subj_data = pd.read_csv(input.subj_df_path)
+        print(subj_data.head())
         subj_data['trial'] = subj_data.groupby(['sub','voxel','class_idx']).cumcount()
         
         subj_precision = pd.read_csv(input.subj_precision_path)
+        print(subj_precision.head())
         subj_data = subj_data.merge(subj_precision, on=['sub','voxel','vroinames'])
         if wildcards.slope == "original":
             params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"))
+            print(params_info.head())
         else:
             params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", "params_slopezero.csv"))
         params_info = params_info[params_info['vroinames'] == wildcards.roi]
