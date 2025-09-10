@@ -1083,10 +1083,10 @@ rule run_simulation_all:
         expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-{slope}_rnseed-{seed}.pt'),
                roi=['V1'],
                grating_type=['scaled', 'constant'],
-               noise_lvl=[0,1,3],
+               noise_lvl=1, #[0,1,3],
                lr=LR_2D,
                slope=["original", "zero"],
-               seed=np.arange(0,100),
+               seed=np.arange(0,1),
                sub=['subj01'],
                max_epoch=MAX_EPOCH_2D)
 
