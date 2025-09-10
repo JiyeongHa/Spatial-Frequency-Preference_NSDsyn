@@ -1055,7 +1055,7 @@ rule generate_synthetic_data_with_noise_covariance:
 rule debug_simulation:
     input:
         subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-subj01_roi-V1_vs-pRFsize_tavg-False.csv"),
-        cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-{roi}_sub-{sub}.npy")
+        cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-V1_sub-subj01.npy")
         #subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv")
     log:
         os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-111.log")
@@ -1065,7 +1065,7 @@ rule debug_simulation:
         subj_data = pd.read_csv(input.subj_df_path)
         print(subj_data.head())
         cov_matrix = np.load(input.cov_matrix_path)
-        print(cov_matrix.shape)
+        print(cov_matrix[0,0,:])
 
 rule run_simulation:
     input:
