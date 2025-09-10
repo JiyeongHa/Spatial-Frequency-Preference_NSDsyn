@@ -1054,7 +1054,7 @@ rule generate_synthetic_data_with_noise_covariance:
 
 rule debug_simulation:
     input:
-        subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-{sub}_roi-{roi}_vs-pRFsize_tavg-False.csv"),
+        subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-subj01_roi-V1_vs-pRFsize_tavg-False.csv"),
         #cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-{roi}_sub-{sub}.npy"),
         #subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv")
     run:
