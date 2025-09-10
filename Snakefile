@@ -1083,7 +1083,7 @@ rule run_simulation:
 
 rule run_simulation_single:
     input:
-        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-77.csv")
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-111.csv")
 
 rule run_simulation_all:
     input:
