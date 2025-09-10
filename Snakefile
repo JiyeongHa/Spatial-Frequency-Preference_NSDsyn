@@ -1021,12 +1021,9 @@ rule generate_synthetic_data_with_noise_covariance:
     benchmark:
         os.path.join(config['OUTPUT_DIR'], "benchmark", "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.txt")
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs","dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.log")
-    params:
-        subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes"),
+        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.log")
     run:
         subj_data = pd.read_csv(input.subj_df_path)
-        print(subj_data.head())
         subj_data['trial'] = subj_data.groupby(['sub','voxel','class_idx']).cumcount()
         
         subj_precision = pd.read_csv(input.subj_precision_path)
@@ -1034,42 +1031,63 @@ rule generate_synthetic_data_with_noise_covariance:
         subj_data = subj_data.merge(subj_precision, on=['sub','voxel','vroinames'])
         if wildcards.slope == "original":
             params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"))
-            print(params_info.head())
         else:
             params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", "params_slopezero.csv"))
         params_info = params_info[params_info['vroinames'] == wildcards.roi]
         params_dict = params_info.to_dict(orient='records')[0]
-        syn = sim.SynthesizeData(roi=wildcards.roi, 
-                                 df=subj_data,
-                                 random_state=wildcards.seed)                                 
-        syn_data = syn.synthesize_BOLD_2d(params_dict,
-                                          grating_type=wildcards.grating_type,
-                                          model=7, phase_info=True)
-        syn_data = syn.add_noise_from_covariance(syn_data, 
-                                                 beta_col='betas', 
-                                                 n_trials=8, 
-                                                 noise_cov=np.load(input.cov_matrix_path), 
-                                                 noise_level=int(wildcards.noise_lvl))
-        syn_data.to_csv(output[0], index=False)
+        # syn = sim.SynthesizeData(roi=wildcards.roi, 
+        #                          df=subj_data,
+        #                          random_state=wildcards.seed)                                 
+        # syn_data = syn.synthesize_BOLD_2d(params_dict,
+        #                                   grating_type=wildcards.grating_type,
+        #                                   model=7, phase_info=True)
+        # syn_data = syn.add_noise_from_covariance(syn_data, 
+        #                                          beta_col='betas', 
+        #                                          n_trials=8, 
+        #                                          noise_cov=np.load(input.cov_matrix_path), 
+        #                                          noise_level=int(wildcards.noise_lvl))
+        # syn_data.to_csv(output[0], index=False)
 
-rule debug_simulation:
+        
+rule generate_synthetic_data_with_noise_covariance:
     input:
-        subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-subj01_roi-V1_vs-pRFsize_tavg-False.csv"),
-        cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-V1_sub-subj01.npy"),
-        subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-subj01_roi-V1_vs-pRFsize.csv")
-    log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-111.log")
+        subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-{sub}_roi-{roi}_vs-pRFsize_tavg-False.csv"),
+        cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-{roi}_sub-{sub}.npy"),
+        subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv")
+    output:
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "debug_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.csv")
     benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-111.txt")
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "dataframes", "simulation", "debug_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.txt")
+    log:
+        os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "simulation", "debug_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.log")
     run:
         subj_data = pd.read_csv(input.subj_df_path)
-        print(subj_data.head())
-        cov_matrix = np.load(input.cov_matrix_path)
-        print(cov_matrix.shape)
-        print(cov_matrix)
+        subj_data['trial'] = subj_data.groupby(['sub','voxel','class_idx']).cumcount()
+        
         subj_precision = pd.read_csv(input.subj_precision_path)
         print(subj_precision.head())
-        
+        subj_data = subj_data.merge(subj_precision, on=['sub','voxel','vroinames'])
+        if wildcards.slope == "original":
+            params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"))
+        else:
+            params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", "params_slopezero.csv"))
+        params_info = params_info[params_info['vroinames'] == wildcards.roi]
+        params_dict = params_info.to_dict(orient='records')[0]
+        print(params_dict)
+        params_info.to_csv(output[0], index=False)
+        # syn = sim.SynthesizeData(roi=wildcards.roi, 
+        #                          df=subj_data,
+        #                          random_state=wildcards.seed)                                 
+        # syn_data = syn.synthesize_BOLD_2d(params_dict,
+        #                                   grating_type=wildcards.grating_type,
+        #                                   model=7, phase_info=True)
+        # syn_data = syn.add_noise_from_covariance(syn_data, 
+        #                                          beta_col='betas', 
+        #                                          n_trials=8, 
+        #                                          noise_cov=np.load(input.cov_matrix_path), 
+        #                                          noise_level=int(wildcards.noise_lvl))
+        # syn_data.to_csv(output[0], index=False)
+
 
 rule run_simulation:
     input:
