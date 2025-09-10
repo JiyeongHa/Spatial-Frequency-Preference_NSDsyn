@@ -1056,7 +1056,7 @@ rule debug_simulation:
     input:
         subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-subj01_roi-V1_vs-pRFsize_tavg-False.csv"),
         cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-V1_sub-subj01.npy")
-        #subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv")
+        subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-subj01_roi-V1_vs-pRFsize.csv")
     log:
         os.path.join(config['OUTPUT_DIR'], "logs", "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-111.log")
     benchmark:
@@ -1067,6 +1067,9 @@ rule debug_simulation:
         cov_matrix = np.load(input.cov_matrix_path)
         print(cov_matrix.shape)
         print(cov_matrix)
+        subj_precision = pd.read_csv(input.subj_precision_path)
+        print(subj_precision.head())
+        
 
 rule run_simulation:
     input:
