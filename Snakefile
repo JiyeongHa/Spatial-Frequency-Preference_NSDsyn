@@ -1078,6 +1078,10 @@ rule run_simulation:
         model_history.to_hdf(output.model_history, key='stage', mode='w')
         loss_history.to_hdf(output.loss_history, key='stage', mode='w')   
 
+rule run_simulation_single:
+    input:
+        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-V1_grating-constant_cov-True_noise-1_basesub-subj01_slope-original_rnseed-77.csv")
+
 rule run_simulation_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-{slope}_rnseed-{seed}.pt'),
