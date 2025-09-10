@@ -1015,7 +1015,9 @@ rule generate_synthetic_data_with_noise_covariance:
     input:
         subj_df_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "model", "dset-nsdsyn_sub-{sub}_roi-{roi}_vs-pRFsize_tavg-False.csv"),
         cov_matrix_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "cov-matrix", "roi-{roi}_sub-{sub}.npy"),
-        subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv")
+        subj_precision_path = os.path.join(config['OUTPUT_DIR'], "dataframes", "nsdsyn", "precision", "precision-v_sub-{sub}_roi-{roi}_vs-pRFsize.csv"),
+        original_params_path = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"),
+        zero_params_path = os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", "params_slopezero.csv")
     output:
         os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.csv")
     benchmark:
@@ -1030,9 +1032,9 @@ rule generate_synthetic_data_with_noise_covariance:
         print(subj_precision.head())
         subj_data = subj_data.merge(subj_precision, on=['sub','voxel','vroinames'])
         if wildcards.slope == "original":
-            params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "nsdsyn", "summary", "precision_weighted_params.csv"))
+            params_info = pd.read_csv(input.original_params_path)
         else:
-            params_info = pd.read_csv(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", "params_slopezero.csv"))
+            params_info = pd.read_csv(input.zero_params_path)
         params_info = params_info[params_info['vroinames'] == wildcards.roi]
         params_dict = params_info.to_dict(orient='records')[0]
         syn = sim.SynthesizeData(roi=wildcards.roi, 
