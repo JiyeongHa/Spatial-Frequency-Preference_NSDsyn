@@ -1065,7 +1065,8 @@ rule debug_simulation:
         subj_data = pd.read_csv(input.subj_df_path)
         print(subj_data.head())
         cov_matrix = np.load(input.cov_matrix_path)
-        print(cov_matrix[0,0,:])
+        print(cov_matrix.shape)
+        print(cov_matrix)
 
 rule run_simulation:
     input:
