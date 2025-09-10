@@ -1019,7 +1019,7 @@ rule generate_synthetic_data_with_noise_covariance:
     output:
         os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.csv")
     log:
-        os.path.join(config['OUTPUT_DIR'], "dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.log")
+        os.path.join(config['OUTPUT_DIR'], "logs","dataframes", "simulation", "roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_basesub-{sub}_slope-{slope}_rnseed-{seed}.log")
     params:
         subj_df_dir = os.path.join(config['OUTPUT_DIR'], "dataframes"),
     run:
@@ -1082,10 +1082,10 @@ rule run_simulation_all:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "simulation", 'model-params_roi-{roi}_grating-{grating_type}_cov-True_noise-{noise_lvl}_lr-{lr}_eph-{max_epoch}_basesub-{sub}_slope-{slope}_rnseed-{seed}.pt'),
                roi=['V1'],
-               grating_type=['scaled', 'constant'],
+               grating_type=['scaled'] #, 'constant'],
                noise_lvl=1, #[0,1,3],
                lr=LR_2D,
-               slope=["original", "zero"],
+               slope=["original"], #, "zero"],
                seed=np.arange(0,1),
                sub=['subj01'],
                max_epoch=MAX_EPOCH_2D)
