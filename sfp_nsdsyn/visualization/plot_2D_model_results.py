@@ -323,35 +323,38 @@ def make_dset_palettes(dset):
         pal = utils.convert_rgb_to_seaborn_color_palette(palette)
     return pal
 
-def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj', roi=None,
-                               palette=None, row=None, lgd_title='Subjects'):
-    sns.set_context("notebook", font_scale=2)
-    hue_order = df.sort_values(by='precision', ignore_index=True, ascending=False).subj.unique()
-    df = group_params(df, params, subplot_group)
-    df['params'] = _change_params_to_math_symbols(df['params'])
-    y_label = "Value"
-    groups, counts = np.unique(subplot_group, return_counts=True)
-    if palette is None:
-        palette = make_dset_palettes('default')
-    grid = sns.FacetGrid(df,
-                         col="group",
-                         row=row,
-                         hue=hue,
-                         hue_order=hue_order,
-                         palette=palette,
-                         height=height,
-                         legend_out=True,
-                         sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-    grid.map(sns.stripplot, "params", "value", dodge=True, jitter=True, size=20, alpha=0.82, edgecolor="gray", linewidth=1)
-    grid.add_legend(title=lgd_title)
-    for ax in range(len(groups)):
-        grid.axes[0, ax].set_ylim(_find_ylim(ax, roi, avg=False))
-        if counts[ax] > 1 and len(groups) < 4:
-            grid.axes[0, ax].margins(x=1 - 0.45*ax)
-    for subplot_title, ax in grid.axes_dict.items():
-        ax.set_title(f" ")
-    grid.set_axis_labels("", y_label)
-    return grid
+# def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj', roi=None,
+#                                palette=None, row=None, lgd_title='Subjects'):
+#     sns.set_context("notebook", font_scale=2)
+#     hue_order = df.sort_values(by='precision', ignore_index=True, ascending=False).subj.unique()
+#     df = group_params(df, params, subplot_group)
+#     df['params'] = _change_params_to_math_symbols(df['params'])
+#     y_label = "Value"
+#     groups, counts = np.unique(subplot_group, return_counts=True)
+#     if palette is None:
+#         palette = make_dset_palettes('default')
+#     grid = sns.FacetGrid(df,
+#                          col="group",
+#                          row=row,
+#                          hue=hue,
+#                          hue_order=hue_order,
+#                          palette=palette,
+#                          height=height,
+#                          legend_out=True,
+#                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
+#     grid.map(sns.pointplot, "params", "value", 
+#                 dodge=0.3, ci='sd', 
+#                 capsize=None, scale=0.5, errwidth=1, 
+#                 alpha=0.82, edgecolor="gray", linewidth=1)
+#     grid.add_legend(title=lgd_title)
+#     for ax in range(len(groups)):
+#         grid.axes[0, ax].set_ylim(_find_ylim(ax, roi, avg=False))
+#         if counts[ax] > 1 and len(groups) < 4:
+#             grid.axes[0, ax].margins(x=1 - 0.45*ax)
+#     for subplot_title, ax in grid.axes_dict.items():
+#         ax.set_title(f" ")
+#     grid.set_axis_labels("", y_label)
+#     return grid
 
 
 def plot_preferred_period_difference(df,
@@ -998,27 +1001,26 @@ def plot_within_subject_error_for_V123(df, to_plot, precision, ylim=None, yticks
     utils.save_fig(save_path)
     return ax
 
-def rand_jitter(arr, jitter_amount=0.05):
-    arr = np.asarray(arr)
-    if len(arr) == 1:
-        stdev = 0.05
-    else:
-        stdev = jitter_amount * (arr.max() - arr.min()) 
-    return arr + np.random.randn(len(arr)) * stdev
-
+def centered_offsets(n, max_width):
+    if n == 1:
+        return np.array([0.0])
+    return np.linspace(-max_width, max_width, n)
 
 def plot_individual_parameters(params_df, x, y, hue, hue_order, 
+                                weighted_mean_df,
                                 params_list, ylim_list=None, yticks_list=None,
                                 title_list=None, 
                                 figsize=(7, 6),
                                 save_path=None, **kwargs):
     rc.update({
-          'axes.titlesize': 11,
+          'axes.titlesize': 10,
           'axes.titlepad': 20,
-          'axes.labelsize': 11,
-          'ytick.labelsize': 11,
+          'axes.labelsize': 10,
+          'axes.labelpad': 8,
+          'ytick.labelsize': 10,
+          'xtick.labelsize': 10,
           'legend.title_fontsize': 11,
-          'legend.fontsize': 11})
+          'legend.fontsize': 10})
     
     sns.set_theme("paper", style='ticks', rc=rc)
     pal = sns.color_palette('tab10', len(hue_order))
@@ -1032,31 +1034,53 @@ def plot_individual_parameters(params_df, x, y, hue, hue_order,
 
     # First row
     ax1 = fig.add_subplot(gs[0, 0:2])        # 1 column = smallest
-    ax2 = fig.add_subplot(gs[0, 2:5])      # 3 columns = largest
-    ax3 = fig.add_subplot(gs[1, 0:2])      # 2 columns = medium
+    ax2 = fig.add_subplot(gs[0, 2:5])        # 3 columns = largest
+    ax3 = fig.add_subplot(gs[1, 0:2])        # 2 columns = medium
     # Second row
-    ax4 = fig.add_subplot(gs[1, 2:4])      # 2 columns = medium
-    ax5 = fig.add_subplot(gs[1, 4:6])      # 2 columns = medium
-
-    # Optionally turn off unused cells (gs[1, 4:6])
-    # Or you can assign ax6 = fig.add_subplot(gs[1, 4:6]) and hide it
+    ax4 = fig.add_subplot(gs[1, 2:4])        # 2 columns = medium
+    ax5 = fig.add_subplot(gs[1, 4:6])        # 2 columns = medium
 
     # Add simple demo content
     axes = [ax1, ax2, ax3, ax4, ax5]
+
+    # --- NEW: set up deterministic offsets per subject (excluding weighted mean)
+    subjects = [s for s in hue_order if s != 'weighted mean']
+    params_df['parameter'] = _change_params_to_math_symbols(params_df['parameter'])
     for i, ax in enumerate(axes):
         param = params_list[i]
+        param = _replace_param_names_with_latex(param)
+        # narrow offsets if only one x tick; slightly wider otherwise
+        max_w = 0.08 if len(param) == 1 else 0.18
+        offs = centered_offsets(len(subjects), max_w)
+        off_map = {sub: offs[j] for j, sub in enumerate(subjects)}
+        base_x = np.arange(len(param))
+        # ---
+
         for j, sub in enumerate(hue_order):
             tmp = params_df.query('parameter in @param & sub == @sub')
-            x_jittered = rand_jitter(np.arange(len(param)))
-            ax.errorbar(x=x_jittered, 
+
+            # --- CHANGED: replace random jitter with fixed, centered offsets
+            if sub == 'weighted mean':
+                x_pos = base_x
+                fmt = 'x'
+                color = 'k'
+                markersize = 4
+            else:
+                x_pos = base_x + off_map[sub]
+                fmt = 'o'
+                color = pal[j]
+                markersize = 3
+            # ---
+
+            ax.errorbar(x=x_pos, 
                         y=tmp[y], 
                         yerr=[tmp['yerr_lower'], tmp['yerr_upper']], 
-                        fmt='o', 
-                        color=pal[j], 
+                        fmt=fmt, 
+                        color=color, 
                         label=sub,
                         linewidth=1,
-                        capsize=3,
-                        markersize=3,
+                        capsize=0,
+                        markersize=markersize,
                         )
             ax.set_ylabel('')
             ax.set_xlabel('')
@@ -1071,9 +1095,10 @@ def plot_individual_parameters(params_df, x, y, hue, hue_order,
         ax.set_xticklabels(param)
 
         if ylim_list is not None:
-                ax.set_ylim(ylim_list[i])
+            ax.set_ylim(ylim_list[i])
         if yticks_list is not None:
             ax.set_yticks(yticks_list[i])
+        
 
     axes[0].set_ylabel('Parameter estimates')
     axes[2].set_ylabel('Parameter estimates')
@@ -1082,7 +1107,7 @@ def plot_individual_parameters(params_df, x, y, hue, hue_order,
     axes[1].legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
     plt.tight_layout()
-    fig.subplots_adjust(wspace=0.8, hspace=0.3)
+    fig.subplots_adjust(wspace=0.9, hspace=0.3)
 
     utils.save_fig(save_path)
     #return fig, axes
