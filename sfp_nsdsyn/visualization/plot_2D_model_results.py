@@ -243,7 +243,8 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
                       x='params', y='value_and_weights',
                       hue=hue, hue_order=hue_order,
                       palette=pal, linestyles='',
-                      estimator=weighted_mean, errorbar=("ci", 68),
+                      estimator=weighted_mean, 
+                      errorbar=("ci", 68),
                       dodge=0.23,
                       ax=ax, **kwargs)
     g.set(ylabel='Parameter estimates', xlabel=None)
@@ -264,7 +265,7 @@ def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=N
 
 def make_param_summary_fig(params_df, hue, hue_order, pal,
                            params_list, ylim_list=None, yticks_list=None,
-                           title_list=None, 
+                           title_list=None, weighted_mean=True,
                            width_ratios=(0.8,1.8,1.3,1.3,1.3), fig_size=(7, 1.5),
                            save_path=None, **kwargs):
     rc.update({
@@ -279,7 +280,8 @@ def make_param_summary_fig(params_df, hue, hue_order, pal,
     fig, axes = plt.subplots(1, len(params_list), figsize=fig_size,
                              gridspec_kw={'width_ratios': width_ratios},
                              sharey=False, sharex=False)
-
+    if weighted_mean is False:
+        params_df['precision'] = 1
     for i, ax in enumerate(axes.flatten()):
         g = plot_precision_weighted_avg_parameter(params_df, params_list[i],
                                                   hue, hue_order,
@@ -322,39 +324,6 @@ def make_dset_palettes(dset):
                (189, 189, 189)]
         pal = utils.convert_rgb_to_seaborn_color_palette(palette)
     return pal
-
-# def plot_individual_parameters(df, params, subplot_group, height=7, hue='subj', roi=None,
-#                                palette=None, row=None, lgd_title='Subjects'):
-#     sns.set_context("notebook", font_scale=2)
-#     hue_order = df.sort_values(by='precision', ignore_index=True, ascending=False).subj.unique()
-#     df = group_params(df, params, subplot_group)
-#     df['params'] = _change_params_to_math_symbols(df['params'])
-#     y_label = "Value"
-#     groups, counts = np.unique(subplot_group, return_counts=True)
-#     if palette is None:
-#         palette = make_dset_palettes('default')
-#     grid = sns.FacetGrid(df,
-#                          col="group",
-#                          row=row,
-#                          hue=hue,
-#                          hue_order=hue_order,
-#                          palette=palette,
-#                          height=height,
-#                          legend_out=True,
-#                          sharex=False, sharey=False, gridspec_kws={'width_ratios': counts})
-#     grid.map(sns.pointplot, "params", "value", 
-#                 dodge=0.3, ci='sd', 
-#                 capsize=None, scale=0.5, errwidth=1, 
-#                 alpha=0.82, edgecolor="gray", linewidth=1)
-#     grid.add_legend(title=lgd_title)
-#     for ax in range(len(groups)):
-#         grid.axes[0, ax].set_ylim(_find_ylim(ax, roi, avg=False))
-#         if counts[ax] > 1 and len(groups) < 4:
-#             grid.axes[0, ax].margins(x=1 - 0.45*ax)
-#     for subplot_title, ax in grid.axes_dict.items():
-#         ax.set_title(f" ")
-#     grid.set_axis_labels("", y_label)
-#     return grid
 
 
 def plot_preferred_period_difference(df,
@@ -1102,7 +1071,6 @@ def plot_individual_parameters(params_df, x, y, hue, hue_order,
 
     axes[0].set_ylabel('Parameter estimates')
     axes[2].set_ylabel('Parameter estimates')
-    axes[3].set_xlabel('Parameter')
 
     axes[1].legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
 
