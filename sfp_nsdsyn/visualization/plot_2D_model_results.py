@@ -1197,7 +1197,7 @@ def plot_simulation_results(model_df, params_list, ground_truth, hue,
     'legend.fontsize': 11,
     })
     sns.set_theme("paper", style='ticks', rc=rc)
-    fig, axes = plt.subplots(1,len(params_list), figsize=(8, 2.3))
+    fig, axes = plt.subplots(1,len(params_list), figsize=(7, 2.3))
     non_param_columns = [col for col in model_df.columns if col not in params_list]
     model_long_df = model_df.melt(id_vars=non_param_columns,
                                   var_name='param', 
@@ -1209,8 +1209,8 @@ def plot_simulation_results(model_df, params_list, ground_truth, hue,
         param = params_list[i]
         tmp = model_long_df.query('param == @param')
         sns.pointplot(ax=ax, data=tmp, linestyles='',
-                x='param', y='value', scale=scale, 
-                errorbar=None, 
+                x='param', y='value', scale=0.8, errwidth=1, 
+                errorbar=("sd", 1), 
                 hue=hue, dodge=0.5,
                 **kwargs)
         ax.axhline(y=ground_val, color='k', linestyle='--', linewidth=1, alpha=0.9, zorder=0)
@@ -1225,7 +1225,7 @@ def plot_simulation_results(model_df, params_list, ground_truth, hue,
         ax.set_xlabel('')
         ax.get_legend().remove()
     
-    axes[-1].legend(loc='center left', bbox_to_anchor=(0.9, 0.7), frameon=False)
+    #axes[-1].legend(loc='center left', bbox_to_anchor=(0.9, 0.7), frameon=False)
     plt.tight_layout()
     fig.subplots_adjust(wspace=1.2)
     if save_path:
