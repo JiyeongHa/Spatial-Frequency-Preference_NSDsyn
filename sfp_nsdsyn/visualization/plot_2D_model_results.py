@@ -1185,19 +1185,19 @@ def plot_model_comparison_params(model_df,
     if save_path:
         utils.save_fig(save_path)
 
-def plot_simulation_results(model_df, params_list, ground_truth, hue, 
+def plot_simulation_results(model_df, params_list, ground_truth, hue, figsize=(7, 2.3),
                             scale=1,ylim=None, yticks=None, save_path=None, **kwargs):
     
     
     rc.update({
-    'axes.labelsize': 10,
-    'ytick.labelsize': 9,
-    'xtick.labelsize': 10,
-    'legend.title_fontsize': 11,
-    'legend.fontsize': 11,
+    'axes.labelsize': 9,
+    'ytick.labelsize': 7.5,
+    'xtick.labelsize': 9,
+    'legend.title_fontsize': 9,
+    'legend.fontsize': 9,
     })
     sns.set_theme("paper", style='ticks', rc=rc)
-    fig, axes = plt.subplots(1,len(params_list), figsize=(7, 2.3))
+    fig, axes = plt.subplots(1,len(params_list), figsize=figsize)
     non_param_columns = [col for col in model_df.columns if col not in params_list]
     model_long_df = model_df.melt(id_vars=non_param_columns,
                                   var_name='param', 
@@ -1209,7 +1209,7 @@ def plot_simulation_results(model_df, params_list, ground_truth, hue,
         param = params_list[i]
         tmp = model_long_df.query('param == @param')
         sns.pointplot(ax=ax, data=tmp, linestyles='',
-                x='param', y='value', scale=0.8, errwidth=1, 
+                x='param', y='value', scale=0.7, errwidth=1, 
                 errorbar=("sd", 1), 
                 hue=hue, dodge=0.5,
                 **kwargs)
@@ -1232,12 +1232,17 @@ def plot_simulation_results(model_df, params_list, ground_truth, hue,
         utils.save_fig(save_path)
 
 
-def plot_simulation_design(base_sfs, eccen, slope, intercept, color_map=None, uniform=True, save_path=None):
+def plot_simulation_design(base_sfs, eccen, slope, intercept, figsize=(2.6, 2.3), color_map=None, uniform=True, save_path=None):
     rc.update({
-        'xtick.major.size': 6,
-        'ytick.major.size': 6,
-        'xtick.minor.size': 3,
-        'ytick.minor.size': 3,
+        'xtick.major.size': 5,
+        'axes.labelsize': 9,
+        'xtick.labelsize': 7.5,
+        'ytick.labelsize': 7.5,
+        'legend.title_fontsize': 9,
+        'legend.fontsize': 9,
+        'ytick.major.size': 5,
+        'xtick.minor.size': 2,
+        'ytick.minor.size': 2,
     })
     sns.set_theme("paper", style='ticks', rc=rc)
     if color_map is None:
@@ -1249,11 +1254,11 @@ def plot_simulation_design(base_sfs, eccen, slope, intercept, color_map=None, un
     pf = 1 / (slope * eccen + intercept)
 
     # Plot
-    plt.figure(figsize=(2.6, 2.3))
+    plt.figure(figsize=figsize)
 
     # Red curves (one per base_sfs)
     for i in range(sf_scaled.shape[0]):
-        plt.plot(eccen, 1 / sf_scaled[i, :], '-', color=color_map[0], linewidth=2, alpha=0.3, zorder=0)
+        plt.plot(eccen, 1 / sf_scaled[i, :], '-', color=color_map[0], linewidth=2, alpha=0.9, zorder=0)
     if uniform:
         # Green horizontal lines (one per base_sfs)
         for val in 1 / sf_unscaled:
@@ -1276,12 +1281,12 @@ def plot_simulation_design(base_sfs, eccen, slope, intercept, color_map=None, un
         plt.legend([plt.Line2D([0], [0], color=color_map[0], lw=2),
                     plt.Line2D([0], [0], color=color_map[1], lw=2),
                     plt.Line2D([0], [0], color='k', lw=2)],
-                ['scaled', 'uniform', 'ground truth'], 
+                ['stimulus', 'stimulus', 'preferred'], 
                 loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
     else:
         plt.legend([plt.Line2D([0], [0], color=color_map[0], lw=2),
                     plt.Line2D([0], [0], color='k', lw=2)],
-                ['scaled', 'ground truth'], 
+                ['stimulus', 'preferred'], 
                 loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
     if save_path:
         utils.save_fig(save_path)
