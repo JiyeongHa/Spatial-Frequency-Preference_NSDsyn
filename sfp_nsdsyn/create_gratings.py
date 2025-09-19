@@ -36,17 +36,19 @@ def mkR(size, exponent=1, origin=None):
     return res
 
 
-## copied from Broderick et al. (2023) 
-## https://github.com/billbrod/spatial-frequency-preferences/blob/main/sfp/stimuli.py
 def mkAngle(size, phase=0, origin=None):
     '''make polar angle matrix (in radians)
 
-    Compute a matrix of dimension SIZE (a [Y X] list/tuple, or a scalar)
-    containing samples of the polar angle (in radians, CW from the X-axis,
-    ranging from -pi to pi), relative to angle PHASE (default = 0), about ORIGIN
-    pixel (default = (size+1)/2).
+    Compute a matrix of dimension SIZE (a [Y X] list/tuple, or a scalar) containing
+    samples of the polar angle (in radians, increasing counter-clockwise from the right
+    horizontal meridian, ranging from -pi to pi), relative to angle PHASE (default = 0),
+    about ORIGIN pixel (default = (size+1)/2).
+
+    Note that setting phase effectively changes where angle=0 lies (e.g., setting
+    angle=np.pi/2 puts angle=0 on the upper vertical meridian)
 
     NOTE: the origin is not rounded to the nearest int
+
     '''
 
     if not hasattr(size, '__iter__'):
@@ -59,18 +61,21 @@ def mkAngle(size, phase=0, origin=None):
 
     xramp, yramp = np.meshgrid(np.arange(1, size[1]+1)-origin[1],
                                np.arange(1, size[0]+1)-origin[0])
+    # xramp and yramp are both in "Cartesian coordinates", so that xramp increases as
+    # you go from left to right and yramp increases as you go from top to bottom
     xramp = np.array(xramp)
-    yramp = np.array(yramp)
+    # in order to get the proper angle array (0 at right horizontal meridian, increasing
+    # counter-clockwise), yramp needs to increase from bottom to top.
+    yramp = np.flip(np.array(yramp), 0)
 
     res = np.arctan2(yramp, xramp)
 
+    # shift the phase but preserve the range
     res = ((res+(np.pi-phase)) % (2*np.pi)) - np.pi
 
     return res
 
 
-## copied from Broderick et al. (2023) 
-## https://github.com/billbrod/spatial-frequency-preferences/blob/main/sfp/stimuli.py
 def log_polar_grating(size, w_r=0, w_a=0, phi=0, ampl=1, origin=None, scale_factor=1):
     """Make a sinusoidal grating in logPolar space.
 
@@ -122,9 +127,8 @@ def log_polar_grating(size, w_r=0, w_a=0, phi=0, ampl=1, origin=None, scale_fact
 
     # in the paper, we simplify this to np.cos(w_r * log(r) + w_a * theta +
     # phi), where log is the natural logarithm. They're equivalent
-    #return ampl * np.cos((w_r* np.log(2))/2 * lrad + w_a * theta + phi)
-    return ampl * np.cos((w_r * lrad + w_a * theta + phi))
-
+    return ampl * np.cos(((w_r * np.log(2))/2) * lrad + w_a * theta + phi)
+    
 def find_wr_wa_based_on_magnitude_and_angle(magnitudes, angle_deg=None):
     """
     Generate (w_r, w_a) pairs from magnitudes, placing each point on a circle.
