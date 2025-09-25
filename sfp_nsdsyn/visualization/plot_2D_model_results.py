@@ -1518,3 +1518,19 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
     plt.tight_layout()
     plt.show()
     return fig, ax
+
+def calculate_preferred_period_at_eccentricity(fit_df, eccentricity=2):
+    """
+    Calculate the preferred period for each study at a given eccentricity using the slope and intercept.
+
+    Parameters:
+    fit_df (pd.DataFrame): DataFrame containing the fit results with 'slope' and 'intercept' for each study.
+    eccentricity (float): The eccentricity value at which to calculate the preferred period. Default is 2.
+
+    Returns:
+    pd.DataFrame: DataFrame with 'Paper' and 'Preferred period at eccentricity' columns.
+    """
+    fit_df['Preferred period at eccentricity'] = fit_df.apply(
+        lambda row: row['slope'] * eccentricity + row['intercept'], axis=1
+    )
+    return fit_df[['Paper', 'Preferred period at eccentricity']]
