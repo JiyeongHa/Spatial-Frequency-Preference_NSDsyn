@@ -410,13 +410,13 @@ def plot_preferred_period_difference(df,
 
 def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
                                   ylim=None, yticks=None, xlim=(0,10), xticks=[0,5,10], ylabel='Preferred period (deg)',
-                                  hue=None, hue_order=None, pal=None, precision='precision'):
+                                  hue=None, hue_order=None, pal=None, precision='precision', **kwargs):
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     g = sns.lineplot(df, x=x, y="value_and_weights",
                      hue=hue, hue_order=hue_order,
                      linewidth=1.5, estimator=weighted_mean, palette=pal,
-                     err_style='band', errorbar=('ci', 68), ax=ax)
+                     err_style='band', errorbar=('ci', 68), ax=ax, **kwargs)
     g.legend_.remove()
 
     if ylim is not None:
@@ -1290,3 +1290,231 @@ def plot_simulation_design(base_sfs, eccen, slope, intercept, figsize=(2.6, 2.3)
                 loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
     if save_path:
         utils.save_fig(save_path)
+
+# Copied from Broderick et al. (2022)
+# https://github.com/billbrod/spatial-frequency-preferences/blob/main/sfp/figures.py
+def existing_studies_df():
+    """create df summarizing earlier studies
+
+    there have been a handful of studies looking into this, so we want
+    to summarize them for ease of reference. Each study is measuring
+    preferred spatial frequency at multiple eccentricities in V1 using
+    fMRI (though how exactly they determine the preferred SF and the
+    stimuli they use vary)
+
+    This dataframe contains the following columns:
+    - Paper: the reference for this line
+    - Eccentricity: the eccentricity (in degrees) that they measured
+      preferred spatial frequency at
+    - Preferred spatial frequency (cpd): the preferred spatial frequency
+      measured at this eccentricity (in cycles per degree)
+    - Preferred period (deg): the preferred period measured at this
+      eccentricity (in degrees per cycle); this is just the inverse of
+      the preferred spatial frequency
+
+    The eccentricity / preferred spatial frequency were often not
+    reported in a manner that allowed for easy extraction of the data,
+    so the values should all be taken as approximate, as they involve me
+    attempting to read values off of figures / colormaps.
+
+    Papers included (and their reference in the df):
+    - Sasaki (2001): Sasaki, Y., Hadjikhani, N., Fischl, B., Liu, A. K.,
+      Marret, S., Dale, A. M., & Tootell, R. B. (2001). Local and global
+      attention are mapped retinotopically in human occipital
+      cortex. Proceedings of the National Academy of Sciences, 98(4),
+      2077–2082.
+    - Henriksson (2008): Henriksson, L., Nurminen, L., Hyv\"arinen,
+      Aapo, & Vanni, S. (2008). Spatial frequency tuning in human
+      retinotopic visual areas. Journal of Vision, 8(10),
+      5. http://dx.doi.org/10.1167/8.10.5
+    - Kay (2011): Kay, K. N. (2011). Understanding Visual Representation
+      By Developing Receptive-Field Models. Visual Population Codes:
+      Towards a Common Multivariate Framework for Cell Recording and
+      Functional Imaging, (), 133–162.
+    - Hess (dominant eye, 2009): Hess, R. F., Li, X., Mansouri, B.,
+      Thompson, B., & Hansen, B. C. (2009). Selectivity as well as
+      sensitivity loss characterizes the cortical spatial frequency
+      deficit in amblyopia. Human Brain Mapping, 30(12),
+      4054–4069. http://dx.doi.org/10.1002/hbm.20829 (this paper reports
+      spatial frequency separately for dominant and non-dominant eyes in
+      amblyopes, only the dominant eye is reported here)
+    - D'Souza (2016): D'Souza, D. V., Auer, T., Frahm, J., Strasburger,
+      H., & Lee, B. B. (2016). Dependence of chromatic responses in v1
+      on visual field eccentricity and spatial frequency: an fmri
+      study. JOSA A, 33(3), 53–64.
+    - Farivar (2017): Farivar, R., Clavagnier, S., Hansen, B. C.,
+      Thompson, B., & Hess, R. F. (2017). Non-uniform phase sensitivity
+      in spatial frequency maps of the human visual cortex. The Journal
+      of Physiology, 595(4),
+      1351–1363. http://dx.doi.org/10.1113/jp273206
+    - Olsson (pilot, model fit): line comes from a model created by Noah
+      Benson in the Winawer lab, fit to pilot data collected by
+      Catherine Olsson (so note that this is not data). Never ended up
+      in a paper, but did show in a presentation at VSS 2017: Benson NC,
+      Broderick WF, Müller H, Winawer J (2017) An anatomically-defined
+      template of BOLD response in
+      V1-V3. J. Vis. 17(10):585. DOI:10.1167/17.10.585
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Dataframe containing the optimum spatial frequency at multiple
+        eccentricities from the different papers
+
+    """
+    data_dict = {
+        'Paper': ['Sasaki (2001)',]*7,
+        'Preferred spatial frequency (cpd)': [1.25, .9, .75, .7, .6, .5, .4],
+        'Eccentricity': [0, 1, 2, 3, 4, 5, 12]
+    }
+    data_dict['Paper'].extend(['Henriksson (2008)', ]*5)
+    data_dict['Preferred spatial frequency (cpd)'].extend([1.2, .68, .46, .40, .18])
+    data_dict['Eccentricity'].extend([1.7, 4.7, 6.3, 9, 19])
+
+    # This is only a single point, so we don't plot it
+    # data_dict['Paper'].extend(['Kay (2008)'])
+    # data_dict['Preferred spatial frequency (cpd)'].extend([4.5])
+    # data_dict['Eccentricity'].extend([ 2.9])
+
+    data_dict['Paper'].extend(['Kay (2011)']*5)
+    data_dict['Preferred spatial frequency (cpd)'].extend([4, 3, 10, 10, 2])
+    data_dict['Eccentricity'].extend([2.5, 4, .5, 1.5, 7])
+
+    data_dict['Paper'].extend(["Hess (dominant eye, 2009)"]*3)
+    data_dict['Preferred spatial frequency (cpd)'].extend([2.25, 1.9, 1.75])
+    data_dict['Eccentricity'].extend([2.5, 5, 10])
+
+    data_dict['Paper'].extend(["D'Souza (2016)"]*3)
+    data_dict['Preferred spatial frequency (cpd)'].extend([2, .95, .4])
+    data_dict['Eccentricity'].extend([1.4, 4.6, 9.8])
+
+    data_dict['Paper'].extend(['Farivar (2017)']*2)
+    data_dict['Preferred spatial frequency (cpd)'].extend([3, 1.5,])
+    data_dict['Eccentricity'].extend([.5, 3])
+
+    # model fit and never published, so don't include.
+    # data_dict['Paper'].extend(['Olsson (pilot, model fit)']*10)
+    # data_dict['Preferred spatial frequency (cpd)'].extend([2.11, 1.76, 1.47, 2.75, 1.24, 1.06, .88, .77, .66, .60])
+    # data_dict['Eccentricity'].extend([2, 3, 4, 1, 5, 6, 7, 8, 9, 10])
+
+    # these values gotten using web plot digitizer and then rounded to 2
+    # decimal points
+    data_dict["Paper"].extend(['Aghajari (2020)']*9)
+    data_dict['Preferred spatial frequency (cpd)'].extend([2.24, 1.62, 1.26,
+                                                           1.09, 0.88, 0.75,
+                                                           0.78, 0.75, 0.70])
+    data_dict['Eccentricity'].extend([0.68, 1.78, 2.84, 3.90, 5.00, 6.06, 7.16,
+                                      8.22, 9.28])
+
+    # Predictions of the scaling hypothesis -- currently unused
+    # ecc = np.linspace(.01, 20, 50)
+    # fovea_cutoff = 0
+    # # two possibilities here
+    # V1_RF_size = np.concatenate([np.ones(len(ecc[ecc<fovea_cutoff])),
+    #                              np.linspace(1, 2.5, len(ecc[ecc>=fovea_cutoff]))])
+    # V1_RF_size = .2 * ecc
+
+    df = pd.DataFrame(data_dict)
+    df = df.sort_values(['Paper', 'Eccentricity'])
+    df["Preferred period (deg)"] = 1. / df['Preferred spatial frequency (cpd)']
+
+    return df
+
+
+def fit_study_lines(existing_studies):
+    """
+    Fits a line to Preferred period (deg) as a function of Eccentricity for each study.
+
+    Parameters:
+    existing_studies (pd.DataFrame): DataFrame containing the existing studies data.
+
+    Returns:
+    pd.DataFrame: DataFrame containing the fit results for each study.
+    """
+    # Get unique studies
+    from scipy.stats import linregress
+    studies = existing_studies['Paper'].unique()
+
+    fit_results = []
+
+    for study in studies:
+        df_study = existing_studies[existing_studies['Paper'] == study]
+        x = df_study['Eccentricity'].values
+        y = df_study['Preferred period (deg)'].values
+        slope, intercept, r_value, _, _ = linregress(x, y)
+        fit_results.append({
+            'Paper': study,
+            'slope': slope,
+            'intercept': intercept,
+            'r_value': r_value,
+            'n_points': len(x)
+        })
+
+
+    fit_df = pd.DataFrame(fit_results)
+    return fit_df
+
+
+def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df):
+    """
+    Plots the datapoints and fitted lines (Preferred period vs. Eccentricity) for each study, colored by Paper.
+
+    Parameters:
+    merged_df (pd.DataFrame): DataFrame containing merged data of existing studies and fit results.
+    """
+    sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
+    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+
+    # Define the order of papers and their corresponding colors
+    paper_order = [
+        "Aghajari (2020)",
+        "D'Souza (2016)",
+        "Farivar (2017)",
+        "Henriksson (2008)",
+        "Hess (dominant eye, 2009)",
+        "Kay (2011)",
+        "Sasaki (2001)",
+    ]
+
+    # Define the color palette based on the order
+    color_palette = [
+        "#66C2A5",  # teal-green
+        "#FC8C62",  # orange
+        "#8CA0CB",  # blue-purple
+        "#E78AC2",  # pinkish-purple
+        "#A7D854",  # lime-green
+        "#FFD92E",  # yellow
+        "#E5C494",   # beige-brown
+    ]
+
+    # Create a color mapping for the papers
+    paper_to_color = dict(zip(paper_order, color_palette))
+
+    # Plot each study's data points and fitted line
+    x_range = np.linspace(0, 10, 100)
+    for study in existing_studies['Paper'].unique():
+        study_data = existing_studies[existing_studies['Paper'] == study]
+        color = paper_to_color[study]
+        # Plot data points
+        ax.scatter(study_data['Eccentricity'], 
+                   study_data['Preferred period (deg)'], 
+                   color=color, alpha=0.6, s=10, zorder=0)
+        
+        # Plot fitted line if slope and intercept are not nan
+        slope = study_data['slope'].iloc[0]
+        intercept = study_data['intercept'].iloc[0]
+        if not np.isnan(slope) and not np.isnan(intercept):
+            y = slope * x_range + intercept
+            ax.plot(x_range, y, label=study, color=color, linewidth=1.5,alpha=0.9, zorder=1)
+    ax = plot_preferred_period_in_axes(prediction_df, 
+                                        x='eccentricity', y='Pv', 
+                                        ax=ax, 
+                                        hue='dset_type', 
+                                        hue_order=['Broderick et al. V1','NSD V1'], 
+                                        pal=['purple','black'], **{'zorder': 10})
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+    ax.set(xlim=(0,10), ylim=(0,3), yticks=[0, 1, 2, 3])
+
+    plt.tight_layout()
+    plt.show()
+    return fig, ax
