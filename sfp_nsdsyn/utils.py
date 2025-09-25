@@ -359,9 +359,13 @@ def calculate_weighted_mean2(df, value, weight, groupby=['vroinames']):
 
 
 def calculate_weighted_mean(df, values, weight, groupby=['vroinames']):
-    result = df.groupby(groupby).apply(
-        lambda x: {value: (x[value] * x[weight]).sum() / x[weight].sum() for value in values}
-    )
+    if weight is None:
+        result = df.groupby(groupby)[values].apply(lambda x: x.mean())
+    else:
+        result = df.groupby(groupby).apply(
+            lambda x: {value: (x[value] * x[weight]).sum() / x[weight].sum() for value in values}
+        )
+
     # Convert the resulting dictionary into a dataframe
     result_df = result.apply(pd.Series).reset_index()
 
