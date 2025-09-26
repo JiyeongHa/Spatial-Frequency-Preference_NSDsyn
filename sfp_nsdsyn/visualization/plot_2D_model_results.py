@@ -1455,7 +1455,7 @@ def fit_study_lines(existing_studies):
     return fit_df
 
 
-def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df=None,ax=None):
+def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df=None,ax=None, zorder=[0,1,2]):
     """
     Plots the datapoints and fitted lines (Preferred period vs. Eccentricity) for each study, colored by Paper.
 
@@ -1475,17 +1475,21 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
         "Hess (dominant eye, 2009)",
         "Kay (2011)",
         "Sasaki (2001)",
+        "NSD V1",
+        "Broderick et al. V1",
     ]
 
     # Define the color palette based on the order
     color_palette = [
-        "#66C2A5",  # teal-green
+        "#008080",  # teal
         "#FC8C62",  # orange
-        "#8CA0CB",  # blue-purple
+        "#5F6A9A",  # blue-purple
         "#E78AC2",  # pinkish-purple
         "#A7D854",  # lime-green
-        "#FFD92E",  # yellow
-        "#E5C494",   # beige-brown
+        "#DAA520",  # goldenrod
+        "#483D8B",   # dark slate blue
+        'black',  
+        '#FF6F61'  # pastel reddish orange
     ]
     # color_palette = [
     #     "#00008B",  # medium dark blue
@@ -1504,26 +1508,32 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
                                                 x='eccentricity', y='Pv', 
                                                 ax=ax, 
                                                 hue='dset_type', 
-                                                hue_order=['NSD V1','Broderick et al. V1'], 
-                                                pal=['black','red'], err_kws={"alpha": 0.05}, **{'zorder': 10})
+                                                hue_order=[k for k in prediction_df['dset_type'].unique() if k in ['NSD V1','Broderick et al. V1']], 
+                                                pal=[paper_to_color[k] for k in prediction_df['dset_type'].unique() if k in ['NSD V1','Broderick et al. V1']], 
+                                                err_kws={"alpha": 0.05}, **{'zorder': zorder[2]})
         for coll in ax.collections:  # collections contain the error bands
             coll.set_alpha(0.08)
     # Plot each study's data points and fitted line
-    x_range = np.linspace(0, 10, 100)
     for study in existing_studies['Paper'].unique():
         study_data = existing_studies[existing_studies['Paper'] == study]
+        x_range = np.linspace(0, study_data['Eccentricity'].max(), 100)
         color = paper_to_color[study]
         # Plot data points
         ax.scatter(study_data['Eccentricity'], 
                    study_data['Preferred period (deg)'], 
-                   color=color, alpha=0.6, s=10, zorder=0)
+                   color=color, alpha=0.6, s=12, zorder=zorder[1])
         
         # Plot fitted line if slope and intercept are not nan
         slope = study_data['slope'].iloc[0]
         intercept = study_data['intercept'].iloc[0]
         if not np.isnan(slope) and not np.isnan(intercept):
             y = slope * x_range + intercept
-            ax.plot(x_range, y, label=study, color=color, linewidth=1.5,alpha=0.9, zorder=1)
+            ax.plot(x_range, y, label=study, color=color, linewidth=1.5,alpha=0.9, zorder=zorder[0])
+            if study_data['Eccentricity'].max() < 10:
+                x_range_extended = np.linspace(study_data['Eccentricity'].max(), 10, 100)
+                y_extended = slope * x_range_extended + intercept
+                ax.plot(x_range_extended, y_extended, linestyle='dotted', color=color, linewidth=1.5,alpha=0.9, zorder=zorder[0])
+            
     
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
     ax.set(xlim=(0,10), ylim=(0,3), yticks=[0, 1, 2, 3])
