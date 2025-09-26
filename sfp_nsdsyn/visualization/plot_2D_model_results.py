@@ -410,7 +410,7 @@ def plot_preferred_period_difference(df,
 
 def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
                                   ylim=None, yticks=None, xlim=(0,10), xticks=[0,5,10], ylabel='Preferred period (deg)',
-                                  hue=None, hue_order=None, pal=None, precision='precision', **kwargs):
+                                  hue=None, hue_order=None, pal=None, precision='precision', err_kws=None, **kwargs):
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     g = sns.lineplot(df, x=x, y="value_and_weights",
@@ -1455,7 +1455,7 @@ def fit_study_lines(existing_studies):
     return fit_df
 
 
-def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df):
+def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df=None,ax=None):
     """
     Plots the datapoints and fitted lines (Preferred period vs. Eccentricity) for each study, colored by Paper.
 
@@ -1463,7 +1463,85 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
     merged_df (pd.DataFrame): DataFrame containing merged data of existing studies and fit results.
     """
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
-    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(6, 3))
+
+    # Define the order of papers and their corresponding colors
+    paper_order = [
+        "Aghajari (2020)",
+        "D'Souza (2016)",
+        "Farivar (2017)",
+        "Henriksson (2008)",
+        "Hess (dominant eye, 2009)",
+        "Kay (2011)",
+        "Sasaki (2001)",
+    ]
+
+    # Define the color palette based on the order
+    color_palette = [
+        "#66C2A5",  # teal-green
+        "#FC8C62",  # orange
+        "#8CA0CB",  # blue-purple
+        "#E78AC2",  # pinkish-purple
+        "#A7D854",  # lime-green
+        "#FFD92E",  # yellow
+        "#E5C494",   # beige-brown
+    ]
+    # color_palette = [
+    #     "#00008B",  # medium dark blue
+    #     "#696969",  # dim gray
+    #     "#808080",  # gray
+    #     "#A9A9A9",  # dark gray
+    #     "#A0A0A0",  # medium gray
+    #     "#BEBEBE",  # grayish
+    #     "#C0C0C0",  # silver
+    # ]
+
+    # Create a color mapping for the papers
+    paper_to_color = dict(zip(paper_order, color_palette))
+    if prediction_df is not None:
+        ax = plot_preferred_period_in_axes(prediction_df, 
+                                                x='eccentricity', y='Pv', 
+                                                ax=ax, 
+                                                hue='dset_type', 
+                                                hue_order=['NSD V1','Broderick et al. V1'], 
+                                                pal=['black','red'], err_kws={"alpha": 0.05}, **{'zorder': 10})
+        for coll in ax.collections:  # collections contain the error bands
+            coll.set_alpha(0.08)
+    # Plot each study's data points and fitted line
+    x_range = np.linspace(0, 10, 100)
+    for study in existing_studies['Paper'].unique():
+        study_data = existing_studies[existing_studies['Paper'] == study]
+        color = paper_to_color[study]
+        # Plot data points
+        ax.scatter(study_data['Eccentricity'], 
+                   study_data['Preferred period (deg)'], 
+                   color=color, alpha=0.6, s=10, zorder=0)
+        
+        # Plot fitted line if slope and intercept are not nan
+        slope = study_data['slope'].iloc[0]
+        intercept = study_data['intercept'].iloc[0]
+        if not np.isnan(slope) and not np.isnan(intercept):
+            y = slope * x_range + intercept
+            ax.plot(x_range, y, label=study, color=color, linewidth=1.5,alpha=0.9, zorder=1)
+    
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
+    ax.set(xlim=(0,10), ylim=(0,3), yticks=[0, 1, 2, 3])
+
+    plt.tight_layout()
+    return ax
+
+def plot_3d_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df):
+    """
+    Plots the datapoints and fitted lines (Preferred period vs. Eccentricity) for each study in 3D, with Paper as the third dimension.
+
+    Parameters:
+    existing_studies (pd.DataFrame): DataFrame containing data of existing studies and fit results.
+    prediction_df (pd.DataFrame): DataFrame containing prediction data.
+    """
+    sns.set_theme("notebook", style='ticks', rc=rc, font_scale=1)
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
 
     # Define the order of papers and their corresponding colors
     paper_order = [
@@ -1490,14 +1568,19 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
     # Create a color mapping for the papers
     paper_to_color = dict(zip(paper_order, color_palette))
 
-    # Plot each study's data points and fitted line
+    # Plot each study's data points and fitted line in 3D
     x_range = np.linspace(0, 10, 100)
     for study in existing_studies['Paper'].unique():
         study_data = existing_studies[existing_studies['Paper'] == study]
         color = paper_to_color[study]
+        # Filter data points within the specified range
+        filtered_data = study_data[(study_data['Eccentricity'] > 0) & (study_data['Eccentricity'] < 10) & 
+                                   (study_data['Preferred period (deg)'] > 0) & (study_data['Preferred period (deg)'] < 3)]
         # Plot data points
-        ax.scatter(study_data['Eccentricity'], 
-                   study_data['Preferred period (deg)'], 
+        ax.scatter(filtered_data['Eccentricity'], 
+                   filtered_data['Preferred period (deg)'], 
+                   zs=paper_order.index(study), 
+                   zdir='y', 
                    color=color, alpha=0.6, s=10, zorder=0)
         
         # Plot fitted line if slope and intercept are not nan
@@ -1505,19 +1588,25 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
         intercept = study_data['intercept'].iloc[0]
         if not np.isnan(slope) and not np.isnan(intercept):
             y = slope * x_range + intercept
-            ax.plot(x_range, y, label=study, color=color, linewidth=1.5,alpha=0.9, zorder=1)
-    ax = plot_preferred_period_in_axes(prediction_df, 
-                                        x='eccentricity', y='Pv', 
-                                        ax=ax, 
-                                        hue='dset_type', 
-                                        hue_order=['Broderick et al. V1','NSD V1'], 
-                                        pal=['purple','black'], **{'zorder': 10})
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False)
-    ax.set(xlim=(0,10), ylim=(0,3), yticks=[0, 1, 2, 3])
+            # Filter the line within the specified range
+            valid_indices = (y > 0) & (y < 3)
+            ax.plot(x_range[valid_indices], y[valid_indices], zs=paper_order.index(study), zdir='y', color=color, linewidth=1.5, alpha=0.9, zorder=1)
+    
+    ax.view_init(elev=10, azim=-80)  # Change the viewing angle to rotate slightly
+    ax.set_xlabel('Eccentricity')
+    ax.set_ylabel('Paper')
+    ax.set_zlabel('Preferred Period (deg)')
+    ax.set_zlim(0, 3)
+    ax.set_yticks(range(len(paper_order)))
+    ax.set_yticklabels(paper_order)
+    ax.set_yticks([])  # Remove y ticks
+    ax.set_yticklabels([])
 
     plt.tight_layout()
     plt.show()
     return fig, ax
+
+
 
 def calculate_preferred_period_at_eccentricity(fit_df, eccentricity=2):
     """
