@@ -370,3 +370,36 @@ def calculate_weighted_mean(df, values, weight, groupby=['vroinames']):
     result_df = result.apply(pd.Series).reset_index()
 
     return result_df
+
+def bootstrap_weighted_mean(df, values, weight, n_samples, groupby=['vroinames'], n_bootstrap=100):
+    bootstrap_results = pd.DataFrame({})
+    for i in range(n_bootstrap):
+        sampled_df = df.sample(n=n_samples, replace=True)
+        weighted_mean = calculate_weighted_mean(sampled_df, values, weight, groupby)
+        bootstrap_results = pd.concat([bootstrap_results, weighted_mean], axis=0, ignore_index=True)
+    return bootstrap_results
+
+def calculate_confidence_interval(df, values, weight, n_samples, ci=[2.5, 97.5], groupby=['vroinames'], n_bootstrap=100):
+    """
+    Calculate lower and upper bounds of the confidence interval for a weighted mean.
+
+    Parameters:
+    - df: DataFrame
+    - value: column name to compute CI for (string)
+    - weight: column name for weights
+    - ci: list or tuple with two percentiles, e.g., [2.5, 97.5]
+    - groupby: list of columns to group by
+    - n_bootstrap: number of bootstrap samples
+
+    Returns:
+    - DataFrame with lower and upper bounds for each group
+    """
+    bootstrap_results = bootstrap_weighted_mean(df, values, weight, n_samples, groupby, n_bootstrap)
+    percentiles = pd.DataFrame({})
+    for value in values:
+        tmp = bootstrap_results.groupby(groupby)[value].apply(lambda x: np.round(np.percentile(x, [16, 84]),3)).reset_index()
+        if percentiles.empty:
+            percentiles = pd.concat([percentiles, tmp], axis=1)
+        else:
+            percentiles = pd.concat([percentiles, tmp[value]], axis=1)
+    return percentiles
