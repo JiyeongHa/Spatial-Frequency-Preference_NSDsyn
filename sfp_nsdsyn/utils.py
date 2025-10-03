@@ -8,7 +8,7 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
-
+from sfp_nsdsyn.visualization.plot_2D_model_results import weighted_mean
 
 def load_dataframe(output_dir, dset, subj, roi, vs, precision=True):
     """Load subject data and precision information"""
@@ -351,21 +351,13 @@ def scale_fonts(font_scale):
     mpl.rcParams.update(font_dict)
 
 
-def calculate_weighted_mean2(df, value, weight, groupby=['vroinames']):
-    new_df = df.groupby(groupby).apply(lambda x: {value: (x[value] * x[weight]).sum() / x[weight].sum()})
-    new_df = new_df.apply(pd.Series).reset_index()
-    #new_df = new_df.reset_index().rename(columns={0: 'weighted_mean'})
-    return new_df
-
-
 def calculate_weighted_mean(df, values, weight, groupby=['vroinames']):
     if weight is None:
         result = df.groupby(groupby)[values].apply(lambda x: x.mean())
     else:
         result = df.groupby(groupby).apply(
-            lambda x: {value: (x[value] * x[weight]).sum() / x[weight].sum() for value in values}
+            lambda x: {value: np.round((x[value] * x[weight]).sum() / x[weight].sum(),3) for value in values}
         )
-
     # Convert the resulting dictionary into a dataframe
     result_df = result.apply(pd.Series).reset_index()
 
@@ -373,33 +365,25 @@ def calculate_weighted_mean(df, values, weight, groupby=['vroinames']):
 
 def bootstrap_weighted_mean(df, values, weight, n_samples, groupby=['vroinames'], n_bootstrap=100):
     bootstrap_results = pd.DataFrame({})
+    np.random.RandomState(None)
+
     for i in range(n_bootstrap):
         sampled_df = df.sample(n=n_samples, replace=True)
         weighted_mean = calculate_weighted_mean(sampled_df, values, weight, groupby)
         bootstrap_results = pd.concat([bootstrap_results, weighted_mean], axis=0, ignore_index=True)
     return bootstrap_results
 
-def calculate_confidence_interval(df, values, weight, n_samples, ci=[2.5, 97.5], groupby=['vroinames'], n_bootstrap=100):
-    """
-    Calculate lower and upper bounds of the confidence interval for a weighted mean.
-
-    Parameters:
-    - df: DataFrame
-    - value: column name to compute CI for (string)
-    - weight: column name for weights
-    - ci: list or tuple with two percentiles, e.g., [2.5, 97.5]
-    - groupby: list of columns to group by
-    - n_bootstrap: number of bootstrap samples
-
-    Returns:
-    - DataFrame with lower and upper bounds for each group
-    """
-    bootstrap_results = bootstrap_weighted_mean(df, values, weight, n_samples, groupby, n_bootstrap)
-    percentiles = pd.DataFrame({})
-    for value in values:
-        tmp = bootstrap_results.groupby(groupby)[value].apply(lambda x: np.round(np.percentile(x, [16, 84]),3)).reset_index()
-        if percentiles.empty:
-            percentiles = pd.concat([percentiles, tmp], axis=1)
-        else:
-            percentiles = pd.concat([percentiles, tmp[value]], axis=1)
-    return percentiles
+def calculate_confidence_intervals(df, params_list, dset_types, ci_quantiles=[0.16, 0.84], n_boot=5000, seed=None):
+    all_dset_df = pd.DataFrame({})
+    for dset_type in dset_types:
+        tmp = df.query('dset_type == @dset_type')
+        dset_df = pd.DataFrame({})
+        dset_df['dset_type'] = [dset_type]
+        for param in params_list:
+            x = tmp.apply(lambda row: row[param] + row.precision * 1j, axis=1)
+            x = x.to_numpy()
+            reps = sns.algorithms.bootstrap(x, func=weighted_mean, n_boot=n_boot, seed=seed)
+            lo, hi = np.round(np.quantile(reps, ci_quantiles), 3)  # 68% CI
+            dset_df[param] = [[lo, hi]]
+        all_dset_df = pd.concat((all_dset_df, dset_df), axis=0)
+    return all_dset_df

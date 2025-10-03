@@ -10,6 +10,7 @@ from sfp_nsdsyn.make_dataframes import calculate_local_orientation
 from sfp_nsdsyn.two_dimensional_model import get_Pv_row
 from sfp_nsdsyn.visualization.plot_1D_model_results import _get_x_and_y_prediction
 
+
 mpl.rcParams.update(mpl.rcParamsDefault)
 rc = {'text.color': 'black',
       'axes.labelcolor': 'black',
@@ -115,6 +116,8 @@ def weighted_mean(x, **kws):
     denominator = np.sum(np.imag(x))
     return numerator / denominator
 
+import numpy as np
+from seaborn.algorithms import bootstrap  # works in 0.11–0.13
 
 def _change_params_to_math_symbols(params_col):
     params_col = params_col.replace({'sigma': r"$\sigma$",
@@ -410,11 +413,11 @@ def plot_preferred_period_difference(df,
 
 def plot_preferred_period_in_axes(df, x, y, ax, hline=False,
                                   ylim=None, yticks=None, xlim=(0,10), xticks=[0,5,10], ylabel='Preferred period (deg)',
-                                  hue=None, hue_order=None, pal=None, precision='precision', errorbar=('ci', 68), err_kws=("ci", 68), font_scale=1, **kwargs):
+                                  hue=None, hue_order=None, pal=None, precision='precision', errorbar=('ci', 68), err_kws=None, font_scale=1, **kwargs):
     sns.set_theme("notebook", style='ticks', rc=rc, font_scale=font_scale)
     df['value_and_weights'] = [v + w * 1j for v, w in zip(df[y], df[precision])]
     g = sns.lineplot(df, x=x, y="value_and_weights",
-                     hue=hue, hue_order=hue_order,
+                     hue=hue, hue_order=hue_order, 
                      linewidth=1.5, estimator=weighted_mean, palette=pal,
                      err_style='band', errorbar=errorbar, ax=ax, **kwargs)
     g.legend_.remove()
@@ -1608,3 +1611,4 @@ def calculate_preferred_period_at_eccentricity(fit_df, eccentricity=2):
         lambda row: row['slope'] * eccentricity + row['intercept'], axis=1
     )
     return fit_df[['Paper', 'Preferred period at eccentricity']]
+
