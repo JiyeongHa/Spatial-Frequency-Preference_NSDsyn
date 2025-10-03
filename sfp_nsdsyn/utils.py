@@ -351,12 +351,12 @@ def scale_fonts(font_scale):
     mpl.rcParams.update(font_dict)
 
 
-def calculate_weighted_mean(df, values, weight, groupby=['vroinames']):
+def calculate_weighted_mean(df, values, weight, groupby=['vroinames'], n_decimals=3):
     if weight is None:
         result = df.groupby(groupby)[values].apply(lambda x: x.mean())
     else:
         result = df.groupby(groupby).apply(
-            lambda x: {value: np.round((x[value] * x[weight]).sum() / x[weight].sum(),3) for value in values}
+            lambda x: {value: np.round((x[value] * x[weight]).sum() / x[weight].sum(),n_decimals) for value in values}
         )
     # Convert the resulting dictionary into a dataframe
     result_df = result.apply(pd.Series).reset_index()
@@ -373,7 +373,7 @@ def bootstrap_weighted_mean(df, values, weight, n_samples, groupby=['vroinames']
         bootstrap_results = pd.concat([bootstrap_results, weighted_mean], axis=0, ignore_index=True)
     return bootstrap_results
 
-def calculate_confidence_intervals(df, params_list, dset_types, ci_quantiles=[0.16, 0.84], n_boot=5000, seed=None):
+def calculate_confidence_intervals(df, params_list, dset_types, ci_quantiles=[0.16, 0.84], n_boot=5000, seed=None, n_decimals=3):
     all_dset_df = pd.DataFrame({})
     for dset_type in dset_types:
         tmp = df.query('dset_type == @dset_type')
@@ -383,7 +383,7 @@ def calculate_confidence_intervals(df, params_list, dset_types, ci_quantiles=[0.
             x = tmp.apply(lambda row: row[param] + row.precision * 1j, axis=1)
             x = x.to_numpy()
             reps = sns.algorithms.bootstrap(x, func=weighted_mean, n_boot=n_boot, seed=seed)
-            lo, hi = np.round(np.quantile(reps, ci_quantiles), 3)  # 68% CI
+            lo, hi = np.round(np.quantile(reps, ci_quantiles), n_decimals)  # 68% CI
             dset_df[param] = [[lo, hi]]
         all_dset_df = pd.concat((all_dset_df, dset_df), axis=0)
     return all_dset_df
