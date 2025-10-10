@@ -1,12 +1,12 @@
 import sys
 import os
+sys.path.append('../../')
 import seaborn as sns
 import numpy as np
 from matplotlib import pyplot as plt
 from sfp_nsdsyn import utils as utils
+from sfp_nsdsyn import one_dimensional_model as tuning
 import pandas as pd
-from sfp_nsdsyn.one_dimensional_model import np_log_norm_pdf
-from sfp_nsdsyn.one_dimensional_model import _get_x_and_y_prediction
 import matplotlib as mpl
 import matplotlib.patheffects as pe
 from sfp_nsdsyn.visualization import plot_2D_model_results as vis2D
@@ -39,7 +39,7 @@ rc = {'text.color': 'black',
 mpl.rcParams.update(rc)
 
 def _get_y_pdf(row):
-    y_pdf = np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
+    y_pdf = tuning.np_log_norm_pdf(row['local_sf'], row['slope'], row['mode'], row['sigma'])
     return y_pdf
 
 
@@ -73,7 +73,7 @@ def plot_tuning_curves_NSD(data_df, params_df,
             max_val = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == "V2"')['local_sf'].max()
             tmp_subj_df = data_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
             tmp_tuning_df = params_df.query('sub == @subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
-            pred_x, pred_y = _get_x_and_y_prediction(min_val * 0.7,
+            pred_x, pred_y = tuning._get_x_and_y_prediction(min_val * 0.7,
                                                      max_val * 1.2,
                                                      tmp_tuning_df['slope'].item(),
                                                      tmp_tuning_df['mode'].item(),
@@ -168,7 +168,7 @@ def plot_sf_curves_with_broderick(nsd_subj, nsd_subj_df, nsd_tuning_df, nsd_bins
             tmp_subj_df = nsd_subj_df.query('sub == @nsd_subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
             tmp_tuning_df = nsd_tuning_df.query('sub == @nsd_subj & ecc_bin == @cur_bin & vroinames == @nsd_roi')
             tmp_subj_df['betas'] = tmp_subj_df['betas'] / tmp_subj_df['betas'].max()
-            pred_x, pred_y = _get_x_and_y_prediction(min_val * 0.7,
+            pred_x, pred_y = tuning._get_x_and_y_prediction(min_val * 0.7,
                                                      max_val * 1.2,
                                                      tmp_tuning_df['slope'].item(),
                                                      tmp_tuning_df['mode'].item(),

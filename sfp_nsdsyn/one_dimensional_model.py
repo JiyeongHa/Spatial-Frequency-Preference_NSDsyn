@@ -1,9 +1,10 @@
 import sys
 import os
+sys.path.append('..')
 import numpy as np
 import pandas as pd
 import torch
-from . import utils as utils
+import sfp_nsdsyn.utils as utils
 from timeit import default_timer as timer
 import seaborn as sns
 import matplotlib.pyplot as plt

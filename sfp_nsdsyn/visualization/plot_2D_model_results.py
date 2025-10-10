@@ -1,15 +1,14 @@
 import os
 import seaborn as sns
-from sfp_nsdsyn import utils as utils
+from sfp_nsdsyn import utils
+from sfp_nsdsyn import two_dimensional_model as model
+from sfp_nsdsyn import make_dataframes as prep
+from sfp_nsdsyn.visualization import plot_1D_model_results as vis1D
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from sfp_nsdsyn.two_dimensional_model import group_params
-from sfp_nsdsyn.make_dataframes import calculate_local_orientation
-from sfp_nsdsyn.two_dimensional_model import get_Pv_row
-from sfp_nsdsyn.visualization.plot_1D_model_results import _get_x_and_y_prediction
-
 
 mpl.rcParams.update(mpl.rcParamsDefault)
 rc = {'text.color': 'black',
@@ -238,7 +237,7 @@ def plot_param_hierarchy_and_prediction(params_df, params,
 def plot_precision_weighted_avg_parameter(df, params, hue, hue_order, ax, ylim=None, yticks=None, pal=None, **kwargs):
     sns.set_theme("paper", style='ticks', rc=rc)
 
-    tmp = group_params(df, params, [1]*len(params))
+    tmp = model.group_params(df, params, [1]*len(params))
     tmp = tmp.query('params in @params')
     tmp['value_and_weights'] = tmp.apply(lambda row: row.value + row.precision * 1j, axis=1)
     tmp['params'] = _change_params_to_math_symbols(tmp['params'])
@@ -522,7 +521,7 @@ def plot_grouped_parameters_subj(df, params, col_group,
                             to_label="study_type", lgd_title="Study", label_order=None,
                             height=7,
                             save_fig=False, save_path='/Users/jh7685/Dropbox/NYU/Projects/SF/MyResults/params.png'):
-    df = group_params(df, params, col_group)
+    df = model.group_params(df, params, col_group)
     sns.set_context("notebook", font_scale=1.5)
     x_label = "Parameter"
     y_label = "Value"
@@ -833,7 +832,7 @@ def calculate_preferred_period_for_synthetic_df(stim_info, final_params,
                                                 angle_range, n_angle,
                                                 ecc_col, angle_col)
     merged_df['sfstimuli'] = sfstimuli
-    merged_df['local_ori'] = calculate_local_orientation(merged_df['w_a'], merged_df['w_r'],
+    merged_df['local_ori'] = prep.calculate_local_orientation(merged_df['w_a'], merged_df['w_r'],
                                                          retinotopic_angle=merged_df[angle_col],
                                                          angle_in_radians=angle_in_radians,
                                                          sfstimuli=sfstimuli)
@@ -852,7 +851,7 @@ def calculate_preferred_period_for_all_subjects(subj_list, synthetic_df, final_p
         tmp = synthetic_df.copy()
         tmp_params = final_params.query('sub == @s')
         tmp['sub'] = s
-        tmp['Pv'] = tmp.apply(get_Pv_row, params=tmp_params, axis=1)
+        tmp['Pv'] = tmp.apply(model.get_Pv_row, params=tmp_params, axis=1)
         all_subj_df = all_subj_df.append(tmp, ignore_index=True)
     return all_subj_df
 
@@ -886,7 +885,7 @@ def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_pa
 
     for i, dset in enumerate(hue_order):
         tmp = weighted_mean_df[weighted_mean_df[hue] == dset]
-        pred_x, pred_y = _get_x_and_y_prediction(0.1, 20,
+        pred_x, pred_y = vis1D._get_x_and_y_prediction(0.1, 20,
                                                  tmp['Av'].item(),
                                                  tmp['Pv'].item(),
                                                  tmp['sigma'].item(), n_points=1000)
