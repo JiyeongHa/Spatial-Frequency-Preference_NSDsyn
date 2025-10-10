@@ -9,7 +9,6 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
-from sfp_nsdsyn.visualization.plot_2D_model_results import weighted_mean
 
 
 def load_dataframe(output_dir, dset, subj, roi, vs, precision=True):

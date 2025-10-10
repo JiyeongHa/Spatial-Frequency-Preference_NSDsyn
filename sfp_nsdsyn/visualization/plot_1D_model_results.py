@@ -64,6 +64,7 @@ def plot_tuning_curves_NSD(data_df, params_df,
                'legend.fontsize': 10,
                })
     utils.set_rcParams(rc)
+    
     sns.set_theme("paper", style='ticks', rc=rc)
     fig, axes = plt.subplots(1, 3, figsize=(width, height),
                              sharex=True, sharey=True)
