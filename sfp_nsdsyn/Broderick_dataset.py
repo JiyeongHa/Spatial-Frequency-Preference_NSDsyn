@@ -30,7 +30,7 @@ def _label_freq_lvl(freq_lvl=10, phi_repeat=8, main_classes=4, mixture_freq_lvl=
     freq_lvl = np.concatenate((freq_lvl_main_classes, freq_lvl_mixtures))
     return freq_lvl
 
-def load_broderick_stim_info(stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description.csv',
+def load_broderick_stim_info(stim_description_path='/Volumes/server/Projects/sfp_nsd/Broderick_dataset/stimuli/task-sfprescaled_stim_description_after_correction.csv',
                              drop_phase=True):
     """ Broderick et al (2022) had different convention for naming conditions.
     This function will load in the original broderick stimulus .csv file and convert its format to match the sfp_nsd convention."""
