@@ -127,7 +127,7 @@ rule prep_nsdsyn_data:
 rule prep_all_nsdsyn:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-               subj=make_subj_list('nsdsyn'),roi=['V1', 'V2', 'V3'], vs='pRFsize', tavg='False')
+               subj=make_subj_list('nsdsyn'),roi=['V1', 'V2', 'V3'], vs='None', tavg='True')
 
 
 rule prep_broderick_data:
@@ -291,7 +291,8 @@ rule plot_tuning_curves_NSD:
     input:
         model_df = lambda wildcards: expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_1D", "nsdsyn",  'model-params_class-{{stim_class}}_lr-{{lr}}_eph-{{max_epoch}}_e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_curbin-{curbin}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.pt'), curbin=_get_curbin(wildcards.enum), roi=ROIS),
         binned_df = expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', "nsdsyn", 'binned', 'e1-{{e1}}_e2-{{e2}}_nbin-{{enum}}_sub-{{subj}}_roi-{roi}_vs-{{vs}}.csv'), roi=ROIS)
-    output: 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}')
+    output: 
+        'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}'
     log:
         os.path.join(config['OUTPUT_DIR'],"logs", "figures", "sfp_model","results_1D", "nsdsyn", 'tclass-{stim_class}_normalize-{normalize}_lr-{lr}_eph-{max_epoch}_e1-{e1}_e2-{e2}_nbin-{enum}_curbin-{bins_to_plot}_dset-nsdsyn_sub-{subj}_roi-all_vs-{vs}.{fig_format}.log')
     params:
