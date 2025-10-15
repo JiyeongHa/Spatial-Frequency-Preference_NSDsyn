@@ -297,7 +297,7 @@ def merge_all(stim_df,
     betas_dict_x, betas_dict_y = betas_dict_xy
     betas_df = melt_2D_betas_dict_into_df(betas_dict, betas_dict_x, betas_dict_y, betas_long_format)
     betas_prf_df = add_1D_prf_dict_to_df(prf_dict, betas_df, roi_dict, on=between_voxels)
-    betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=('stim_idx','task'))
+    betas_prf_stim_df = merge_stim_df_and_betas_df(stim_df, betas_prf_df, on=between_stim_and_voxel)
     return betas_prf_stim_df
 
 def calculate_local_orientation(w_a, w_r, retinotopic_angle, angle_in_radians=True, sfstimuli='scaled'):
@@ -349,14 +349,20 @@ def make_sf_dataframe(stim_info,
     prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
     stim_df = find_run(design_mat, stim_df)
     betas_dict = load_betas_as_dict(betas, stim_df, mask, task_keys=task_keys, average=task_average)
+    if task_average is True:
+        columns_on = ('stim_idx')
+    else:
+        columns_on = ('stim_idx', 'task')
     sf_df = merge_all(stim_df,
                       betas_dict,
                       prf_dict,
                       roi_dict,
                       betas_dict_xy=('voxel', 'stim_idx'),
                       betas_long_format=True,
-                      between_stim_and_voxel=('stim_idx','task'),
+                      between_stim_and_voxel=columns_on,
                       between_voxels='voxel')
+    if task_average is True:
+        sf_df = sf_df.drop(columns=['task_x', 'task_y'])
     sf_df['local_sf'], sf_df['local_ori'] = calculate_local_stim_properties(sf_df['w_a'], sf_df['w_r'],
                                                                             sf_df['eccentricity'], sf_df['angle'],
                                                                             angle_in_radians=angle_to_radians)
