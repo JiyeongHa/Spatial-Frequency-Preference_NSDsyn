@@ -127,7 +127,7 @@ rule prep_nsdsyn_data:
 rule prep_all_nsdsyn:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-               subj=make_subj_list('nsdsyn'),roi=['V1', 'V2', 'V3'], vs='None', tavg='True')
+               subj=make_subj_list('nsdsyn'),roi=['V1', 'V2', 'V3'], vs='pRFcenter', tavg='True')
 
 
 rule prep_broderick_data:

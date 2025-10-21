@@ -349,6 +349,7 @@ def make_sf_dataframe(stim_info,
     prf_dict = load_prf_properties_as_dict(prfs, mask, angle_to_radians)
     stim_df = find_run(design_mat, stim_df)
     betas_dict = load_betas_as_dict(betas, stim_df, mask, task_keys=task_keys, average=task_average)
+    
     if task_average is True:
         columns_on = ('stim_idx')
     else:
@@ -361,6 +362,8 @@ def make_sf_dataframe(stim_info,
                       betas_long_format=True,
                       between_stim_and_voxel=columns_on,
                       between_voxels='voxel')
+    sf_df.rename(columns={'size': 'size_exponent'}, inplace=True)
+    sf_df['size'] = sf_df['size_exponent']*np.sqrt(sf_df['exponent'])
     if task_average is True:
         sf_df = sf_df.drop(columns=['task_x', 'task_y'])
     sf_df['local_sf'], sf_df['local_ori'] = calculate_local_stim_properties(sf_df['w_a'], sf_df['w_r'],

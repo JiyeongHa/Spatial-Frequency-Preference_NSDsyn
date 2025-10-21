@@ -128,8 +128,6 @@ def drop_voxels(df, dv_to_group=["subj", "voxel"], beta_col='avg_betas', in_pix=
 
     return df
 
-
-
 def drop_voxels_with_negative_mean_amplitudes(df, to_group=['voxel'], return_voxel_list=False):
     """drop all voxels that have an average negative amplitude across 28 conditions
         """
