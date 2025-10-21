@@ -402,13 +402,13 @@ rule run_model:
         subj_df = os.path.join(config['OUTPUT_DIR'], 'dataframes', '{dset}', 'model', 'dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
         precision = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}', 'precision', 'precision-v_sub-{subj}_roi-{roi}_vs-{vs}.csv')
     output:
-        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "test_results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "test_results_2D", "{dset}", 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","test_results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
+        model_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        loss_history = os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+        model = os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.pt'),
     log:
-        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","test_results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
+        os.path.join(config['OUTPUT_DIR'], "logs", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.log'),
     benchmark:
-        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","test_results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
+        os.path.join(config['OUTPUT_DIR'], "benchmark", "sfp_model","results_2D", "{dset}",'loss-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.txt'),
     resources:
         cpus_per_task = 1,
         mem_mb = 4000
