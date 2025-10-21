@@ -436,7 +436,33 @@ rule run_model_all:
         expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
                dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi=['V1', 'V2', 'V3'], vs='pRFsize')
  
+rule predict_Pv_based_on_model:
+    input:
+        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description.csv'),
+        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D", "{dset}", 'model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
+    output:
+        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5')
+    log:
+        os.path.join(config['OUTPUT_DIR'],'logs', "sfp_model","prediction_2D","{dset}",'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.log')
+    run:
+        stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
+        final_params = model.model_to_df(input.model, *ARGS_2D)
+        syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info,final_params,
+                                                                   ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
+                                                                   n_ecc=int(wildcards.n_ecc),
+                                                                   angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
+                                                                   n_angle=int(wildcards.n_ang),
+                                                                   ecc_col='eccentricity',angle_col='angle',
+                                                                   angle_in_radians=True, sfstimuli=wildcards.frame)
+        syn_df.to_hdf(output[0], key='stage', mode='w')
 
+rule pv_again:
+    input:
+        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}", 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+                    dset=['nsdsyn'], frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi=ROIS),
+        b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}", 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
+                    dset=['broderick'], frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('broderick'), roi=['V1'])
+                    
 rule run_cross_validation:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
@@ -569,26 +595,6 @@ rule plot_avg_model_parameters:
                                      dot_scale=0.9, errwidth=2,
                                      save_path=output[0])
 
-rule predict_Pv_based_on_model:
-    input:
-        stim = os.path.join(config['NSD_DIR'], 'nsdsyn_stim_description_corrected.csv'),
-        model = os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","{dset}",'{stimtest}','model-params_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'),
-    output:
-        os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5')
-    log:
-        os.path.join(config['OUTPUT_DIR'],'logs', "sfp_model","prediction_2D","{dset}",'{stimtest}','sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.log')
-    run:
-        stim_info = vis2D.get_w_a_and_w_r_for_each_stim_class(input.stim)
-        final_params = model.model_to_df(input.model, *ARGS_2D)
-        syn_df = vis2D.calculate_preferred_period_for_synthetic_df(stim_info,final_params,
-                                                                   ecc_range=(float(wildcards.ecc1), float(wildcards.ecc2)),
-                                                                   n_ecc=int(wildcards.n_ecc),
-                                                                   angle_range=(np.deg2rad(float(wildcards.ang1)), np.deg2rad(float(wildcards.ang2))),
-                                                                   n_angle=int(wildcards.n_ang),
-                                                                   ecc_col='eccentricity',angle_col='angle',
-                                                                   angle_in_radians=True, sfstimuli=wildcards.frame)
-        syn_df.to_hdf(output[0], key='stage', mode='w')
-
 rule plot_replication_prediction_figures:
     input:
         nsd_model_params=expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","results_2D","nsdsyn",'{{stimtest}}','model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.pt'), subj=make_subj_list('nsdsyn')),
@@ -636,12 +642,7 @@ rule plot_replication_prediction_figures:
                                         width_ratios=[1.5, 4],
                                         save_path=output[0])
 
-rule pv_again:
-    input:
-        a = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                    dset=['nsdsyn'], stimtest='corrected',frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi=ROIS),
-        b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}",'{stimtest}', 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
-                    dset=['broderick'], stimtest='corrected',frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('broderick'), roi=['V1'])
+
 
 rule results_2D:
     input:
