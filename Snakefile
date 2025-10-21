@@ -95,6 +95,8 @@ rule prep_nsdsyn_data:
         rois_vals = lambda wildcards: [prep.convert_between_roi_num_and_vareas(wildcards.roi), [1,2,3,4,5]],
         task_keys = ['fixation', 'memory'],
         stim_size= get_stim_size_in_degree('nsdsyn')
+    logs:
+        os.path.join(config['OUTPUT_DIR'],'logs','dataframes','nsdsyn','model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.log')
     run:
         from sfp_nsdsyn import prep
         from sfp_nsdsyn import vs
