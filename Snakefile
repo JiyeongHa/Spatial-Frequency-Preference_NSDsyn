@@ -433,8 +433,8 @@ rule run_model:
 
 rule run_model_all:
     input:
-        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "test_results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
-               dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi='V1', vs='pRFsize')
+        expand(os.path.join(config['OUTPUT_DIR'], "sfp_model", "results_2D", "{dset}", 'model-history_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-{vs}.h5'),
+               dset='nsdsyn', lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi=['V1', 'V2', 'V3'], vs='pRFsize')
  
 
 rule run_cross_validation:
