@@ -836,7 +836,7 @@ def calculate_preferred_period_for_synthetic_df(stim_info, final_params,
                                                          retinotopic_angle=merged_df[angle_col],
                                                          angle_in_radians=angle_in_radians,
                                                          sfstimuli=sfstimuli)
-    merged_df['Pv'] = merged_df.apply(get_Pv_row, params=final_params, axis=1)
+    merged_df['Pv'] = merged_df.apply(model.get_Pv_row, params=final_params, axis=1)
     if sfstimuli == 'constant':
         rename_cols = {'forward spiral': 'right oblique',
                        'reverse spiral': 'left oblique',
