@@ -3,6 +3,7 @@ import seaborn as sns
 from sfp_nsdsyn import utils
 from sfp_nsdsyn import two_dimensional_model as model
 from sfp_nsdsyn import make_dataframes as prep
+from sfp_nsdsyn import one_dimensional_model as tuning
 from sfp_nsdsyn.visualization import plot_1D_model_results as vis1D
 
 import pandas as pd
@@ -885,7 +886,7 @@ def plot_bandwidth_prediction(weighted_mean_df, hue, hue_order, pal, ax, save_pa
 
     for i, dset in enumerate(hue_order):
         tmp = weighted_mean_df[weighted_mean_df[hue] == dset]
-        pred_x, pred_y = vis1D._get_x_and_y_prediction(0.1, 20,
+        pred_x, pred_y = tuning._get_x_and_y_prediction(0.1, 20,
                                                  tmp['Av'].item(),
                                                  tmp['Pv'].item(),
                                                  tmp['sigma'].item(), n_points=1000)
@@ -1277,7 +1278,7 @@ def plot_simulation_design(base_sfs, eccen, slope, intercept, figsize=(2.6, 2.3)
     plt.gca().set_xlim(0.5, 4)
     plt.gca().set_xticks([0.5, 1, 2, 4], ['0.5', '1', '2', '4'])
     plt.xlabel('Eccentricity (deg)')
-    plt.ylabel('Spatial period (cyc/eg)')
+    plt.ylabel('Spatial period (deg)')
     plt.margins(0.05)  # similar to 'axis padded'
     if uniform:
         plt.legend([plt.Line2D([0], [0], color=color_map[0], lw=2),
