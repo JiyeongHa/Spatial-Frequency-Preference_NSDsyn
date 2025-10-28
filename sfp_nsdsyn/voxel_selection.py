@@ -141,22 +141,27 @@ def drop_voxels_with_negative_mean_amplitudes(df, to_group=['voxel'], return_vox
     else:
         return df.query('voxel not in @negative_mean_voxels')
 
-def drop_voxels_near_border(df, inner_border, outer_border):
-    tmp = df.query('eccentricity + size <= @outer_border')
-    vs_df = tmp.query('eccentricity - size >= @inner_border')
-    # tmp = df.groupby(to_group).filter(lambda x: (x.eccentricity + x.size <= outer_border).all())
-    # vs_df = tmp.groupby(to_group).filter(lambda x: (x.eccentricity - x.size >= inner_border).all())
-    return vs_df
+def drop_voxels_near_border(df, inner_border, outer_border, eccentricity='eccentricity', size='size'):
+        # ensure cols exist
+    if eccentricity not in df.columns or size not in df.columns:
+        raise KeyError(f"Missing columns: {eccentricity}, {size}")
+
+    mask = ((df[eccentricity] + df[size] <= outer_border) &
+            (df[eccentricity] - df[size] >= inner_border))
+    
+    #tmp = df.query(f"`{eccentricity}` + `{size}` <= @outer_border")
+    #vs_df = tmp.query(f"`{eccentricity}` - `{size}` >= @inner_border")
+    return df.loc[mask].copy()
 
 
 def select_voxels(df,
                   drop_by,
-                  inner_border, outer_border,
+                  inner_border, outer_border, eccentricity='eccentricity', size='size',
                   to_group=['voxel'], return_voxel_list=False):
     vs_df = df.copy()
     if drop_by == 'pRFsize':
-        vs_df = drop_voxels_near_border(vs_df, inner_border, outer_border)
+        vs_df = drop_voxels_near_border(vs_df, inner_border, outer_border, eccentricity, size)
     elif drop_by == 'pRFcenter':
-        vs_df = vs_df.query('@inner_border < eccentricity < @outer_border')
+        vs_df = vs_df.loc[(vs_df[eccentricity] > inner_border) & (vs_df[eccentricity] < outer_border)]
     vs_df = drop_voxels_with_negative_mean_amplitudes(vs_df, to_group, return_voxel_list)
     return vs_df
