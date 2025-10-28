@@ -121,6 +121,7 @@ rule prep_nsdsyn_data:
             sf_df = vs.select_voxels(sf_df, drop_by=wildcards.vs,
                                      inner_border=params.stim_size[0],
                                      outer_border=params.stim_size[1],
+                                     eccentricity='eccentricity', size='size',
                                      to_group=['voxel'], return_voxel_list=False)
         sf_df['sub'] = wildcards.subj
         sf_df.to_csv(output[0], index=False)
@@ -129,7 +130,7 @@ rule prep_nsdsyn_data:
 rule prep_all_nsdsyn:
     input:
         expand(os.path.join(config['OUTPUT_DIR'], 'dataframes', 'nsdsyn', 'model', 'dset-nsdsyn_sub-{subj}_roi-{roi}_vs-{vs}_tavg-{tavg}.csv'),
-               subj=make_subj_list('nsdsyn'),roi=['V1', 'V2', 'V3'], vs='pRFsize', tavg='False')
+               subj=make_subj_list('nsdsyn'),roi=['V1', 'V2', 'V3'], vs='pRFcenter', tavg='True')
 
 
 rule prep_broderick_data:
@@ -462,7 +463,44 @@ rule pv_again:
                     dset=['nsdsyn'], frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('nsdsyn'), roi=ROIS),
         # b = expand(os.path.join(config['OUTPUT_DIR'],"sfp_model","prediction_2D","{dset}", 'sfstimuli-{frame}_eccentricity-{ecc1}-{ecc2}-{n_ecc}_angle-{ang1}-{ang2}-{n_ang}_lr-{lr}_eph-{max_epoch}_sub-{subj}_roi-{roi}_vs-pRFsize.h5'),
         #             dset=['broderick'], frame=['scaled','constant'], ecc1=[0], ecc2=[12], n_ecc=[121], ang1=[0], ang2=[360], n_ang=[361], lr=LR_2D, max_epoch=MAX_EPOCH_2D, subj=make_subj_list('broderick'), roi=['V1'])
-                    
+
+rule get_summary_table:
+    input:
+        nsd_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "nsdsyn",'model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-{roi}_vs-pRFsize.pt'), subj=make_subj_list('nsdsyn'), roi=ROIS),
+        nsd_precision = os.path.join(config['OUTPUT_DIR'],'dataframes','nsdsyn','precision','precision-s_dset-nsdsyn_vs-pRFsize.csv'),
+        broderick_params = expand(os.path.join(config['OUTPUT_DIR'], "sfp_model","results_2D", "broderick",'model-params_lr-{{lr}}_eph-{{max_epoch}}_sub-{subj}_roi-V1_vs-pRFsize.pt'), subj=make_subj_list('broderick')),
+        broderick_precision = os.path.join(config['OUTPUT_DIR'],'dataframes','broderick','precision','precision-s_dset-broderick_vs-pRFsize.csv')
+    output:
+        os.path.join(config['OUTPUT_DIR'],'sfp_model','results_2D','mean_parameter_estimates_with_ci.csv'),
+    run:
+        nsd_params = model.load_all_models(input.nsd_params, *ARGS_2D)
+        nsd_precision = pd.read_csv(input.nsd_precision)
+        nsd_df = pd.merge(nsd_params, nsd_precision[['sub','vroinames','precision']], on=['sub','vroinames'])
+        nsd_df['dset_type'] = nsd_df['vroinames'].apply(lambda x: f'NSD {x}')
+        broderick_params = model.load_all_models(input.broderick_params, *ARGS_2D)
+        broderick_precision = pd.read_csv(input.broderick_precision)
+        broderick_df = pd.merge(broderick_params, broderick_precision[['sub','vroinames','precision']], on=['sub','vroinames'])
+        broderick_df['dset_type'] = 'Broderick et al. V1'
+        final_params = pd.concat((nsd_df, broderick_df), axis=0)
+        dset_types = ['Broderick et al. V1', 'NSD V1', 'NSD V2', 'NSD V3']
+        all_dset_df_mean = utils.calculate_weighted_mean(final_params, PARAMS_2D, 'precision', groupby=['dset_type'], n_decimals=3)
+        all_dset_df_68 = utils.calculate_confidence_intervals(final_params, PARAMS_2D, dset_types, ci_quantiles=[0.16, 0.84], n_boot=5000, n_decimals=2, seed=None)
+        all_dset_df_95 = utils.calculate_confidence_intervals(final_params, PARAMS_2D, dset_types, ci_quantiles=[0.025, 0.975], n_boot=5000, n_decimals=2, seed=None)
+        # Combine all_dset_df_mean, all_dset_df_68, and all_dset_df_95
+        combined_df = all_dset_df_mean.copy()
+        # Iterate over each dataset type and parameter
+        for dset_type in dset_types:
+            for param in PARAMS_2D:
+                # Get mean, ci_68, and ci_95 for this param and dset_type
+                mean_val = combined_df.loc[combined_df['dset_type'] == dset_type, param].values[0]
+                ci_68_val = all_dset_df_68.loc[all_dset_df_68['dset_type'] == dset_type, f"{param}"].values[0]
+                ci_95_val = all_dset_df_95.loc[all_dset_df_95['dset_type'] == dset_type, f"{param}"].values[0]
+                # Format: 'mean, [ci_68], [ci_95]'
+                combined_df.loc[combined_df['dset_type'] == dset_type, param] = f"{mean_val}, {ci_68_val}, {ci_95_val}"
+
+        combined_df = combined_df.set_index('dset_type').transpose().reset_index().rename_axis(None, axis=1).rename(columns={'index': 'param'})
+        combined_df.to_csv(output[0], index=False)
+        
 rule run_cross_validation:
     input:
         subj_df = os.path.join(config['OUTPUT_DIR'],'dataframes','{dset}','model','dset-{dset}_sub-{subj}_roi-{roi}_vs-{vs}_tavg-False.csv'),
