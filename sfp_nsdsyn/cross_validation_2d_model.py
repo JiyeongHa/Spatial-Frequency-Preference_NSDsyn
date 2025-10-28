@@ -417,9 +417,9 @@ def normalize_loss_across_model(loss_df, add_mean=True, match_broderick=True):
         DataFrame with additional columns:
         - normalized_loss: Loss values normalized 
     """
-    subj_mean_df = loss_df.groupby('subj').mean().rename(columns={'loss': 'mean_loss'})
+    subj_mean_df = loss_df.groupby('sub').mean().rename(columns={'loss': 'mean_loss'})
     mean_across_all = loss_df['loss'].mean()
-    loss_df = pd.merge(loss_df, subj_mean_df, on='subj', how='right')
+    loss_df = pd.merge(loss_df, subj_mean_df, on='sub', how='right')
     loss_df['normalized_loss'] = loss_df['loss'] - loss_df['mean_loss']
     if add_mean:
         loss_df['normalized_loss'] = loss_df['normalized_loss'] + mean_across_all
@@ -430,7 +430,7 @@ def normalize_loss_across_model(loss_df, add_mean=True, match_broderick=True):
 def plot_model_comparison(loss_df, 
                           x='model_type', 
                           y='normalized_loss', 
-                          hue='subj', 
+                          hue='sub', 
                           ylim=None,
                           xlim=None,
                           ax=None,
