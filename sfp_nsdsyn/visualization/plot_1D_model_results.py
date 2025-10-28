@@ -10,29 +10,30 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.patheffects as pe
 from sfp_nsdsyn.visualization import plot_2D_model_results as vis2D
-
 mpl.rcParams.update(mpl.rcParamsDefault)
 rc = {'text.color': 'black',
       'axes.labelcolor': 'black',
+      'legend.labelcolor': 'black',
       'xtick.color': 'black',
       'ytick.color': 'black',
       'axes.edgecolor': 'black',
       'font.family': 'Helvetica',
       'axes.linewidth': 1,
-      'axes.labelpad': 6,
-      'xtick.major.pad': 10,
+      'axes.labelpad': 3,
+      'axes.spines.right': False,
+      'axes.spines.top': False,
+      'xtick.major.pad': 5,
       'xtick.major.width': 1,
-      'xtick.minor.width': 0.9,
       'ytick.major.width': 1,
       'lines.linewidth': 1,
       'font.size': 11,
-      'axes.titlesize': 14,
+      'axes.titlesize': 11,
       'axes.labelsize': 11,
       'xtick.labelsize': 11,
       'ytick.labelsize': 11,
       'legend.title_fontsize': 11,
       'legend.fontsize': 11,
-      'figure.titlesize': 14,
+      'figure.titlesize': 11,
       'figure.dpi': 72 * 3,
       'savefig.dpi': 72 * 4
       }
@@ -591,3 +592,58 @@ def extend_NSD_line(fit_df):
     tmp_fit_df['fitted'] = coeff[0] * ecc_max + coeff[1]
     fit_df = pd.concat((fit_df, tmp_fit_df), axis=0)
     return fit_df
+
+def plot_prf_size_vs_eccentricity(data, x, y, hue, ax, pal, hue_order=None, save_path=None):
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    sns.set_theme("paper", style='ticks')
+    ax = sns.lineplot(data=data, x=x, y=y, hue=hue, hue_order=hue_order, markers=True, 
+    dashes=False, errorbar=('ci', 68), palette=pal, ax=ax, legend=False)
+    ax.set_xlim(0, 4)
+    ax.set_xticks([0.5, 1,1.5, 2, 2.5, 3, 3.5, 4])
+    ax.set_yticks([0, 1, 2])
+    ax.set_ylim(0, 2)
+    ax.set_aspect('equal')
+    ax.set_xlabel('Eccentricity (deg)')
+    ax.set_ylabel('pRF Size (deg)')
+    ax.set_title('pRF Size vs Eccentricity')
+    ax = sns.lineplot(ax=ax, data=data.query('ecc != 0'), 
+                        x='ecc', y='size', palette=pal,
+                                            hue=hue, hue_order=hue_order, marker='o', linestyle='', 
+                                            markersize=5, errorbar=('ci', 68), 
+                                            err_style='bars', 
+                                            err_kws={'elinewidth': 1}, 
+                                            alpha=0.9, zorder=10)
+    ax.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))#ax.get_legend().remove()
+    #plt.tight_layout()
+    utils.save_fig(save_path)
+    return ax
+
+
+def plot_prf_size_vs_fwhm(data, x, y, hue, ax, pal, hue_order=None):
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    sns.set_theme("paper", style='ticks', rc=rc, palette=pal)
+    ax = sns.scatterplot(data=data, x=x, y=y, hue=hue, hue_order=hue_order, 
+    palette=pal, ax=ax)
+    ax.set_xlabel('pRF Size (deg)')
+    ax.set_xlim(0, 2)
+    ax.set_xticks([0, 1, 2])
+    ax.set_ylabel('Bandwidth (FWHM)')
+    ax.set_ylim((0,15))
+    #ax.legend(frameon=False)
+
+    return ax
+
+def plot_v1_precision_vs_dprime(df, x, y, hue, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    sns.set_theme("paper", style='ticks', rc=rc)
+    sns.scatterplot(
+        data=df, 
+        x=x, y=y, hue=hue, ax=ax
+    )
+
+    ax.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
+    return ax
