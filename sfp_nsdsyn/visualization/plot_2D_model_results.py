@@ -1457,7 +1457,7 @@ def fit_study_lines(existing_studies):
     fit_df = pd.DataFrame(fit_results)
     return fit_df
 
-def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies, prediction_df=None,ax=None, zorder=[0,1,2], font_scale=1, save_path=None):
+def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,prediction_df=None,ax=None, zorder=[0,1,2], font_scale=1, save_path=None):
     """
     Plots the datapoints and fitted lines (Preferred period vs. Eccentricity) for each study, colored by Paper.
 
@@ -1465,6 +1465,7 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
     merged_df (pd.DataFrame): DataFrame containing merged data of existing studies and fit results.
     """
     rc.update({
+      'axes.titlepad': 15,
       'axes.linewidth': 1,
       'axes.labelpad': 3,
       'xtick.major.pad': 5,
@@ -1486,28 +1487,28 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
 
     # Define the order of papers and their corresponding colors
     paper_order = [
-        "Aghajari (2020)",
-        "D'Souza (2016)",
-        "Farivar (2017)",
         "Henriksson (2008)",
+        "D'Souza (2016)",
+        "Sasaki (2001)",
+        "Aghajari (2020)",
+        "Farivar (2017)",
         "Hess (dominant eye, 2009)",
         "Kay (2011)",
-        "Sasaki (2001)",
-        "NSD V1",
         "Broderick et al. V1",
+        "NSD V1",
     ]
 
     # Define the color palette based on the order
     color_palette = [
-        "#008080",  # teal
-        "#FC8C62",  # orange
-        "#5F6A9A",  # blue-purple
-        "#E78AC2",  # pinkish-purple
-        "#A7D854",  # lime-green
-        "#DAA520",  # goldenrod
-        "#483D8B",   # dark slate blue
-        '#8B191A',  
-        '#4D4D4D'  # pastel reddish orange
+        "#E78AC2",    # Henriksson - pinkish-purple
+        "#FC8C62",    # D'Souza - orange
+        "#483D8B",    # Sasaki - dark slate blue
+        "#008080",    # Aghajari - teal
+        "#5F6A9A",    # Farivar - blue-purple
+        "#A7D854",    # Hess - lime-green
+        "#DAA520",    # Kay - goldenrod
+        '#4D4D4D',    # Broderick et al. V1 - dark gray
+        '#8B191A',    # NSD V1 - deep red
     ]
     # color_palette = [
     #     "#00008B",  # medium dark blue
@@ -1533,8 +1534,9 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
             coll.set_alpha(0.08)
     if existing_studies is not None:
         # Plot each study's data points and fitted line
-        for study in existing_studies['Paper'].unique():
-            study_data = existing_studies[existing_studies['Paper'] == study]
+        existing_study_order= [k for k in paper_order if k in existing_studies['Paper'].unique()]
+        for study in existing_study_order:
+            study_data = existing_studies[existing_studies['Paper'] == study].sort_values('Eccentricity')
             x_range = np.linspace(0, study_data['Eccentricity'].max(), 100)
             color = paper_to_color[study]
             # Plot data points
@@ -1554,7 +1556,7 @@ def plot_preferred_period_vs_eccentricity_for_existing_studies(existing_studies,
                     ax.plot(x_range_extended, y_extended, linestyle='dotted', color=color, linewidth=1.5,alpha=0.9, zorder=zorder[0])
                 
         
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', frameon=False, fontsize=10 * font_scale)
+    ax.legend(bbox_to_anchor=(1.05, 1.2), loc='upper left', frameon=False, fontsize=10 * font_scale)
     ax.set(xlim=(0,10), ylim=(0,3), yticks=[0, 1, 2, 3])
 
     plt.tight_layout()
